@@ -1,0 +1,34 @@
+# Monorepo root ignores. backend/ and shiksha_sathi/ also carry their own
+# .gitignore (git applies them per-directory), so those still cover
+# .venv / node_modules / .next / .env etc.
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+wheels/
+
+# node / next
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# os / editor
+.DS_Store
+*.pem
+.idea/
+.vscode/
+
+# scratch
+*.log
+/tmp/

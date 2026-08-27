@@ -1,0 +1,37 @@
+# Render Blueprint for the Medha FastAPI backend (monorepo: service builds from
+# the backend/ subdirectory). Render Blueprints must live at the repo root.
+# Secrets (jwt_secret_key, gemini_api_key, database_url) are set in the Render
+# dashboard, not here.
+services:
+  - type: web
+    name: medha-backend
+    runtime: python
+    region: singapore          # closest Render region to India
+    plan: free                 # bump to "starter" ($7/mo) before showing a real user (no cold starts)
+    rootDir: backend
+    buildCommand: pip install uv && uv sync --frozen
+    startCommand: uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+    preDeployCommand: uv run alembic upgrade head
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHONPATH
+        value: src              # so `import backend` works even outside `uv run`
+      - key: ENVIRONMENT
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: none            # frontend (Vercel) and backend (Render) are cross-site
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-flash-lite-latest
+      # --- set these in the dashboard (Environment tab) ---
+      - key: DATABASE_URL       # Neon POOLED connection string, with psycopg2 driver:
+        sync: false             #   postgresql+psycopg2://USER:PASS@ep-...-pooler.../neondb?sslmode=require
+      - key: JWT_SECRET_KEY     # generate: python -c "import secrets; print(secrets.token_hex(32))"
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FRONTEND_ORIGIN    # exact Vercel URL, no trailing slash, e.g. https://medha.vercel.app
+        sync: false
