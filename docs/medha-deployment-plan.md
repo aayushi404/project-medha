@@ -7,7 +7,7 @@ Three providers, three origins. The thing that breaks silently if skipped: the h
 - Frontend: Next.js 16 App Router, `shiksha_sathi/` folder, **bun**.
 - DB: Postgres + pgvector on **Neon** (already provisioned; connection strings in `backend/.env` — the commented `#DATABASE_URL` line is Neon).
 - Auth: **email + password** (no OTP, no SMS). LLM: **Gemini** free tier. Retrieval: disabled until an embedding key is set.
-- **One monorepo** at the project root (`git@github.com:aayushi404/project-medha.git`). Render deploys the `backend/` subdir (via the root `render.yaml`), Vercel deploys the `shiksha_sathi/` subdir.
+- **One monorepo** at the project root (`git@github.com:aayushi404/project-medha.git`). Render deploys the `backend/` subdir (manual Web Service, free tier), Vercel deploys the `shiksha_sathi/` subdir.
 
 ---
 
@@ -15,8 +15,7 @@ Three providers, three origins. The thing that breaks silently if skipped: the h
 
 - `backend/src/backend/core/config.py` — env-aware `Settings` (`environment`, `cookie_secure`, `cookie_samesite`).
 - `backend/src/backend/auth/router.py` — refresh cookie uses `settings.cookie_secure` / `settings.cookie_samesite`; logout clears it with the matching attributes.
-- `backend/render.yaml` — Render Blueprint (build/start/pre-deploy commands, env var scaffold).
-- `backend/requirements.txt` — pinned fallback for Render's pip auto-detect path (the Blueprint uses uv).
+- `backend/requirements.txt` — pinned deps (fallback if you don't use uv on Render).
 - `backend/.env.example`, `shiksha_sathi/.env.local.example` — updated with the prod vars.
 - **Neon is already migrated to head (`0004_email_password_auth`) and seeded** (grades, subjects, 1 district + 1 school, the Class 6–8 curriculum chapters/topics, and a test teacher `homeofirstt@gmail.com` / `password123`).
 
@@ -44,7 +43,10 @@ Never commit a production `.env`. Set these in the Render and Vercel dashboards.
 
 ## 2. Database (Neon) — already current
 
-`alembic upgrade head` and the seed scripts have already been run against Neon. If you add migrations later, the Render **pre-deploy command** (`uv run alembic upgrade head`) runs them on each deploy. To run one manually against Neon from your machine:
+`alembic upgrade head` and the seed scripts have already been run against Neon.
+The backend's **build command** (§3) re-runs `alembic upgrade head` on every
+deploy, so future migrations apply automatically (it's a no-op when already
+current). To run one manually from your machine instead:
 
 ```
 cd backend
@@ -57,14 +59,46 @@ The app's runtime `DATABASE_URL` should be the **pooled** endpoint — Render ma
 
 ---
 
-## 3. Backend → Render
+## 3. Backend → Render (free-tier Web Service, no Blueprint)
 
-1. **Push `backend/` to a GitHub repo** (see §6).
-2. Render → **New → Blueprint**, pick that repo. It reads `backend/render.yaml` and proposes a `medha-backend` web service (Singapore, free plan, `/health` check).
-   - *Or* New → Web Service manually: runtime Python, build `pip install uv && uv sync --frozen`, start `uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT`, pre-deploy `uv run alembic upgrade head`.
-3. In the service's **Environment** tab, fill the `sync: false` vars: `DATABASE_URL` (Neon pooled), `JWT_SECRET_KEY` (new secret), `GEMINI_API_KEY`, `FRONTEND_ORIGIN` (leave as a placeholder for now — you'll set the real Vercel URL in §5).
-4. Deploy. Note the URL Render assigns (e.g. `https://medha-backend.onrender.com`).
-5. Check `https://<render-url>/health` → `{"status":"ok"}` and `https://<render-url>/docs` loads.
+Render's Blueprints and pre-deploy commands are paid features, so create the
+service by hand.
+
+1. Push the monorepo to GitHub (§6).
+2. Render → **New → Web Service** → connect `project-medha`.
+3. Settings:
+   | Field | Value |
+   |---|---|
+   | **Root Directory** | `backend` |
+   | **Runtime** | Python 3 (Render reads `backend/.python-version` → 3.12) |
+   | **Region** | Singapore (closest to India) |
+   | **Instance Type** | Free |
+   | **Build Command** | `pip install uv && uv sync --frozen && uv run alembic upgrade head` |
+   | **Start Command** | `uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT` |
+   | **Health Check Path** | `/health` |
+
+   Running `alembic upgrade head` in the build command is the free-tier
+   substitute for a pre-deploy hook — build env vars (incl. `DATABASE_URL`) are
+   available, and if a migration fails the deploy fails, which is what you want.
+   *Pip fallback* (if uv gives trouble): Build Command
+   `pip install -r requirements.txt && alembic upgrade head`, and add env var
+   `PYTHONPATH=src` so `import backend` resolves.
+
+4. **Environment** tab — add:
+   | Key | Value |
+   |---|---|
+   | `DATABASE_URL` | Neon **pooled** string, psycopg2 driver: `postgresql+psycopg2://neondb_owner:…@ep-…-pooler.…/neondb?sslmode=require` |
+   | `JWT_SECRET_KEY` | `python -c "import secrets; print(secrets.token_hex(32))"` |
+   | `GEMINI_API_KEY` | your key |
+   | `FRONTEND_ORIGIN` | placeholder for now (real Vercel URL in §5) |
+   | `ENVIRONMENT` | `production` |
+   | `COOKIE_SECURE` | `true` |
+   | `COOKIE_SAMESITE` | `none` |
+   | `LLM_PROVIDER` | `gemini` |
+   | `GEMINI_MODEL` | `gemini-flash-lite-latest` |
+
+5. Create the service. Note the URL (e.g. `https://medha-backend.onrender.com`).
+6. Check `<render-url>/health` → `{"status":"ok"}` and `<render-url>/docs` loads.
 
 ---
 
@@ -85,9 +119,9 @@ The frontend already sends `credentials: "include"` on every call (`lib/api.ts` 
 
 ## 5. Frontend → Vercel
 
-1. **Push `shiksha_sathi/` to a GitHub repo** (see §6).
-2. Vercel → **Add New → Project**, import that repo. Root directory `.`. Vercel auto-detects Next.js + bun.
-3. **Environment Variables**: `NEXT_PUBLIC_API_URL` = the Render backend URL from §3.4.
+1. Push the monorepo to GitHub (§6).
+2. Vercel → **Add New → Project**, import `project-medha`. Set **Root Directory = `shiksha_sathi`**. Vercel auto-detects Next.js + bun.
+3. **Environment Variables**: `NEXT_PUBLIC_API_URL` = the Render backend URL from §3.5.
 4. Deploy. Note the URL Vercel assigns (e.g. `https://medha.vercel.app`).
 5. Back in **Render**, set `FRONTEND_ORIGIN` to that exact Vercel URL (no trailing slash) and **Manual Deploy → Deploy latest commit** so CORS reflects the real origin.
 
@@ -107,9 +141,8 @@ git push -u origin main
 `.env` / `.env.local` are in `.gitignore` — `git status` shows only `.env.example`
 templates.
 
-- **Render**: New → Blueprint → `project-medha`. The root `render.yaml` has
-  `rootDir: backend`, so the service builds/runs from `backend/`.
-- **Vercel**: import `project-medha`, set **Root Directory = `shiksha_sathi`**.
+- **Render**: New → Web Service → `project-medha`, **Root Directory = `backend`** (§3).
+- **Vercel**: import `project-medha`, **Root Directory = `shiksha_sathi`** (§5).
 
 ---
 
@@ -135,9 +168,9 @@ Free web services spin down after 15 min idle and take 30–60 s to wake. For yo
 
 ## 9. Order of operations
 
-1. `git commit` + push `backend/` and `shiksha_sathi/` to two GitHub repos.
-2. Render: Blueprint from the backend repo → set the secret env vars → deploy → grab the URL.
-3. Vercel: import the frontend repo → set `NEXT_PUBLIC_API_URL` to the Render URL → deploy → grab the URL.
-4. Render: set `FRONTEND_ORIGIN` to the Vercel URL → redeploy.
+1. Create the empty `project-medha` repo on github.com, then `git push -u origin main`.
+2. Render: **New → Web Service** → `project-medha`, Root Directory `backend`, build/start commands from §3, set all env vars → create → grab the URL.
+3. Vercel: import `project-medha`, Root Directory `shiksha_sathi`, set `NEXT_PUBLIC_API_URL` to the Render URL → deploy → grab the URL.
+4. Render: set `FRONTEND_ORIGIN` to the Vercel URL → Manual Deploy.
 5. Run the §8 checklist.
 6. Warm the free tier before demoing, or move to `starter` before a real teacher sees it.
