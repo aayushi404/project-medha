@@ -7,7 +7,7 @@ Three providers, three origins. The thing that breaks silently if skipped: the h
 - Frontend: Next.js 16 App Router, `shiksha_sathi/` folder, **bun**.
 - DB: Postgres + pgvector on **Neon** (already provisioned; connection strings in `backend/.env` — the commented `#DATABASE_URL` line is Neon).
 - Auth: **email + password** (no OTP, no SMS). LLM: **Gemini** free tier. Retrieval: disabled until an embedding key is set.
-- The two folders are **separate git repos** (`backend/.git`, `shiksha_sathi/.git`) — deploy each from its own GitHub repo, root directory `.`.
+- **One monorepo** at the project root (`git@github.com:aayushi404/project-medha.git`). Render deploys the `backend/` subdir (via the root `render.yaml`), Vercel deploys the `shiksha_sathi/` subdir.
 
 ---
 
@@ -95,18 +95,21 @@ The frontend already sends `credentials: "include"` on every call (`lib/api.ts` 
 
 ## 6. Getting the code onto GitHub
 
-Each folder is its own repo with no commits yet. For each of `backend/` and `shiksha_sathi/`:
+The monorepo is already committed at the project root with `origin` set to
+`git@github.com:aayushi404/project-medha.git`. Create that repo on github.com
+(empty, no README), then:
 
 ```
-cd <folder>
-git add -A
-git commit -m "Initial commit"
-gh repo create medha-<backend|frontend> --private --source=. --remote=origin --push
-# or: create the repo on github.com, then
-#   git remote add origin git@github.com:<you>/medha-<...>.git && git push -u origin main
+cd /home/aayushi/projects/ai/shiksha_sathi
+git push -u origin main
 ```
 
-`.env` / `.env.local` are already in `.gitignore` — verify with `git status` that no secret files are staged.
+`.env` / `.env.local` are in `.gitignore` — `git status` shows only `.env.example`
+templates.
+
+- **Render**: New → Blueprint → `project-medha`. The root `render.yaml` has
+  `rootDir: backend`, so the service builds/runs from `backend/`.
+- **Vercel**: import `project-medha`, set **Root Directory = `shiksha_sathi`**.
 
 ---
 
