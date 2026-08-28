@@ -117,7 +117,7 @@ export default function OnboardingPage() {
   if (teacher?.onboarded_at) return null;
 
   return (
-    <main className="flex flex-1 flex-col items-center bg-gradient-to-b from-accent/50 to-background px-4 py-10">
+    <main className="sun-wash flex flex-1 flex-col items-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <h1 className="text-xl font-semibold tracking-tight">{STEP_TITLES[step]}</h1>

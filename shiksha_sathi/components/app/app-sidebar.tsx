@@ -17,9 +17,11 @@ const NAV = [
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2 border-b border-sidebar-border px-4 py-4">
-      <BookOpen className="size-5 text-primary" />
-      <span className="text-sm font-medium">{copy.brand}</span>
+    <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
+      <BookOpen className="size-5 text-terracotta" />
+      <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
+        {copy.brand}
+      </span>
     </div>
   );
 }
@@ -84,8 +86,10 @@ export function AppSidebar() {
             </Dialog.Popup>
           </Dialog.Portal>
         </Dialog.Root>
-        <BookOpen className="size-5 text-primary" />
-        <span className="text-sm font-medium">{copy.brand}</span>
+        <BookOpen className="size-5 text-terracotta" />
+        <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
+          {copy.brand}
+        </span>
       </div>
     </>
   );

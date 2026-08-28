@@ -43,7 +43,7 @@ export function QuickActions({ onExplain, onQuiz, onActivity, disabled }: QuickA
               enabled ? "hover:bg-muted" : "cursor-not-allowed opacity-55",
             )}
           >
-            <Icon className="size-5 shrink-0 text-primary" />
+            <Icon className="size-5 shrink-0 text-terracotta" />
             <span className="min-w-0">
               <span className="block text-[13px]">{label}</span>
               <span className="block truncate text-[11px] text-muted-foreground">{sub}</span>

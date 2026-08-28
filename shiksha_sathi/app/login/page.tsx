@@ -51,7 +51,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-gradient-to-b from-accent/50 to-background px-4 py-12">
+    <main className="sun-wash flex flex-1 flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -77,9 +77,9 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setMode(m)}
                     className={cn(
-                      "rounded-md py-1.5 font-medium transition-colors",
+                      "rounded-md py-1.5 font-medium tracking-wide transition-colors",
                       mode === m
-                        ? "bg-accent text-accent-foreground"
+                        ? "bg-foreground text-background"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >

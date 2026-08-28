@@ -8,8 +8,9 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+  --font-heading: var(--font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,113 +50,8 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.488 0.243 264.376);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.96 0.02 264.376);
-  --accent-foreground: oklch(0.35 0.15 264.376);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-    scroll-behavior: smooth;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-}
-
-/* ============================================================
-   Medha marketing landing page — scoped design system.
-
-   Ported from the standalone landing prototype. Everything here
-   is scoped under `.medha-landing` so the warm editorial palette
-   never leaks into the signed-in app, which keeps its own tokens.
-   ============================================================ */
-
-@theme inline {
-  --color-ivory: var(--ivory);
-  --color-parchment: var(--parchment);
-  --color-ink: var(--ink);
-  --color-terracotta: var(--terracotta);
-  --color-gold: var(--gold);
-  --color-earth: var(--earth);
-  --color-sage: var(--sage);
-  --color-hairline: var(--hairline);
-}
-
-.medha-landing {
+  /* Named editorial palette — shared with the marketing landing page so the
+     signed-in app and the front door read as one product. */
   --ivory: oklch(0.975 0.011 85);
   --parchment: oklch(0.951 0.018 82);
   --ink: oklch(0.205 0.012 55);
@@ -177,25 +73,155 @@
   --secondary-foreground: var(--ink);
   --muted: var(--parchment);
   --muted-foreground: oklch(0.475 0.021 60);
+  /* soft warm wash for quiet hover/selected states (menus, tabs, chips) —
+     the loud brand colour lives in `--terracotta`, used deliberately. */
+  --accent: oklch(0.925 0.035 82);
+  --accent-foreground: var(--ink);
+  --destructive: oklch(0.545 0.185 27);
+  --border: var(--hairline);
+  --input: var(--hairline);
+  --ring: var(--gold);
+  --chart-1: var(--terracotta);
+  --chart-2: var(--gold);
+  --chart-3: var(--earth);
+  --chart-4: var(--sage);
+  --chart-5: var(--ink);
+  --radius: 0.25rem;
+  --sidebar: var(--parchment);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: var(--ivory);
+  --sidebar-accent: oklch(0.925 0.035 82);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--gold);
+
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-heading: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dark {
+  --background: oklch(0.19 0.012 58);
+  --foreground: oklch(0.955 0.012 85);
+  --card: oklch(0.235 0.014 58);
+  --card-foreground: oklch(0.955 0.012 85);
+  --popover: oklch(0.235 0.014 58);
+  --popover-foreground: oklch(0.955 0.012 85);
+  --primary: oklch(0.955 0.012 85);
+  --primary-foreground: oklch(0.19 0.012 58);
+  --secondary: oklch(0.27 0.016 58);
+  --secondary-foreground: oklch(0.955 0.012 85);
+  --muted: oklch(0.27 0.016 58);
+  --muted-foreground: oklch(0.72 0.02 70);
+  --accent: oklch(0.32 0.028 66);
+  --accent-foreground: oklch(0.975 0.011 85);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: var(--gold);
+  --chart-1: var(--terracotta);
+  --chart-2: var(--gold);
+  --chart-3: var(--earth);
+  --chart-4: var(--sage);
+  --chart-5: oklch(0.955 0.012 85);
+  --sidebar: oklch(0.235 0.014 58);
+  --sidebar-foreground: oklch(0.955 0.012 85);
+  --sidebar-primary: oklch(0.955 0.012 85);
+  --sidebar-primary-foreground: oklch(0.19 0.012 58);
+  --sidebar-accent: oklch(0.32 0.028 66);
+  --sidebar-accent-foreground: oklch(0.975 0.011 85);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: var(--gold);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+  /* Serif headings everywhere — utility weight classes (font-medium,
+     font-semibold, the landing's `.display`) still win where set. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ============================================================
+   Editorial design system — palette tokens above feed the whole app.
+   This section adds: the named brand colours as Tailwind utilities
+   (text-terracotta, bg-gold, …), the marketing type/motif utilities,
+   and a light lock for the landing page so it stays warm even if a
+   dark theme is toggled on the app shell.
+   ============================================================ */
+
+@theme inline {
+  --color-ivory: var(--ivory);
+  --color-parchment: var(--parchment);
+  --color-ink: var(--ink);
+  --color-terracotta: var(--terracotta);
+  --color-gold: var(--gold);
+  --color-earth: var(--earth);
+  --color-sage: var(--sage);
+  --color-hairline: var(--hairline);
+}
+
+/* The marketing page opts out of dark mode — re-pin the light palette
+   regardless of a `.dark` ancestor on <html>. */
+.medha-landing {
+  color-scheme: light;
+  --background: var(--ivory);
+  --foreground: var(--ink);
+  --card: oklch(0.988 0.008 85);
+  --card-foreground: var(--ink);
+  --popover: oklch(0.988 0.008 85);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--ivory);
+  --secondary: var(--parchment);
+  --secondary-foreground: var(--ink);
+  --muted: var(--parchment);
+  --muted-foreground: oklch(0.475 0.021 60);
+  /* the landing leans on the brand colour directly for its accent */
   --accent: var(--terracotta);
   --accent-foreground: var(--ivory);
   --border: var(--hairline);
   --input: var(--hairline);
   --ring: var(--gold);
-  --radius: 0.25rem;
-
-  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
-  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-synthesis-weight: none;
-  -webkit-font-smoothing: antialiased;
 }
 
-.medha-landing ::selection {
-  background: color-mix(in oklab, var(--gold) 40%, transparent);
+/* Warm gold text selection across the whole product. Written as a literal
+   gold-with-alpha rather than color-mix(): the CSS transformer mis-folds
+   `color-mix(in oklab, <color> N%, transparent)` inside @utility/global
+   rules down to the opaque colour. */
+::selection {
+  background: oklch(0.705 0.105 78 / 0.32);
 }
 
 /* --- Editorial type --- */
@@ -251,12 +277,9 @@
 }
 
 @utility sun-wash {
+  /* literal gold-with-alpha — see the ::selection note above */
   background:
-    radial-gradient(
-      70% 55% at 50% 0%,
-      color-mix(in oklab, var(--gold) 26%, transparent),
-      transparent 70%
-    ),
+    radial-gradient(70% 55% at 50% 0%, oklch(0.705 0.105 78 / 0.22), transparent 70%),
     var(--ivory);
 }
 
