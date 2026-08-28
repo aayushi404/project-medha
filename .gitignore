@@ -32,3 +32,6 @@ out/
 # scratch
 *.log
 /tmp/
+
+# local landing-page prototype (has its own .git); reference only
+medha-bihar-s-future/
