@@ -5,7 +5,7 @@ Three providers, three origins. The thing that breaks silently if skipped: the h
 **Current stack (matches the repo):**
 - Backend: FastAPI, `backend/` folder, package `backend`, entrypoint `backend.app:app`, managed with **uv** (`pyproject.toml` + `uv.lock`).
 - Frontend: Next.js 16 App Router, `shiksha_sathi/` folder, **bun**.
-- DB: Postgres + pgvector on **Neon** (already provisioned; connection strings in `backend/.env` — the commented `#DATABASE_URL` line is Neon).
+- DB: Postgres +pgvector on **Neon** (already provisioned; connection strings in `backend/.env` — the commented `#DATABASE_URL` line is Neon).
 - Auth: **email + password** (no OTP, no SMS). LLM: **Gemini** free tier. Retrieval: disabled until an embedding key is set.
 - **One monorepo** at the project root (`git@github.com:aayushi404/project-medha.git`). Render deploys the `backend/` subdir (manual Web Service, free tier), Vercel deploys the `shiksha_sathi/` subdir.
 
