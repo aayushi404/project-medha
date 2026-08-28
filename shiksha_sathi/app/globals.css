@@ -126,5 +126,182 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ============================================================
+   Medha marketing landing page — scoped design system.
+
+   Ported from the standalone landing prototype. Everything here
+   is scoped under `.medha-landing` so the warm editorial palette
+   never leaks into the signed-in app, which keeps its own tokens.
+   ============================================================ */
+
+@theme inline {
+  --color-ivory: var(--ivory);
+  --color-parchment: var(--parchment);
+  --color-ink: var(--ink);
+  --color-terracotta: var(--terracotta);
+  --color-gold: var(--gold);
+  --color-earth: var(--earth);
+  --color-sage: var(--sage);
+  --color-hairline: var(--hairline);
+}
+
+.medha-landing {
+  --ivory: oklch(0.975 0.011 85);
+  --parchment: oklch(0.951 0.018 82);
+  --ink: oklch(0.205 0.012 55);
+  --terracotta: oklch(0.545 0.115 40);
+  --gold: oklch(0.705 0.105 78);
+  --earth: oklch(0.345 0.045 52);
+  --sage: oklch(0.505 0.045 145);
+  --hairline: oklch(0.87 0.018 78);
+
+  --background: var(--ivory);
+  --foreground: var(--ink);
+  --card: oklch(0.988 0.008 85);
+  --card-foreground: var(--ink);
+  --popover: oklch(0.988 0.008 85);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--ivory);
+  --secondary: var(--parchment);
+  --secondary-foreground: var(--ink);
+  --muted: var(--parchment);
+  --muted-foreground: oklch(0.475 0.021 60);
+  --accent: var(--terracotta);
+  --accent-foreground: var(--ivory);
+  --border: var(--hairline);
+  --input: var(--hairline);
+  --ring: var(--gold);
+  --radius: 0.25rem;
+
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.medha-landing ::selection {
+  background: color-mix(in oklab, var(--gold) 40%, transparent);
+}
+
+/* --- Editorial type --- */
+
+@utility display {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: -0.025em;
+  line-height: 1.03;
+  font-optical-sizing: auto;
+}
+
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+@utility lede {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--muted-foreground);
+  max-width: 34rem;
+}
+
+/* --- Surfaces & motifs --- */
+
+@utility rule-top {
+  border-top: 1px solid var(--hairline);
+}
+
+@utility grain {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.32;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  }
+}
+
+@utility warm-frame {
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 1px 1px oklch(0.3 0.03 60 / 0.03),
+    0 18px 40px -28px oklch(0.3 0.05 50 / 0.35);
+  background: var(--card);
+}
+
+@utility sun-wash {
+  background:
+    radial-gradient(
+      70% 55% at 50% 0%,
+      color-mix(in oklab, var(--gold) 26%, transparent),
+      transparent 70%
+    ),
+    var(--ivory);
+}
+
+/* --- Scroll reveal --- */
+
+@utility reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+@utility is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@keyframes medha-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.045);
+  }
+}
+
+@utility breathe {
+  animation: medha-breathe 9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breathe {
+    animation: none;
   }
 }

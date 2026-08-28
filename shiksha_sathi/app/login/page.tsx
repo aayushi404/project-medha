@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (status === "authenticated") router.replace("/");
+    if (status === "authenticated") router.replace("/home");
   }, [status, router]);
 
   const isSignup = mode === "signup";

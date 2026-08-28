@@ -6,8 +6,11 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
 
-/** "/" is just a router: send a logged-in teacher wherever they belong. */
-export default function IndexPage() {
+/**
+ * Post-login router: the public landing page owns "/", so a freshly
+ * authenticated teacher is sent here and forwarded to wherever they belong.
+ */
+export default function HomePage() {
   const { teacher } = useAuth();
   const router = useRouter();
 
