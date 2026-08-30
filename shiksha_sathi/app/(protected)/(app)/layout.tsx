@@ -18,10 +18,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (teacher && !teacher.onboarded_at) router.replace("/onboarding");
+    if (!teacher) return;
+    // admins/principals have their own consoles -- send them back to the role router
+    if (teacher.role !== "teacher") router.replace("/home");
+    else if (!teacher.onboarded_at) router.replace("/onboarding");
   }, [teacher, router]);
 
-  if (!teacher || !teacher.onboarded_at) return null;
+  if (!teacher || teacher.role !== "teacher" || !teacher.onboarded_at) return null;
 
   return (
     <ProfileProvider>

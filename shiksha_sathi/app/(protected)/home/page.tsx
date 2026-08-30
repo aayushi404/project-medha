@@ -8,7 +8,8 @@ import { useAuth } from "@/lib/auth-context";
 
 /**
  * Post-login router: the public landing page owns "/", so a freshly
- * authenticated teacher is sent here and forwarded to wherever they belong.
+ * authenticated user is sent here and forwarded by role -- admins to the admin
+ * console, principals to theirs, teachers into onboarding or the dashboard.
  */
 export default function HomePage() {
   const { teacher } = useAuth();
@@ -16,7 +17,13 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!teacher) return;
-    router.replace(teacher.onboarded_at ? "/dashboard" : "/onboarding");
+    if (teacher.role === "admin") {
+      router.replace("/admin");
+    } else if (teacher.role === "principal") {
+      router.replace("/principal");
+    } else {
+      router.replace(teacher.onboarded_at ? "/dashboard" : "/onboarding");
+    }
   }, [teacher, router]);
 
   return (

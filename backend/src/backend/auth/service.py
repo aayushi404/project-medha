@@ -7,8 +7,10 @@ import bcrypt
 
 from backend.auth.hashing import hash_password, hash_refresh_token, verify_password
 from backend.auth.jwt import create_access_token, create_refresh_token
+from backend.auth.rate_limit import is_locked_out, record_failure, reset
+from backend.auth.schemas import RegisterIn
 from backend.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
-from backend.db.models import AuthSession, Teacher
+from backend.db.models import AuthSession, School, Teacher
 
 # A real hash so verify_password does the full bcrypt work even when the email
 # doesn't exist -- keeps login response time from leaking account existence.
@@ -35,33 +37,100 @@ def _issue_tokens(db: Session, teacher: Teacher, device_info: str | None) -> tup
     return access_token, refresh_token, ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
 
-def signup(
-    db: Session, email: str, password: str, device_info: str | None
-) -> tuple[str, str, int]:
-    existing = db.query(Teacher.id).filter(Teacher.email == email).first()
-    if existing is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists.")
-
-    # school/subjects and full_name are collected in the separate onboarding
-    # step; this row only proves ownership of the email + password.
-    teacher = Teacher(
-        email=email,
-        password_hash=hash_password(password),
-        full_name="",
-        school_id=None,
+def _approved_principal(db: Session, school_id) -> Teacher | None:
+    return (
+        db.query(Teacher)
+        .filter(
+            Teacher.school_id == school_id,
+            Teacher.role == "principal",
+            Teacher.approval_status == "approved",
+        )
+        .first()
     )
-    db.add(teacher)
-    db.flush()
-    return _issue_tokens(db, teacher, device_info)
+
+
+def register(db: Session, payload: RegisterIn) -> Teacher:
+    """Create a pending account. Registering never logs you in -- an admin
+    (for principals) or a principal (for teachers) has to approve first."""
+    school = db.get(School, payload.school_id)
+    if school is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "That school wasn't found.")
+
+    if payload.role == "teacher" and _approved_principal(db, school.id) is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Your school doesn't have an approved principal yet. Ask your "
+            "principal to register first, then try again.",
+        )
+    if payload.role == "principal" and _approved_principal(db, school.id) is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This school already has an approved principal.",
+        )
+
+    existing = db.query(Teacher).filter(Teacher.email == payload.email).first()
+    if existing is not None:
+        if existing.approval_status != "rejected":
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "An account with this email already exists.",
+            )
+        # a previously rejected applicant may re-apply: reuse the row so the
+        # unique email constraint doesn't block them.
+        teacher = existing
+    else:
+        teacher = Teacher(email=payload.email)
+        db.add(teacher)
+
+    teacher.full_name = payload.full_name
+    teacher.password_hash = hash_password(payload.password)
+    teacher.role = payload.role
+    teacher.school_id = payload.school_id
+    teacher.phone_number = payload.mobile_number
+    teacher.employee_code = payload.employee_code
+    teacher.years_of_experience = payload.years_of_experience
+    teacher.qualification = payload.qualification
+    teacher.approval_status = "pending"
+    teacher.approved_by = None
+    teacher.approved_at = None
+    teacher.rejection_reason = None
+
+    db.commit()
+    db.refresh(teacher)
+    return teacher
 
 
 def login(
     db: Session, email: str, password: str, device_info: str | None
 ) -> tuple[str, str, int]:
+    if is_locked_out(email):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many failed attempts. Try again in 15 minutes.",
+        )
+
     teacher = db.query(Teacher).filter(Teacher.email == email).first()
     stored_hash = teacher.password_hash if teacher is not None else _DUMMY_HASH
     if not verify_password(password, stored_hash) or teacher is None or not teacher.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password.")
+        record_failure(email)
+        # same message for missing user and wrong password -- don't reveal
+        # which emails are registered
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password.")
+
+    if teacher.approval_status == "pending":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail={"code": "PENDING_APPROVAL"}
+        )
+    if teacher.approval_status == "rejected":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "REGISTRATION_REJECTED",
+                "reason": teacher.rejection_reason,
+            },
+        )
+
+    reset(email)
     return _issue_tokens(db, teacher, device_info)
 
 

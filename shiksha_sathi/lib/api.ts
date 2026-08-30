@@ -1,9 +1,14 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export type Role = "admin" | "principal" | "teacher";
+export type ApprovalStatus = "pending" | "approved" | "rejected";
+
 export type Teacher = {
   id: string;
   email: string;
   full_name: string;
+  role: Role;
+  approval_status: ApprovalStatus;
   school_id: string | null;
   onboarded_at: string | null;
 };
@@ -12,6 +17,23 @@ export type TokenOut = {
   access_token: string;
   expires_in: number;
 };
+
+/**
+ * Raised by the auth-context `login()` when the backend rejects an otherwise
+ * valid credential because the account isn't approved yet. `code` is the
+ * backend's machine-readable reason (`PENDING_APPROVAL` | `REGISTRATION_REJECTED`).
+ */
+export class AuthError extends Error {
+  code: string;
+  reason: string | null;
+
+  constructor(code: string, message: string, reason: string | null = null) {
+    super(message);
+    this.name = "AuthError";
+    this.code = code;
+    this.reason = reason;
+  }
+}
 
 export type Grade = {
   id: string;
@@ -286,3 +308,123 @@ export const sendFeedback = (
   id: string,
   body: { rating: 1 | -1; comment?: string | null },
 ) => json<Feedback>(apiFetch(`/modules/${id}/feedback`, { method: "POST", token, body }));
+
+// ---------------------------------------------------------------------------
+// Role-based registration + approval. Registering never logs you in -- it
+// creates a pending account that an admin (principals) or principal (teachers)
+// has to approve. See docs/medha-auth-approval-plan.md.
+// ---------------------------------------------------------------------------
+
+export type RegisterRole = "principal" | "teacher";
+
+export type RegisterInput = {
+  role: RegisterRole;
+  full_name: string;
+  email: string;
+  password: string;
+  mobile_number: string;
+  school_id: string;
+  employee_code?: string | null;
+  years_of_experience?: number | null;
+  qualification?: string | null;
+};
+
+export type RegisterResult = { status: "pending"; role: string; message: string };
+
+export const register = (input: RegisterInput) =>
+  json<RegisterResult>(apiFetch("/auth/register", { method: "POST", body: input }));
+
+// --- admin ---
+
+export type AdminStats = {
+  schools: number;
+  principals: number;
+  teachers: number;
+  pending_principals: number;
+};
+
+export type PendingPrincipal = {
+  id: string;
+  full_name: string;
+  email: string;
+  mobile_number: string | null;
+  qualification: string | null;
+  school_id: string;
+  school_name: string;
+  district_name: string;
+  applied_at: string;
+};
+
+export type SchoolPrincipalStatus = {
+  school_id: string;
+  school_name: string;
+  district_name: string;
+  principal_name: string | null;
+  principal_email: string | null;
+  principal_status: ApprovalStatus | null;
+};
+
+export type ApprovalResult = { id: string; approval_status: ApprovalStatus };
+
+export const getAdminStats = (token: string | null) =>
+  json<AdminStats>(apiFetch("/admin/stats", { token }));
+
+export const getPendingPrincipals = (token: string | null) =>
+  json<PendingPrincipal[]>(apiFetch("/admin/principals/pending", { token }));
+
+export const getAdminSchools = (token: string | null) =>
+  json<SchoolPrincipalStatus[]>(apiFetch("/admin/schools", { token }));
+
+export const approvePrincipal = (token: string | null, id: string) =>
+  json<ApprovalResult>(
+    apiFetch(`/admin/principals/${id}/approve`, { method: "POST", token }),
+  );
+
+export const rejectPrincipal = (token: string | null, id: string, reason: string) =>
+  json<ApprovalResult>(
+    apiFetch(`/admin/principals/${id}/reject`, { method: "POST", token, body: { reason } }),
+  );
+
+// --- principal ---
+
+export type PrincipalStats = { teachers: number; pending_teachers: number };
+
+export type PendingTeacher = {
+  id: string;
+  full_name: string;
+  email: string;
+  mobile_number: string | null;
+  employee_code: string | null;
+  years_of_experience: number | null;
+  qualification: string | null;
+  applied_at: string;
+};
+
+export type TeacherRosterItem = {
+  id: string;
+  full_name: string;
+  email: string;
+  mobile_number: string | null;
+  employee_code: string | null;
+  years_of_experience: number | null;
+  approved_at: string | null;
+};
+
+export const getPrincipalStats = (token: string | null) =>
+  json<PrincipalStats>(apiFetch("/principal/stats", { token }));
+
+export const getPrincipalTeachers = (token: string | null) =>
+  json<TeacherRosterItem[]>(apiFetch("/principal/teachers", { token }));
+
+export const getPendingTeachers = (token: string | null) =>
+  json<PendingTeacher[]>(apiFetch("/principal/teachers/pending", { token }));
+
+export const approveTeacher = (token: string | null, id: string) =>
+  json<ApprovalResult>(
+    apiFetch(`/principal/teachers/${id}/approve`, { method: "POST", token }),
+  );
+
+export const rejectTeacher = (token: string | null, id: string, reason: string) =>
+  json<ApprovalResult>(
+    apiFetch(`/principal/teachers/${id}/reject`, { method: "POST", token, body: { reason } }),
+  );

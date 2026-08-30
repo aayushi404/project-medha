@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Check, Copy, HelpCircle, RefreshCw, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { ArtifactCard } from "@/components/dashboard/artifact-card";
+import { AssistantBody, AssistantMark, UserBubble } from "@/components/chat/turn";
 import type { ActivityContent, QuizContent } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
 import { copy } from "@/lib/copy";
+import { cn } from "@/lib/utils";
 
 export type UiMessage = {
   id: string;
@@ -18,15 +21,50 @@ export type UiMessage = {
   artifact?: { type: "quiz" | "activity"; content: QuizContent | ActivityContent };
 };
 
-function TeacherBubble({ text }: { text: string }) {
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
   return (
-    <div className="ml-auto max-w-[80%] rounded-2xl bg-primary px-3.5 py-2 text-sm whitespace-pre-wrap text-primary-foreground">
-      {text}
-    </div>
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setDone(true);
+          window.setTimeout(() => setDone(false), 1500);
+        } catch {
+          /* clipboard unavailable */
+        }
+      }}
+      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+    >
+      {done ? <Check className="size-3" /> : <Copy className="size-3" />}
+      {done ? copy.copied : copy.copyText}
+    </button>
   );
 }
 
-function AssistantBubble({
+function ActionButton({
+  onClick,
+  icon: Icon,
+  children,
+}: {
+  onClick: () => void;
+  icon: typeof HelpCircle;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+    >
+      <Icon className="size-3.5" />
+      {children}
+    </button>
+  );
+}
+
+function AssistantTurn({
   msg,
   onQuiz,
   onActivity,
@@ -39,53 +77,55 @@ function AssistantBubble({
 }) {
   const showActions = !msg.streaming && !msg.failed;
   return (
-    <div className="mr-auto flex max-w-[85%] flex-col gap-2">
-      <div className="rounded-2xl bg-card px-3.5 py-2.5 ring-1 ring-foreground/10">
+    <div className="group flex flex-col gap-2">
+      <AssistantMark />
+      <AssistantBody>
         {msg.content ? (
           <div className={MARKDOWN_CLASS}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
           </div>
         ) : null}
         {msg.streaming ? (
-          <span className="ml-0.5 inline-block h-3.5 w-[3px] animate-pulse bg-foreground/60 align-middle" />
+          <span className="ml-0.5 inline-block h-4 w-[3px] animate-pulse bg-foreground/50 align-middle" />
         ) : null}
+
         {msg.failed ? (
           <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>⚠️ {copy.streamError}</span>
-            <button type="button" onClick={onRetry} className="text-primary underline">
+            <span>{copy.streamError}</span>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <RefreshCw className="size-3" />
               {copy.retry}
             </button>
           </div>
         ) : null}
-      </div>
 
-      {msg.artifact ? <ArtifactCard type={msg.artifact.type} content={msg.artifact.content} /> : null}
+        {msg.artifact ? (
+          <div className="mt-3">
+            <ArtifactCard type={msg.artifact.type} content={msg.artifact.content} />
+          </div>
+        ) : null}
 
-      {showActions ? (
-        <div className="flex gap-2">
-          <QaButton onClick={onQuiz}>{copy.makeQuiz}</QaButton>
-          <QaButton onClick={onActivity}>{copy.makeActivity}</QaButton>
-        </div>
-      ) : null}
+        {showActions ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
+            {msg.content ? <CopyButton text={msg.content} /> : null}
+            {!msg.artifact ? (
+              <>
+                <ActionButton onClick={onQuiz} icon={HelpCircle}>
+                  {copy.makeQuiz}
+                </ActionButton>
+                <ActionButton onClick={onActivity} icon={Users}>
+                  {copy.makeActivity}
+                </ActionButton>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </AssistantBody>
     </div>
-  );
-}
-
-function QaButton({
-  onClick,
-  children,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-    >
-      {children}
-    </button>
   );
 }
 
@@ -115,12 +155,12 @@ export function MessageThread({ messages, onQuiz, onActivity, onRetry }: Message
       }}
       className="flex-1 overflow-y-auto"
     >
-      <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4">
+      <div className={cn("mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5")}>
         {messages.map((m) =>
           m.role === "teacher" ? (
-            <TeacherBubble key={m.id} text={m.content} />
+            <UserBubble key={m.id}>{m.content}</UserBubble>
           ) : (
-            <AssistantBubble
+            <AssistantTurn
               key={m.id}
               msg={m}
               onQuiz={onQuiz}

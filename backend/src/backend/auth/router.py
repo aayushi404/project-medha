@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from backend.auth import service
 from backend.auth.dependencies import get_current_teacher
-from backend.auth.schemas import LoginIn, SignupIn, TeacherOut, TokenOut
+from backend.auth.schemas import LoginIn, RegisterIn, RegisterOut, TeacherOut, TokenOut
 from backend.core.config import REFRESH_TOKEN_EXPIRE_DAYS, settings
 from backend.db.models import Teacher
 from backend.db.session import get_db
@@ -36,18 +36,14 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
-@router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-def signup(
-    payload: SignupIn,
-    request: Request,
-    response: Response,
-    db: Session = Depends(get_db),
-) -> TokenOut:
-    access_token, refresh_token, expires_in = service.signup(
-        db, payload.email, payload.password, request.headers.get("user-agent")
+@router.post("/register", response_model=RegisterOut, status_code=status.HTTP_201_CREATED)
+def register(payload: RegisterIn, db: Session = Depends(get_db)) -> RegisterOut:
+    teacher = service.register(db, payload)
+    approver = "your principal" if teacher.role == "teacher" else "an administrator"
+    return RegisterOut(
+        role=teacher.role,
+        message=f"Registration received. Your account is pending approval from {approver}.",
     )
-    _set_refresh_cookie(response, refresh_token)
-    return TokenOut(access_token=access_token, expires_in=expires_in)
 
 
 @router.post("/login", response_model=TokenOut)

@@ -5,7 +5,12 @@
  */
 export const copy = {
   brand: "Medha",
-  nav: { home: "Home", modules: "My Modules" },
+  nav: {
+    home: "Home",
+    modules: "My Modules",
+    tools: "Tools",
+    attendance: "Attendance",
+  },
   profileMenu: { edit: "Edit profile", logout: "Log out" },
 
   // dashboard
@@ -32,6 +37,7 @@ export const copy = {
 
   // my modules
   myModules: "My Modules",
+  myModulesSub: "Everything you've made, arranged chapter by chapter.",
   filterAll: "All",
   searchPlaceholder: "Search by name",
   emptyModules: "No modules yet. Ask about a topic on the dashboard.",
@@ -39,6 +45,37 @@ export const copy = {
   back: "Back",
   answerLabel: "Answer",
   materialsNone: "Nothing needed",
+
+  // chapter browser
+  pickClassSubject: "Pick a class you teach",
+  noSubjects: "Add the classes you teach in your profile to see them here.",
+  chaptersEmpty: "No chapters listed for this class yet.",
+  chapterNothingYet: "Nothing here yet.",
+  startLesson: "Start a lesson",
+  expandAll: "Expand all",
+  collapseAll: "Collapse all",
+  otherModules: "Not linked to a chapter",
+  moduleCount: (n: number) => `${n} module${n === 1 ? "" : "s"}`,
+  noSearchHits: "No modules match that search.",
+
+  // module detail
+  allTypes: "All",
+  sectionTitle: {
+    explanation: "Explanation",
+    quiz: "Quizzes",
+    activity: "Activities",
+  } as Record<string, string>,
+  revealAnswers: "Reveal answers",
+  hideAnswers: "Hide answers",
+  showAnswer: "Show answer",
+  hideAnswer: "Hide answer",
+  practiceHint: "Tap an option to check yourself",
+  conversationTitle: "Original conversation",
+  conversationSub: "The chat this module came from",
+  conversationEmpty: "No messages saved for this module.",
+  conversationFailed: "Couldn't load the conversation.",
+  copyText: "Copy",
+  copied: "Copied",
   feedbackUp: "Helpful",
   feedbackDown: "Could be better",
   commentPlaceholder: "Anything to add? (optional)",

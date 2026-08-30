@@ -1,51 +1,53 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 
+import { AuthError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { PendingScreen } from "@/components/auth/pending-screen";
 
-type Mode = "login" | "signup";
+type View = "form" | "pending" | "rejected";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { status, login, signup } = useAuth();
+  const { status, login } = useAuth();
 
-  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [view, setView] = useState<View>("form");
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") router.replace("/home");
   }, [status, router]);
 
-  const isSignup = mode === "signup";
-  const canSubmit =
-    email.trim().length > 3 && password.length >= (isSignup ? 8 : 1) && !submitting;
+  const canSubmit = email.trim().length > 3 && password.length >= 1 && !submitting;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await (isSignup ? signup : login)(email.trim(), password);
+      await login(email.trim(), password);
       // navigation handled by the `status` effect once the session is set
     } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : isSignup
-            ? "Could not create the account."
-            : "Could not log in.",
-      );
+      if (err instanceof AuthError && err.code === "PENDING_APPROVAL") {
+        setView("pending");
+      } else if (err instanceof AuthError && err.code === "REGISTRATION_REJECTED") {
+        setRejectionReason(err.reason);
+        setView("rejected");
+      } else {
+        toast.error(err instanceof Error ? err.message : "Could not log in.");
+      }
       setSubmitting(false);
     }
   }
@@ -70,71 +72,94 @@ export default function LoginPage() {
         >
           <Card className="shadow-sm">
             <CardContent className="px-6 py-5">
-              <div className="mb-5 grid grid-cols-2 rounded-lg border border-border p-0.5 text-sm">
-                {(["login", "signup"] as Mode[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMode(m)}
-                    className={cn(
-                      "rounded-md py-1.5 font-medium tracking-wide transition-colors",
-                      mode === m
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
+              {view === "pending" && (
+                <PendingScreen message="Your account hasn't been approved yet. You'll be able to log in once it is." />
+              )}
+
+              {view === "rejected" && (
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                    Registration not approved
+                  </h2>
+                  <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+                    {rejectionReason
+                      ? `Reason: ${rejectionReason}`
+                      : "Your registration was not approved."}
+                  </p>
+                  <Link
+                    href="/register"
+                    className="mt-1 text-sm text-primary underline-offset-2 hover:underline"
                   >
-                    {m === "login" ? "Log in" : "Sign up"}
+                    Register again
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setView("form")}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Back to log in
                   </button>
-                ))}
-              </div>
-
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="h-11 text-base"
-                    autoFocus
-                  />
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete={isSignup ? "new-password" : "current-password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isSignup ? "At least 8 characters" : "Your password"}
-                    className="h-11 text-base"
-                  />
-                </div>
-                <Button type="submit" disabled={!canSubmit} className="mt-1 h-11 w-full text-base">
-                  {submitting
-                    ? isSignup
-                      ? "Creating account…"
-                      : "Logging in…"
-                    : isSignup
-                      ? "Create account"
-                      : "Log in"}
-                </Button>
-              </form>
+              )}
 
-              <p className="mt-4 text-center text-xs text-muted-foreground">
-                {isSignup ? "Already have an account? " : "New here? "}
-                <button
-                  type="button"
-                  onClick={() => setMode(isSignup ? "login" : "signup")}
-                  className="text-primary underline-offset-2 hover:underline"
-                >
-                  {isSignup ? "Log in" : "Create an account"}
-                </button>
-              </p>
+              {view === "form" && (
+                <>
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        className="h-11 text-base"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Your password"
+                        className="h-11 text-base"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={!canSubmit}
+                      className="mt-1 h-11 w-full text-base"
+                    >
+                      {submitting ? "Logging in…" : "Log in"}
+                    </Button>
+                  </form>
+
+                  <div className="mt-4 flex flex-col items-center gap-1 text-center text-xs text-muted-foreground">
+                    <span>New to Medha?</span>
+                    <span>
+                      Register as a{" "}
+                      <Link
+                        href="/register?role=principal"
+                        className="text-primary underline-offset-2 hover:underline"
+                      >
+                        principal
+                      </Link>{" "}
+                      or{" "}
+                      <Link
+                        href="/register?role=teacher"
+                        className="text-primary underline-offset-2 hover:underline"
+                      >
+                        teacher
+                      </Link>
+                    </span>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </motion.div>

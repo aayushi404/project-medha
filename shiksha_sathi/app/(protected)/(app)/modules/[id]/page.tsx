@@ -1,20 +1,40 @@
 "use client";
 
-import { ChevronLeft, Loader2, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  HelpCircle,
+  Lightbulb,
+  Loader2,
+  Trash2,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { ArtifactView } from "@/components/modules/artifact-view";
+import { ConversationPanel } from "@/components/modules/conversation-panel";
 import { FeedbackBar } from "@/components/modules/feedback-bar";
 import { ConfirmDialog } from "@/components/ui/alert-dialog";
-import { deleteModule, getModule, type ModuleDetail } from "@/lib/api";
+import {
+  deleteModule,
+  getModule,
+  type ArtifactType,
+  type ModuleArtifact,
+  type ModuleDetail,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { copy } from "@/lib/copy";
 import { formatRelativeTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
-const ORDER: Record<string, number> = { explanation: 0, quiz: 1, activity: 2 };
+const SECTIONS: { type: ArtifactType; icon: LucideIcon; accent: string }[] = [
+  { type: "explanation", icon: Lightbulb, accent: "bg-gold/15 text-earth" },
+  { type: "quiz", icon: HelpCircle, accent: "bg-accent text-terracotta" },
+  { type: "activity", icon: Users, accent: "bg-sage/15 text-sage" },
+];
 
 export default function ModuleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +43,7 @@ export default function ModuleDetailPage() {
 
   const [module, setModule] = useState<ModuleDetail | null>(null);
   const [missing, setMissing] = useState(false);
+  const [tab, setTab] = useState<"all" | ArtifactType>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +54,16 @@ export default function ModuleDetailPage() {
       cancelled = true;
     };
   }, [accessToken, id]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<ArtifactType, ModuleArtifact[]>();
+    for (const a of module?.artifacts ?? []) {
+      const arr = map.get(a.artifact_type) ?? [];
+      arr.push(a);
+      map.set(a.artifact_type, arr);
+    }
+    return map;
+  }, [module]);
 
   if (missing) {
     return (
@@ -53,12 +84,12 @@ export default function ModuleDetailPage() {
     );
   }
 
-  const artifacts = [...module.artifacts].sort(
-    (a, b) => (ORDER[a.artifact_type] ?? 9) - (ORDER[b.artifact_type] ?? 9),
-  );
   const sub = [module.grade_label, module.subject_name, module.topic_title]
     .filter(Boolean)
     .join(" · ");
+
+  const presentSections = SECTIONS.filter((s) => (grouped.get(s.type)?.length ?? 0) > 0);
+  const showTabs = presentSections.length > 1;
 
   async function onDelete() {
     try {
@@ -73,7 +104,11 @@ export default function ModuleDetailPage() {
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-start gap-3 border-b border-border px-5 py-4">
-        <Link href="/modules" className="mt-0.5 rounded-lg p-1 hover:bg-muted" aria-label={copy.back}>
+        <Link
+          href="/modules"
+          className="mt-0.5 rounded-lg p-1 hover:bg-muted"
+          aria-label={copy.back}
+        >
           <ChevronLeft className="size-4" />
         </Link>
         <div className="min-w-0 flex-1">
@@ -97,19 +132,91 @@ export default function ModuleDetailPage() {
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
-        <div className="mx-auto flex max-w-2xl flex-col gap-4">
-          <FeedbackBar moduleId={id} initial={module.feedback} />
-          {artifacts.map((a) => (
-            <div key={a.id} className="flex flex-col gap-1.5">
-              <div className="text-[11px] tracking-wide text-muted-foreground">
-                {(copy.artifactLabel[a.artifact_type] ?? a.artifact_type).toUpperCase()}
-              </div>
-              <ArtifactView artifact={a} />
-            </div>
+      {showTabs ? (
+        <div className="flex flex-wrap gap-2 border-b border-border px-5 py-2.5">
+          <TabChip active={tab === "all"} onClick={() => setTab("all")}>
+            {copy.allTypes}
+          </TabChip>
+          {presentSections.map((s) => (
+            <TabChip
+              key={s.type}
+              active={tab === s.type}
+              onClick={() => setTab(s.type)}
+            >
+              {copy.sectionTitle[s.type]} · {grouped.get(s.type)?.length}
+            </TabChip>
           ))}
+        </div>
+      ) : null}
+
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="mx-auto flex max-w-2xl flex-col gap-6">
+          <FeedbackBar moduleId={id} initial={module.feedback} />
+
+          {presentSections
+            .filter((s) => tab === "all" || tab === s.type)
+            .map((s) => {
+              const items = grouped.get(s.type) ?? [];
+              const { icon: Icon, accent } = s;
+              return (
+                <section key={s.type} className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "flex size-6 items-center justify-center rounded-md",
+                        accent,
+                      )}
+                    >
+                      <Icon className="size-3.5" />
+                    </span>
+                    <h2 className="text-[13px] font-medium">
+                      {copy.sectionTitle[s.type]}
+                    </h2>
+                    {items.length > 1 ? (
+                      <span className="text-[11px] text-muted-foreground">
+                        {items.length}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {items.map((a) => (
+                      <ArtifactView key={a.id} artifact={a} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+
+          {module.session_id && tab === "all" ? (
+            <ConversationPanel sessionId={module.session_id} />
+          ) : null}
         </div>
       </div>
     </main>
+  );
+}
+
+function TabChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1 text-xs transition-colors",
+        active
+          ? "border-transparent bg-accent text-accent-foreground"
+          : "border-border text-muted-foreground hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
   );
 }

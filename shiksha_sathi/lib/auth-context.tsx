@@ -10,7 +10,16 @@ import {
   type ReactNode,
 } from "react";
 
-import { apiFetch, extractErrorMessage, type Teacher, type TokenOut } from "@/lib/api";
+import {
+  AuthError,
+  apiFetch,
+  extractErrorMessage,
+  register as registerRequest,
+  type RegisterInput,
+  type RegisterResult,
+  type Teacher,
+  type TokenOut,
+} from "@/lib/api";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -19,7 +28,9 @@ type AuthContextValue = {
   teacher: Teacher | null;
   accessToken: string | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<void>;
+  /** Creates a pending account. Does NOT start a session -- the caller shows a
+   * "waiting for approval" screen. Throws Error with a readable message. */
+  register: (input: RegisterInput) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   /** Updates the teacher in context (e.g. after onboarding completes) without a refetch/reload. */
   updateTeacher: (teacher: Teacher) => void;
@@ -124,26 +135,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return clearRefreshTimer;
   }, [silentRefresh, clearRefreshTimer]);
 
-  const authenticate = useCallback(
-    async (path: "/auth/login" | "/auth/signup", email: string, password: string) => {
-      const res = await apiFetch(path, {
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const res = await apiFetch("/auth/login", {
         method: "POST",
         body: { email, password },
       });
-      if (!res.ok) throw new Error(await extractErrorMessage(res));
+      if (!res.ok) {
+        // The backend answers a not-yet-approved account with a structured
+        // body: { detail: { code, reason? } }. Surface it as an AuthError so
+        // the login screen can show a friendly waiting/rejected view instead
+        // of a red toast.
+        let detail: unknown;
+        try {
+          detail = (await res.clone().json())?.detail;
+        } catch {
+          detail = undefined;
+        }
+        if (detail && typeof detail === "object" && "code" in detail) {
+          const d = detail as { code: string; reason?: string | null };
+          throw new AuthError(d.code, d.code, d.reason ?? null);
+        }
+        throw new Error(await extractErrorMessage(res));
+      }
       await establishSession((await res.json()) as TokenOut);
     },
     [establishSession]
   );
 
-  const login = useCallback(
-    (email: string, password: string) => authenticate("/auth/login", email, password),
-    [authenticate]
-  );
-
-  const signup = useCallback(
-    (email: string, password: string) => authenticate("/auth/signup", email, password),
-    [authenticate]
+  const register = useCallback(
+    (input: RegisterInput) => registerRequest(input),
+    []
   );
 
   const logout = useCallback(async () => {
@@ -158,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         teacher,
         accessToken,
         login,
-        signup,
+        register,
         logout,
         updateTeacher: setTeacher,
       }}

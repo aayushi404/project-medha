@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { BookOpen, FolderOpen, Home, Menu } from "lucide-react";
+import { BookOpen, ClipboardCheck, FolderOpen, Home, Menu, Wrench } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", label: copy.nav.home, icon: Home },
   { href: "/modules", label: copy.nav.modules, icon: FolderOpen },
+  { href: "/tools", label: copy.nav.tools, icon: Wrench },
+  { href: "/attendance", label: copy.nav.attendance, icon: ClipboardCheck },
 ] as const;
 
 function Brand() {

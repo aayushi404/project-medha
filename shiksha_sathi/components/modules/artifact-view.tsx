@@ -6,18 +6,20 @@ import remarkGfm from "remark-gfm";
 import { ArtifactCard } from "@/components/dashboard/artifact-card";
 import type { ActivityContent, ModuleArtifact, QuizContent } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
-import { cn } from "@/lib/utils";
 
-/** Read-only render of one saved artifact. Reuses the dashboard's quiz/activity
- *  cards; adds the explanation (markdown) case. */
+/** Read-only render of one saved artifact. Reuses the dashboard's polished
+ *  quiz/activity cards; the explanation is plain prose in a card (the module
+ *  page already puts a labelled section heading above it). */
 export function ArtifactView({ artifact }: { artifact: ModuleArtifact }) {
   const content = artifact.content_json;
   if (!content) return null;
 
   if (artifact.artifact_type === "explanation") {
     return (
-      <div className={cn(MARKDOWN_CLASS, "rounded-2xl bg-card p-3.5 ring-1 ring-foreground/10")}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.text ?? ""}</ReactMarkdown>
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <div className={MARKDOWN_CLASS}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.text ?? ""}</ReactMarkdown>
+        </div>
       </div>
     );
   }

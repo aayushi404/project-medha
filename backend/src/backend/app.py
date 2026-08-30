@@ -3,6 +3,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.admin.router import router as admin_router
 from backend.auth.router import router as auth_router
 from backend.core.config import settings
 from backend.core.context import request_id_ctx
@@ -12,6 +13,7 @@ from backend.chat.router import router as chat_router
 from backend.curriculum.router import router as curriculum_router
 from backend.modules.router import router as modules_router
 from backend.onboarding.router import router as onboarding_router
+from backend.principal.router import router as principal_router
 from backend.profile.router import router as profile_router
 from backend.reference.router import router as reference_router
 
@@ -52,6 +54,8 @@ app.add_middleware(
 install_error_handlers(app)
 
 app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(principal_router)
 app.include_router(reference_router)
 app.include_router(onboarding_router)
 app.include_router(curriculum_router)

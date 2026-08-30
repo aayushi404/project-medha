@@ -77,6 +77,8 @@ def seed(db: Session) -> None:
             "full_name": "Test Teacher",
             "phone_number": "+919000000001",
             "password_hash": hash_password("password123"),  # dev only
+            "role": "teacher",
+            "approval_status": "approved",  # seeded, so it can log in immediately
         },
     )
     print(f"{'created' if created else 'exists '}  teacher    {teacher.full_name} ({teacher.email})")
