@@ -4,7 +4,7 @@ import { ChevronRight, HelpCircle, Lightbulb, Users, type LucideIcon } from "luc
 import Link from "next/link";
 
 import type { ArtifactType, ModuleListItem } from "@/lib/api";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ const TYPE_META: Record<ArtifactType, { icon: LucideIcon; className: string }> =
 const ORDER: ArtifactType[] = ["explanation", "quiz", "activity"];
 
 export function ModuleRow({ module }: { module: ModuleListItem }) {
+  const copy = useCopy();
   const types = [...module.artifact_types].sort(
     (a, b) => ORDER.indexOf(a) - ORDER.indexOf(b),
   );

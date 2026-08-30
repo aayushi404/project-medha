@@ -3,7 +3,7 @@
 import { Square, Volume2 } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { useProfile } from "@/lib/profile-context";
 import {
   NOOP_SUBSCRIBE,
@@ -27,6 +27,7 @@ export function SpeakButton({
   text: string;
   className?: string;
 }) {
+  const copy = useCopy();
   const { profile } = useProfile();
 
   const supported = useSyncExternalStore(

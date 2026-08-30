@@ -1,0 +1,211 @@
+/**
+ * English UI strings. This object also defines the shape (`Copy`) that every
+ * other locale must match. The backend returns generated content in the
+ * teacher's `preferred_language`; this file is only the app chrome.
+ */
+export const en = {
+  brand: "Medha",
+  nav: {
+    home: "Home",
+    modules: "My Modules",
+    tools: "Tools",
+    attendance: "Attendance",
+    students: "Students",
+  },
+  studentNav: {
+    ask: "Ask Medha",
+    practice: "Practice",
+    notes: "Notes",
+    library: "Library",
+  },
+  profileMenu: { edit: "Edit profile", logout: "Log out" },
+  language: "Language",
+
+  // dashboard
+  greeting: (name: string) => (name ? `Hello, ${name}` : "Hello"),
+  greetingSub: "What are you teaching today?",
+  inputPlaceholder: "How do I teach photosynthesis so students stay engaged?",
+  needContext: "Pick a class and subject first.",
+  selectClass: "Class",
+  selectSubject: "Subject",
+  selectChapter: "Chapter",
+  quickActions: {
+    explanation: { label: "Teaching approach", sub: "2-3 strategies" },
+    quiz: { label: "Quiz", sub: "Questions to ask" },
+    activity: { label: "Class activity", sub: "Low-tech, hands-on" },
+    ppt: { label: "PPT", sub: "Coming soon" },
+    mindmap: { label: "Mindmap", sub: "Coming soon" },
+  },
+  explanationPrompt: "How do I teach this topic in an engaging way?",
+  makeQuiz: "Make a quiz",
+  makeActivity: "Make an activity",
+  makeMindmap: "Mind map",
+  makePpt: "PPT",
+  comingSoonMindmapPpt: "Mind maps and slides are coming soon.",
+  readAloud: "Read aloud",
+  stopReading: "Stop",
+  generating: "Generating…",
+  streamError: "The response didn't finish. Please try again.",
+  retry: "Retry",
+
+  // chapter history (dashboard)
+  chapterHistoryTitle: "Earlier in this chapter",
+  chapterHistoryHint: "Anything you generate below is saved here.",
+  chapterHistoryEmpty:
+    "Nothing generated for this chapter yet. Ask a question or use a quick action below.",
+  chapterHistoryFailed: "Couldn't load earlier content for this chapter.",
+  pickChapterForHistory: "Pick a chapter to see what you've already made for it.",
+  chapterHistoryCount: (n: number) => `${n} item${n === 1 ? "" : "s"}`,
+  openFullModule: "Open full module",
+
+  // my modules
+  myModules: "My Modules",
+  myModulesSub: "Everything you've made, arranged chapter by chapter.",
+  filterAll: "All",
+  searchPlaceholder: "Search by name",
+  emptyModules: "No modules yet. Ask about a topic on the dashboard.",
+  moduleNotFound: "This module wasn't found.",
+  back: "Back",
+  answerLabel: "Answer",
+  materialsNone: "Nothing needed",
+
+  // chapter browser
+  pickClassSubject: "Pick a class you teach",
+  noSubjects: "Add the classes you teach in your profile to see them here.",
+  chaptersEmpty: "No chapters listed for this class yet.",
+  chapterNothingYet: "Nothing here yet.",
+  startLesson: "Start a lesson",
+  expandAll: "Expand all",
+  collapseAll: "Collapse all",
+  otherModules: "Not linked to a chapter",
+  moduleCount: (n: number) => `${n} module${n === 1 ? "" : "s"}`,
+  noSearchHits: "No modules match that search.",
+  chaptersStarted: (done: number, total: number) => `${done}/${total} chapters started`,
+  chapterEmpty: "empty",
+
+  // module detail
+  allTypes: "All",
+  sectionTitle: {
+    explanation: "Explanation",
+    quiz: "Quizzes",
+    activity: "Activities",
+  } as Record<string, string>,
+  revealAnswers: "Reveal answers",
+  hideAnswers: "Hide answers",
+  showAnswer: "Show answer",
+  hideAnswer: "Hide answer",
+  practiceHint: "Tap an option to check yourself",
+  conversationTitle: "Original conversation",
+  conversationSub: "The chat this module came from",
+  conversationEmpty: "No messages saved for this module.",
+  conversationFailed: "Couldn't load the conversation.",
+  copyText: "Copy",
+  copied: "Copied",
+  feedbackUp: "Helpful",
+  feedbackDown: "Could be better",
+  commentPlaceholder: "Anything to add? (optional)",
+  send: "Send",
+  save: "Save",
+  cancel: "Cancel",
+  deleteModule: "Delete module",
+  deleteConfirmTitle: "Delete this module?",
+  deleteConfirmBody: "All of its artifacts will be removed too. This can't be undone.",
+  confirmDelete: "Delete",
+
+  artifactLabel: {
+    explanation: "Explanation",
+    quiz: "Quiz",
+    activity: "Activity",
+  } as Record<string, string>,
+
+  // student section
+  student: {
+    askTitle: "Ask Medha",
+    askSub: "Pick a chapter and ask anything you don't understand.",
+    askHeading: (name: string) =>
+      name ? `Hi ${name}, what's your doubt?` : "Hi, what's your doubt?",
+    askAnything: "Ask anything about this chapter.",
+    pickToStart: "Pick a subject and chapter to start.",
+    didntFinish: "That didn't finish. Try asking again.",
+    askPlaceholder: "Ask your doubt about this chapter…",
+    pickPlaceholder: "Pick a subject and chapter first",
+    pickSubjectChapterToast: "Pick a subject and chapter first.",
+    couldNotStart: "Couldn't start.",
+
+    notesTitle: "Notes",
+    notesSub: "Short, revision-ready notes for every chapter.",
+    notesPickSubject: "Pick a subject to browse chapter notes.",
+    notesChooseChapter: "Choose a chapter above.",
+    keyPoints: "Key points",
+    importantTerms: "Important terms",
+    notesPreparing: (title: string) => `Notes for “${title}” are being prepared`,
+    notesPreparingBody:
+      "Each chapter will have a short summary, key points, explained sections and a list of important terms.",
+    pdfSoon: "PDF download coming soon.",
+
+    practiceTitle: "Practice",
+    practiceSub: "Mock tests and chapter-wise questions to check how ready you are.",
+    practicePickToStart: "Pick a subject and chapter to see practice sets.",
+    practiceSampleNote:
+      "Full question banks for this chapter are still being prepared — you'll see a short sample set for now.",
+    questionsCount: (n: number) => `${n} questions`,
+    startBtn: "Start",
+
+    libraryTitle: "Library",
+    librarySub: "Textbooks, reference books, story books and more — all in one place.",
+    searchBooks: "Search books",
+    categoryAll: "All",
+    noBooksMatch: "No books match that search.",
+    pagesCount: (n: number) => `${n} pages`,
+    downloadBtn: "Download",
+    readOnlineBtn: "Read online",
+    downloadSoon: "Download coming soon.",
+    readerSoon: "Reader coming soon.",
+  },
+
+  // auth
+  roleLabel: {
+    admin: "an administrator",
+    principal: "a principal",
+    teacher: "a teacher",
+    student: "a student",
+  } as Record<string, string>,
+  login: {
+    subtitle: "Your AI teaching companion",
+    email: "Email",
+    emailPlaceholder: "you@example.com",
+    password: "Password",
+    passwordPlaceholder: "Your password",
+    submit: "Log in",
+    submitting: "Logging in…",
+    couldNotLogIn: "Could not log in.",
+    newToMedha: "New to Medha?",
+    registerAsPrefix: "Register as a",
+    rolePrincipal: "principal",
+    roleTeacher: "teacher",
+    roleStudent: "student",
+    or: "or",
+    studentApproved: "Student approved?",
+    activate: "Activate your account",
+    welcomeBack: (name: string) => `Welcome back, ${name}`,
+    signedIn: "Signed in",
+    signedInAsPre: "You're signed in as",
+    signedInAsPost: ".",
+    takingYou: "Taking you to your workspace…",
+    pendingMessage:
+      "Your account hasn't been approved yet. You'll be able to log in once it is.",
+    rejectedTitle: "Registration not approved",
+    rejectedReason: (r: string) => `Reason: ${r}`,
+    rejectedFallback: "Your registration was not approved.",
+    registerAgain: "Register again",
+    backToLogin: "Back to log in",
+  },
+  pending: {
+    title: "Waiting for approval",
+    body: (approver: string) =>
+      `Your account has been created and is pending approval from ${approver}. You'll be able to log in once it's approved.`,
+    backToLogin: "Back to log in",
+  },
+};
+
+export type Copy = typeof en;

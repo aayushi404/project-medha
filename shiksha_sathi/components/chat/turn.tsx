@@ -3,7 +3,6 @@
 import { BookOpen } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { copy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,7 +16,7 @@ export function AssistantMark({ className }: { className?: string }) {
       <span className="flex size-6 items-center justify-center rounded-full bg-terracotta text-primary-foreground">
         <BookOpen className="size-3.5" />
       </span>
-      <span className="text-xs font-medium text-muted-foreground">{copy.brand}</span>
+      <span className="text-xs font-medium text-muted-foreground">Medha</span>
     </div>
   );
 }

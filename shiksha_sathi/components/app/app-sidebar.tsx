@@ -10,38 +10,42 @@ import {
   Menu,
   Wrench,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { LanguageToggle } from "@/components/app/language-toggle";
 import { ProfileMenu } from "@/components/app/profile-menu";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
+import type { Copy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/dashboard", label: copy.nav.home, icon: Home },
-  { href: "/modules", label: copy.nav.modules, icon: FolderOpen },
-  { href: "/students", label: copy.nav.students, icon: GraduationCap },
-  { href: "/tools", label: copy.nav.tools, icon: Wrench },
-  { href: "/attendance", label: copy.nav.attendance, icon: ClipboardCheck },
-] as const;
+const NAV: { href: string; navKey: keyof Copy["nav"]; icon: LucideIcon }[] = [
+  { href: "/dashboard", navKey: "home", icon: Home },
+  { href: "/modules", navKey: "modules", icon: FolderOpen },
+  { href: "/students", navKey: "students", icon: GraduationCap },
+  { href: "/tools", navKey: "tools", icon: Wrench },
+  { href: "/attendance", navKey: "attendance", icon: ClipboardCheck },
+];
 
 function Brand() {
   return (
     <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
       <BookOpen className="size-5 text-terracotta" />
       <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
-        {copy.brand}
+        Medha
       </span>
     </div>
   );
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  const copy = useCopy();
   const pathname = usePathname();
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {NAV.map(({ href, navKey, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
@@ -56,11 +60,20 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             )}
           >
             <Icon className="size-4" />
-            {label}
+            {copy.nav[navKey]}
           </Link>
         );
       })}
     </nav>
+  );
+}
+
+function SidebarFooter() {
+  return (
+    <div className="flex flex-col gap-2 border-t border-sidebar-border p-2">
+      <LanguageToggle className="self-start" />
+      <ProfileMenu />
+    </div>
   );
 }
 
@@ -73,9 +86,7 @@ export function AppSidebar() {
       <aside className="hidden w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <Brand />
         <NavList />
-        <div className="border-t border-sidebar-border p-2">
-          <ProfileMenu />
-        </div>
+        <SidebarFooter />
       </aside>
 
       <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2.5 text-sidebar-foreground md:hidden">
@@ -91,16 +102,15 @@ export function AppSidebar() {
             <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 data-[ending-style]:-translate-x-full data-[starting-style]:-translate-x-full">
               <Brand />
               <NavList onNavigate={() => setOpen(false)} />
-              <div className="border-t border-sidebar-border p-2">
-                <ProfileMenu />
-              </div>
+              <SidebarFooter />
             </Dialog.Popup>
           </Dialog.Portal>
         </Dialog.Root>
         <BookOpen className="size-5 text-terracotta" />
         <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
-          {copy.brand}
+          Medha
         </span>
+        <LanguageToggle className="ml-auto" />
       </div>
     </>
   );

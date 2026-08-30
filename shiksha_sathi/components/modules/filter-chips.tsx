@@ -3,7 +3,7 @@
 import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 type FilterChipsProps = {
@@ -40,6 +40,7 @@ function Chip({
 }
 
 export function FilterChips({ grades, active, onSelect, query, onQuery }: FilterChipsProps) {
+  const copy = useCopy();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Chip active={active === null} onClick={() => onSelect(null)}>

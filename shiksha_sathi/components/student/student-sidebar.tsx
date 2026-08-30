@@ -11,22 +11,25 @@ import {
   PencilRuler,
   LogOut,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { LanguageToggle } from "@/components/app/language-toggle";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy, useCurriculumT } from "@/lib/copy";
+import type { Copy } from "@/lib/copy";
 import { useStudentData } from "@/lib/student-context";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/learn", label: "Ask Medha", icon: MessagesSquare },
-  { href: "/practice", label: "Practice", icon: PencilRuler },
-  { href: "/notes", label: "Notes", icon: NotebookText },
-  { href: "/library", label: "Library", icon: Library },
-] as const;
+const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[] = [
+  { href: "/learn", navKey: "ask", icon: MessagesSquare },
+  { href: "/practice", navKey: "practice", icon: PencilRuler },
+  { href: "/notes", navKey: "notes", icon: NotebookText },
+  { href: "/library", navKey: "library", icon: Library },
+];
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -38,17 +41,18 @@ function Brand() {
     <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
       <BookOpen className="size-5 text-terracotta" />
       <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
-        {copy.brand}
+        Medha
       </span>
     </div>
   );
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  const copy = useCopy();
   const pathname = usePathname();
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {NAV.map(({ href, navKey, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
@@ -63,7 +67,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             )}
           >
             <Icon className="size-4" />
-            {label}
+            {copy.studentNav[navKey]}
           </Link>
         );
       })}
@@ -72,10 +76,15 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function StudentMenu() {
+  const copy = useCopy();
+  const t = useCurriculumT();
   const { teacher, logout } = useAuth();
   const { gradeLabel } = useStudentData();
   const name = teacher?.full_name ?? "";
-  const subtitle = [gradeLabel, teacher?.roll_number ? `Roll ${teacher.roll_number}` : null]
+  const subtitle = [
+    t.grade(gradeLabel),
+    teacher?.roll_number ? `Roll ${teacher.roll_number}` : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -105,6 +114,15 @@ function StudentMenu() {
   );
 }
 
+function SidebarFooter() {
+  return (
+    <div className="flex flex-col gap-2 border-t border-sidebar-border p-2">
+      <LanguageToggle className="self-start" />
+      <StudentMenu />
+    </div>
+  );
+}
+
 export function StudentSidebar() {
   const [open, setOpen] = useState(false);
 
@@ -113,9 +131,7 @@ export function StudentSidebar() {
       <aside className="hidden w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <Brand />
         <NavList />
-        <div className="border-t border-sidebar-border p-2">
-          <StudentMenu />
-        </div>
+        <SidebarFooter />
       </aside>
 
       <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2.5 text-sidebar-foreground md:hidden">
@@ -131,16 +147,15 @@ export function StudentSidebar() {
             <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 data-[ending-style]:-translate-x-full data-[starting-style]:-translate-x-full">
               <Brand />
               <NavList onNavigate={() => setOpen(false)} />
-              <div className="border-t border-sidebar-border p-2">
-                <StudentMenu />
-              </div>
+              <SidebarFooter />
             </Dialog.Popup>
           </Dialog.Portal>
         </Dialog.Root>
         <BookOpen className="size-5 text-terracotta" />
         <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
-          {copy.brand}
+          Medha
         </span>
+        <LanguageToggle className="ml-auto" />
       </div>
     </>
   );

@@ -26,7 +26,7 @@ import {
   type ModuleDetail,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy, useCurriculumT } from "@/lib/copy";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +37,8 @@ const SECTIONS: { type: ArtifactType; icon: LucideIcon; accent: string }[] = [
 ];
 
 export default function ModuleDetailPage() {
+  const copy = useCopy();
+  const t = useCurriculumT();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken } = useAuth();
@@ -84,7 +86,11 @@ export default function ModuleDetailPage() {
     );
   }
 
-  const sub = [module.grade_label, module.subject_name, module.topic_title]
+  const sub = [
+    t.grade(module.grade_label),
+    t.subject(module.subject_name),
+    t.topic(module.topic_title),
+  ]
     .filter(Boolean)
     .join(" · ");
 

@@ -13,7 +13,7 @@ import {
 import { useState, type ReactNode } from "react";
 
 import type { ActivityContent, QuizContent } from "@/lib/api";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 type ArtifactKind = "explanation" | "quiz" | "activity";
@@ -93,6 +93,7 @@ function QuizView({
   content: QuizContent;
   interactive?: boolean;
 }) {
+  const copy = useCopy();
   const questions = content.questions ?? [];
   const [revealed, setRevealed] = useState<Record<number, boolean>>({});
   const [picked, setPicked] = useState<Record<number, number>>({});
@@ -261,6 +262,7 @@ function QuizView({
 // --- activity -----------------------------------------------------------
 
 function ActivityView({ content }: { content: ActivityContent }) {
+  const copy = useCopy();
   const materials = content.materials ?? [];
   const noMaterials =
     materials.length === 0 ||

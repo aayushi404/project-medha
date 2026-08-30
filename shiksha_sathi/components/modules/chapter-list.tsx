@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { ModuleRow } from "@/components/modules/module-row";
 import type { Chapter, ModuleListItem } from "@/lib/api";
-import { copy } from "@/lib/copy";
+import { useCopy, useCurriculumT } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 type ChapterListProps = {
@@ -23,6 +23,8 @@ export function ChapterList({
   onStartLesson,
   search,
 }: ChapterListProps) {
+  const copy = useCopy();
+  const t = useCurriculumT();
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
   const q = search.trim().toLowerCase();
@@ -63,9 +65,7 @@ export function ChapterList({
     <div className="flex flex-col gap-2.5">
       {!searching && chapters.length > 0 ? (
         <div className="flex items-center justify-between px-0.5 text-[11px] text-muted-foreground">
-          <span>
-            {withModules}/{chapters.length} chapters started
-          </span>
+          <span>{copy.chaptersStarted(withModules, chapters.length)}</span>
           <div className="flex gap-2">
             <button
               type="button"
@@ -108,14 +108,16 @@ export function ChapterList({
                 {String(ch.chapter_number).padStart(2, "0")}
               </span>
               <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                {ch.title}
+                {t.chapter(ch.title)}
               </span>
               {mods.length > 0 ? (
                 <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground">
                   {copy.moduleCount(mods.length)}
                 </span>
               ) : (
-                <span className="shrink-0 text-[10px] text-muted-foreground/70">empty</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground/70">
+                  {copy.chapterEmpty}
+                </span>
               )}
               <ChevronDown
                 className={cn(

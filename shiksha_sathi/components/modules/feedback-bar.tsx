@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { sendFeedback, type Feedback } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 type Rating = 1 | -1;
@@ -18,6 +18,7 @@ export function FeedbackBar({
   moduleId: string;
   initial: Feedback | null;
 }) {
+  const copy = useCopy();
   const { accessToken } = useAuth();
   const [rating, setRating] = useState<Rating | null>(initial?.rating ?? null);
   const [comment, setComment] = useState(initial?.comment ?? "");

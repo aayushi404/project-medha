@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { getGrades, getSubjects, patchProfile, type Grade, type Subject } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { useProfile } from "@/lib/profile-context";
 
 const LANGUAGES = [
@@ -21,6 +21,7 @@ const LANGUAGES = [
 ];
 
 export default function ProfilePage() {
+  const copy = useCopy();
   const router = useRouter();
   const { accessToken } = useAuth();
   const { profile, refresh } = useProfile();

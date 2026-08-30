@@ -1,10 +1,12 @@
 "use client";
 
 import { Select, type SelectOption } from "@/components/ui/select";
-import { copy } from "@/lib/copy";
+import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useLessonContext } from "@/lib/lesson-context";
 
 export function ContextBar() {
+  const copy = useCopy();
+  const t = useCurriculumT();
   const { gradeId, subjectId, chapterId, options, setGradeSubject, setChapter } =
     useLessonContext();
   const { pairs, chapters } = options;
@@ -14,7 +16,7 @@ export function ContextBar() {
   for (const p of pairs) {
     if (!gradeSeen.has(p.grade_id)) {
       gradeSeen.set(p.grade_id, p.numeric_level);
-      gradeOptions.push({ value: p.grade_id, label: p.grade_label });
+      gradeOptions.push({ value: p.grade_id, label: t.grade(p.grade_label) });
     }
   }
   gradeOptions.sort((a, b) => (gradeSeen.get(a.value) ?? 0) - (gradeSeen.get(b.value) ?? 0));
@@ -24,11 +26,14 @@ export function ContextBar() {
   for (const p of pairs) {
     if (p.grade_id === gradeId && !subjectSeen.has(p.subject_id)) {
       subjectSeen.add(p.subject_id);
-      subjectOptions.push({ value: p.subject_id, label: p.subject_name });
+      subjectOptions.push({ value: p.subject_id, label: t.subject(p.subject_name) });
     }
   }
 
-  const chapterOptions: SelectOption[] = chapters.map((c) => ({ value: c.id, label: c.title }));
+  const chapterOptions: SelectOption[] = chapters.map((c) => ({
+    value: c.id,
+    label: t.chapter(c.title),
+  }));
 
   function pickGrade(nextGrade: string) {
     const keep = pairs.find((p) => p.grade_id === nextGrade && p.subject_id === subjectId);

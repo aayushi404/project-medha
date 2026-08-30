@@ -3,6 +3,7 @@ import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider } from "@/lib/auth-context";
+import { LocaleHtmlLang } from "@/components/app/locale-html-lang";
 import { Toaster } from "@/components/ui/sonner";
 
 // Manrope carries body copy; Fraunces sets every heading. Both are exposed as
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${manrope.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
+        <LocaleHtmlLang />
         <AuthProvider>{children}</AuthProvider>
         <Toaster position="top-center" />
       </body>

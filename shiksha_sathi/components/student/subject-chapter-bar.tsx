@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Select } from "@/components/ui/select";
 import { getChapters, type Chapter } from "@/lib/api";
+import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useStudentData } from "@/lib/student-context";
 
 export type SubjectChapter = {
@@ -63,16 +64,18 @@ export function SubjectChapterBar({
   picker: SubjectChapter;
   className?: string;
 }) {
+  const copy = useCopy();
+  const t = useCurriculumT();
   const { subjects } = useStudentData();
   const { subjectId, chapterId, chapters, setSubjectId, setChapterId } = picker;
 
   const subjectOptions = useMemo(
-    () => subjects.map((s) => ({ value: s.id, label: s.name })),
-    [subjects],
+    () => subjects.map((s) => ({ value: s.id, label: t.subject(s.name) })),
+    [subjects, t],
   );
   const chapterOptions = useMemo(
-    () => chapters.map((c) => ({ value: c.id, label: c.title })),
-    [chapters],
+    () => chapters.map((c) => ({ value: c.id, label: t.chapter(c.title) })),
+    [chapters, t],
   );
 
   return (
@@ -83,15 +86,15 @@ export function SubjectChapterBar({
       }
     >
       <Select
-        ariaLabel="Subject"
-        placeholder="Subject"
+        ariaLabel={copy.selectSubject}
+        placeholder={copy.selectSubject}
         value={subjectId}
         options={subjectOptions}
         onValueChange={setSubjectId}
       />
       <Select
-        ariaLabel="Chapter"
-        placeholder="Chapter"
+        ariaLabel={copy.selectChapter}
+        placeholder={copy.selectChapter}
         value={chapterId}
         options={chapterOptions}
         onValueChange={(v) => setChapterId(v)}

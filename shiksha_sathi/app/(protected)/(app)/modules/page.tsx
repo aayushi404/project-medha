@@ -13,7 +13,7 @@ import {
   type ModuleListItem,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useLessonContext } from "@/lib/lesson-context";
 import { useProfile } from "@/lib/profile-context";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,8 @@ type Pair = {
   key: string;
   gradeId: string;
   subjectId: string;
+  gradeLabel: string;
+  subjectName: string;
   label: string;
   numeric: number;
   primary: boolean;
@@ -36,6 +38,8 @@ type LoadOk = {
 type LoadResult = LoadOk | { key: string; failed: true } | null;
 
 export default function ModulesPage() {
+  const copy = useCopy();
+  const t = useCurriculumT();
   const { accessToken } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { setGradeSubject, setChapter } = useLessonContext();
@@ -50,6 +54,8 @@ export default function ModulesPage() {
           key,
           gradeId: s.grade_id,
           subjectId: s.subject_id,
+          gradeLabel: s.grade_label,
+          subjectName: s.subject_name,
           label: `${s.grade_label} · ${s.subject_name}`,
           numeric: s.numeric_level,
           primary: s.is_primary,
@@ -145,7 +151,7 @@ export default function ModulesPage() {
                     : "border-border text-muted-foreground hover:bg-muted",
                 )}
               >
-                {p.label}
+                {t.grade(p.gradeLabel)} · {t.subject(p.subjectName)}
               </button>
             ))}
             <div className="relative ml-auto">

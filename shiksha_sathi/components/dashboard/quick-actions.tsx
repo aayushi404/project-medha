@@ -3,7 +3,7 @@
 import { HelpCircle, Lightbulb, Network, Presentation, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 type QuickActionsProps = {
@@ -14,6 +14,7 @@ type QuickActionsProps = {
 };
 
 export function QuickActions({ onExplain, onQuiz, onActivity, disabled }: QuickActionsProps) {
+  const copy = useCopy();
   const cards: {
     key: string;
     label: string;

@@ -3,7 +3,7 @@
 import { Loader2, SendHorizontal } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 
 type ComposerProps = {
   onSend: (text: string) => void;
@@ -12,6 +12,7 @@ type ComposerProps = {
 };
 
 export function Composer({ onSend, disabled, placeholder }: ComposerProps) {
+  const copy = useCopy();
   const [value, setValue] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
 

@@ -10,7 +10,7 @@ import { ArtifactCard } from "@/components/dashboard/artifact-card";
 import { ContentActions } from "@/components/dashboard/content-actions";
 import type { ActivityContent, QuizContent } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { speakableContent, stripMarkdown } from "@/lib/speech";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,7 @@ function AssistantTurn({
   onActivity: () => void;
   onRetry: () => void;
 }) {
+  const copy = useCopy();
   const showActions = !msg.streaming && !msg.failed;
   const speechText = msg.artifact
     ? speakableContent(msg.artifact.type, msg.artifact.content)

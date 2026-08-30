@@ -3,6 +3,7 @@
 import { Check, Star } from "lucide-react";
 
 import type { Grade, Subject } from "@/lib/api";
+import { useCurriculumT } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 export type SubjectSelection = { subject_id: string; grade_id: string; is_primary: boolean };
@@ -26,6 +27,7 @@ export function SubjectsEditor({
   onToggle,
   onSetPrimary,
 }: SubjectsEditorProps) {
+  const t = useCurriculumT();
   const selectedKeys = new Set(selections.map((s) => pairKey(s.subject_id, s.grade_id)));
 
   return (
@@ -48,7 +50,7 @@ export function SubjectsEditor({
           <tbody>
             {subjects.map((subject) => (
               <tr key={subject.id}>
-                <td className="pr-2 text-sm font-medium">{subject.name}</td>
+                <td className="pr-2 text-sm font-medium">{t.subject(subject.name)}</td>
                 {grades.map((grade) => {
                   const selected = selectedKeys.has(pairKey(subject.id, grade.id));
                   return (
@@ -57,7 +59,7 @@ export function SubjectsEditor({
                         type="button"
                         onClick={() => onToggle(subject.id, grade.id)}
                         aria-pressed={selected}
-                        aria-label={`${subject.name}, ${grade.label}`}
+                        aria-label={`${t.subject(subject.name)}, ${t.grade(grade.label)}`}
                         className={cn(
                           "flex size-9 items-center justify-center rounded-lg border transition-colors",
                           selected
@@ -94,7 +96,7 @@ export function SubjectsEditor({
                   )}
                 >
                   <span>
-                    {subject?.name} · {grade?.label}
+                    {t.subject(subject?.name)} · {t.grade(grade?.label)}
                   </span>
                   <Star
                     className={cn(

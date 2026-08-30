@@ -9,10 +9,11 @@ import { AssistantBody, AssistantMark, UserBubble } from "@/components/chat/turn
 import { getSession, type ChatMessage } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 export function ConversationPanel({ sessionId }: { sessionId: string }) {
+  const copy = useCopy();
   const { accessToken } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);

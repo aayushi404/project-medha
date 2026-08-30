@@ -12,7 +12,7 @@ import { QuickActions } from "@/components/dashboard/quick-actions";
 import { createSession, type ActivityContent, type QuizContent } from "@/lib/api";
 import { ackLine, extractJson } from "@/lib/artifact";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { useLessonContext } from "@/lib/lesson-context";
 import { useProfile } from "@/lib/profile-context";
 import { streamGeneration } from "@/lib/sse";
@@ -24,6 +24,7 @@ function uid() {
 }
 
 export default function DashboardPage() {
+  const copy = useCopy();
   const { accessToken } = useAuth();
   const { profile } = useProfile();
   const { gradeId, subjectId, chapterId, topicId } = useLessonContext();

@@ -21,7 +21,7 @@ import {
   type ModuleListItem,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { formatRelativeTime } from "@/lib/format";
 import { speakableArtifact } from "@/lib/speech";
 import { cn } from "@/lib/utils";
@@ -59,6 +59,7 @@ export function ChapterHistory({
   onActivity,
   defaultOpen = false,
 }: ChapterHistoryProps) {
+  const copy = useCopy();
   const { accessToken } = useAuth();
   const key = `${gradeId}|${subjectId}|${chapterId}|${refreshKey}`;
 
@@ -167,6 +168,7 @@ function HistoryModule({
   onQuiz: () => void;
   onActivity: () => void;
 }) {
+  const copy = useCopy();
   const { accessToken } = useAuth();
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<DetailState>(null);

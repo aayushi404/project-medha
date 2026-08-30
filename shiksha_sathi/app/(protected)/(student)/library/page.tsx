@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useCopy } from "@/lib/copy";
 import { BOOK_CATEGORIES, LIBRARY_BOOKS, type Book } from "@/lib/student-content";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ function Cover({ book, className }: { book: Book; className?: string }) {
 }
 
 export default function LibraryPage() {
+  const copy = useCopy();
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<string>("All");
   const [selected, setSelected] = useState<Book | null>(null);
@@ -57,10 +59,8 @@ export default function LibraryPage() {
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <div className="border-b border-border px-5 py-4">
-        <h1 className="text-[15px]">Library</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Textbooks, reference books, story books and more — all in one place.
-        </p>
+        <h1 className="text-[15px]">{copy.student.libraryTitle}</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">{copy.student.librarySub}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
@@ -69,7 +69,7 @@ export default function LibraryPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search books"
+            placeholder={copy.student.searchBooks}
             className="h-8 w-52 rounded-lg border border-border bg-background pr-2 pl-8 text-xs outline-none focus-visible:border-ring"
           />
         </div>
@@ -86,7 +86,7 @@ export default function LibraryPage() {
                   : "border-border text-muted-foreground hover:bg-muted",
               )}
             >
-              {c}
+              {c === "All" ? copy.student.categoryAll : c}
             </button>
           ))}
         </div>
@@ -95,7 +95,7 @@ export default function LibraryPage() {
       <div className="flex-1 overflow-y-auto px-5 py-5">
         {books.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            No books match that search.
+            {copy.student.noBooksMatch}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -152,7 +152,7 @@ export default function LibraryPage() {
                       ))}
                     </div>
                     <p className="mt-1.5 text-[11px] text-muted-foreground">
-                      {selected.pages} pages
+                      {copy.student.pagesCount(selected.pages)}
                     </p>
                   </div>
                 </div>
@@ -163,14 +163,14 @@ export default function LibraryPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toast("Download coming soon.")}
+                    onClick={() => toast(copy.student.downloadSoon)}
                   >
                     <Download className="size-3.5" />
-                    Download
+                    {copy.student.downloadBtn}
                   </Button>
-                  <Button size="sm" onClick={() => toast("Reader coming soon.")}>
+                  <Button size="sm" onClick={() => toast(copy.student.readerSoon)}>
                     <BookOpen className="size-3.5" />
-                    Read online
+                    {copy.student.readOnlineBtn}
                   </Button>
                 </div>
               </div>

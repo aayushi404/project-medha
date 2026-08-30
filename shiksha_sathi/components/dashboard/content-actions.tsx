@@ -13,7 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { SpeakButton } from "@/components/chat/speak-button";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 type GenKind = "quiz" | "activity";
@@ -66,6 +66,7 @@ export function ContentActions({
   hide?: GenKind[];
   className?: string;
 }) {
+  const copy = useCopy();
   const [copied, setCopied] = useState(false);
 
   async function doCopy() {

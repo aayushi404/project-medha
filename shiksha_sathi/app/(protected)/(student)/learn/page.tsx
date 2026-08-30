@@ -14,6 +14,7 @@ import {
 import { createTutorSession } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
 import { useAuth } from "@/lib/auth-context";
+import { useCopy } from "@/lib/copy";
 import { streamGeneration } from "@/lib/sse";
 import { useStudentData } from "@/lib/student-context";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ function uid() {
 }
 
 export default function LearnPage() {
+  const copy = useCopy();
   const { accessToken } = useAuth();
   const { firstName } = useStudentData();
   const picker = useSubjectChapter();
@@ -72,7 +74,7 @@ export default function LearnPage() {
   async function ensureSession(): Promise<string | null> {
     if (sessionId) return sessionId;
     if (!subjectId || !chapterId) {
-      toast.error("Pick a subject and chapter first.");
+      toast.error(copy.student.pickSubjectChapterToast);
       return null;
     }
     try {
@@ -83,7 +85,7 @@ export default function LearnPage() {
       setSessionId(s.id);
       return s.id;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't start.");
+      toast.error(err instanceof Error ? err.message : copy.student.couldNotStart);
       return null;
     }
   }
@@ -131,23 +133,17 @@ export default function LearnPage() {
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <div className="border-b border-border px-5 py-4">
-        <h1 className="text-[15px]">Ask Medha</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Pick a chapter and ask anything you don&apos;t understand.
-        </p>
+        <h1 className="text-[15px]">{copy.student.askTitle}</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">{copy.student.askSub}</p>
       </div>
 
       <SubjectChapterBar picker={picker} />
 
       {empty ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-          <div className="text-lg">
-            {firstName ? `Hi ${firstName}` : "Hi"}, what&apos;s your doubt?
-          </div>
+          <div className="text-lg">{copy.student.askHeading(firstName)}</div>
           <div className="text-sm text-muted-foreground">
-            {canAsk
-              ? "Ask anything about this chapter."
-              : "Pick a subject and chapter to start."}
+            {canAsk ? copy.student.askAnything : copy.student.pickToStart}
           </div>
         </div>
       ) : (
@@ -179,7 +175,7 @@ export default function LearnPage() {
                     ) : null}
                     {m.failed ? (
                       <div className="mt-1.5 text-xs text-muted-foreground">
-                        That didn&apos;t finish. Try asking again.
+                        {copy.student.didntFinish}
                       </div>
                     ) : null}
                   </AssistantBody>
@@ -192,9 +188,7 @@ export default function LearnPage() {
 
       <Composer
         disabled={busy}
-        placeholder={
-          canAsk ? "Ask your doubt about this chapter…" : "Pick a subject and chapter first"
-        }
+        placeholder={canAsk ? copy.student.askPlaceholder : copy.student.pickPlaceholder}
         onSend={(t) => void runMessage(t)}
       />
     </main>

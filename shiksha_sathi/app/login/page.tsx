@@ -7,26 +7,20 @@ import { motion } from "motion/react";
 import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { AuthError, type Role } from "@/lib/api";
+import { AuthError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useCopy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LanguageToggle } from "@/components/app/language-toggle";
 import { PendingScreen } from "@/components/auth/pending-screen";
 
 type View = "form" | "pending" | "rejected";
 
-// Shown on the confirmation card so the person sees which kind of account they
-// just signed in with before they're moved to that workspace.
-const ROLE_LABEL: Record<Role, string> = {
-  admin: "an administrator",
-  principal: "a principal",
-  teacher: "a teacher",
-  student: "a student",
-};
-
 export default function LoginPage() {
+  const copy = useCopy();
   const router = useRouter();
   const { status, teacher, login } = useAuth();
 
@@ -65,7 +59,7 @@ export default function LoginPage() {
         setRejectionReason(err.reason);
         setView("rejected");
       } else {
-        toast.error(err instanceof Error ? err.message : "Could not log in.");
+        toast.error(err instanceof Error ? err.message : copy.login.couldNotLogIn);
       }
       setSubmitting(false);
     }
@@ -73,7 +67,7 @@ export default function LoginPage() {
 
   const signedIn = status === "authenticated" && cameFromForm;
   const firstName = teacher?.full_name?.trim().split(/\s+/)[0] ?? "";
-  const roleLabel = teacher ? ROLE_LABEL[teacher.role] : "a member";
+  const roleLabel = teacher ? (copy.roleLabel[teacher.role] ?? teacher.role) : "";
 
   return (
     <main className="sun-wash flex flex-1 flex-col items-center justify-center px-4 py-12">
@@ -82,10 +76,11 @@ export default function LoginPage() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="mb-8 flex flex-col items-center gap-1 text-center"
+          className="mb-8 flex flex-col items-center gap-2 text-center"
         >
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Medha</h1>
-          <p className="text-sm text-muted-foreground">Your AI teaching companion</p>
+          <p className="text-sm text-muted-foreground">{copy.login.subtitle}</p>
+          <LanguageToggle className="mt-1" />
         </motion.div>
 
         <motion.div
@@ -107,46 +102,47 @@ export default function LoginPage() {
                   </span>
                   <div>
                     <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                      {firstName ? `Welcome back, ${firstName}` : "Signed in"}
+                      {firstName ? copy.login.welcomeBack(firstName) : copy.login.signedIn}
                     </h2>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      You&apos;re signed in as{" "}
-                      <span className="font-medium text-foreground">{roleLabel}</span>.
+                      {copy.login.signedInAsPre}{" "}
+                      <span className="font-medium text-foreground">{roleLabel}</span>{" "}
+                      {copy.login.signedInAsPost}
                     </p>
                   </div>
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Loader2 className="size-3.5 animate-spin" />
-                    Taking you to your workspace…
+                    {copy.login.takingYou}
                   </div>
                 </motion.div>
               )}
 
               {!signedIn && view === "pending" && (
-                <PendingScreen message="Your account hasn't been approved yet. You'll be able to log in once it is." />
+                <PendingScreen message={copy.login.pendingMessage} />
               )}
 
               {!signedIn && view === "rejected" && (
                 <div className="flex flex-col items-center gap-4 text-center">
                   <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                    Registration not approved
+                    {copy.login.rejectedTitle}
                   </h2>
                   <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
                     {rejectionReason
-                      ? `Reason: ${rejectionReason}`
-                      : "Your registration was not approved."}
+                      ? copy.login.rejectedReason(rejectionReason)
+                      : copy.login.rejectedFallback}
                   </p>
                   <Link
                     href="/register"
                     className="mt-1 text-sm text-primary underline-offset-2 hover:underline"
                   >
-                    Register again
+                    {copy.login.registerAgain}
                   </Link>
                   <button
                     type="button"
                     onClick={() => setView("form")}
                     className="text-xs text-muted-foreground hover:text-foreground"
                   >
-                    Back to log in
+                    {copy.login.backToLogin}
                   </button>
                 </div>
               )}
@@ -155,27 +151,27 @@ export default function LoginPage() {
                 <>
                   <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">{copy.login.email}</Label>
                       <Input
                         id="email"
                         type="email"
                         autoComplete="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
+                        placeholder={copy.login.emailPlaceholder}
                         className="h-11 text-base"
                         autoFocus
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password">{copy.login.password}</Label>
                       <Input
                         id="password"
                         type="password"
                         autoComplete="current-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Your password"
+                        placeholder={copy.login.passwordPlaceholder}
                         className="h-11 text-base"
                       />
                     </div>
@@ -184,42 +180,42 @@ export default function LoginPage() {
                       disabled={!canSubmit}
                       className="mt-1 h-11 w-full text-base"
                     >
-                      {submitting ? "Logging in…" : "Log in"}
+                      {submitting ? copy.login.submitting : copy.login.submit}
                     </Button>
                   </form>
 
                   <div className="mt-4 flex flex-col items-center gap-1 text-center text-xs text-muted-foreground">
-                    <span>New to Medha?</span>
+                    <span>{copy.login.newToMedha}</span>
                     <span>
-                      Register as a{" "}
+                      {copy.login.registerAsPrefix}{" "}
                       <Link
                         href="/register?role=principal"
                         className="text-primary underline-offset-2 hover:underline"
                       >
-                        principal
+                        {copy.login.rolePrincipal}
                       </Link>
                       ,{" "}
                       <Link
                         href="/register?role=teacher"
                         className="text-primary underline-offset-2 hover:underline"
                       >
-                        teacher
+                        {copy.login.roleTeacher}
                       </Link>{" "}
-                      or{" "}
+                      {copy.login.or}{" "}
                       <Link
                         href="/register?role=student"
                         className="text-primary underline-offset-2 hover:underline"
                       >
-                        student
+                        {copy.login.roleStudent}
                       </Link>
                     </span>
                     <span>
-                      Student approved?{" "}
+                      {copy.login.studentApproved}{" "}
                       <Link
                         href="/student/activate"
                         className="text-primary underline-offset-2 hover:underline"
                       >
-                        Activate your account
+                        {copy.login.activate}
                       </Link>
                     </span>
                   </div>

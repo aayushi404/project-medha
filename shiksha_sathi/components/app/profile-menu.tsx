@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
-import { copy } from "@/lib/copy";
+import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useProfile } from "@/lib/profile-context";
 
 function initials(name: string): string {
@@ -14,13 +14,17 @@ function initials(name: string): string {
 }
 
 export function ProfileMenu() {
+  const copy = useCopy();
+  const t = useCurriculumT();
   const { logout } = useAuth();
   const { profile } = useProfile();
   const router = useRouter();
 
   const name = profile?.full_name ?? "";
   const primary = profile?.subjects.find((s) => s.is_primary) ?? profile?.subjects[0];
-  const subtitle = primary ? `${primary.subject_name} · ${primary.grade_label}` : "";
+  const subtitle = primary
+    ? `${t.subject(primary.subject_name)} · ${t.grade(primary.grade_label)}`
+    : "";
 
   const chip = (
     <span className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-card px-2 py-2 text-left transition-colors hover:bg-muted">
