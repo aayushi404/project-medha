@@ -90,9 +90,11 @@ class TeacherOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
-    email: str
+    email: str | None
     full_name: str
     role: str
     approval_status: str
     school_id: uuid.UUID | None
+    grade_id: uuid.UUID | None
+    roll_number: str | None
     onboarded_at: datetime | None

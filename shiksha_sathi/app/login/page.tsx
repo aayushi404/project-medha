@@ -148,13 +148,29 @@ export default function LoginPage() {
                         className="text-primary underline-offset-2 hover:underline"
                       >
                         principal
-                      </Link>{" "}
-                      or{" "}
+                      </Link>
+                      ,{" "}
                       <Link
                         href="/register?role=teacher"
                         className="text-primary underline-offset-2 hover:underline"
                       >
                         teacher
+                      </Link>{" "}
+                      or{" "}
+                      <Link
+                        href="/register?role=student"
+                        className="text-primary underline-offset-2 hover:underline"
+                      >
+                        student
+                      </Link>
+                    </span>
+                    <span>
+                      Student approved?{" "}
+                      <Link
+                        href="/student/activate"
+                        className="text-primary underline-offset-2 hover:underline"
+                      >
+                        Activate your account
                       </Link>
                     </span>
                   </div>

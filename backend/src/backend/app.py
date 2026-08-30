@@ -16,6 +16,9 @@ from backend.onboarding.router import router as onboarding_router
 from backend.principal.router import router as principal_router
 from backend.profile.router import router as profile_router
 from backend.reference.router import router as reference_router
+from backend.student.router import router as student_router
+from backend.teacher.router import router as teacher_router
+from backend.tutor.router import router as tutor_router
 
 configure_logging()
 
@@ -56,11 +59,14 @@ install_error_handlers(app)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(principal_router)
+app.include_router(teacher_router)
+app.include_router(student_router)
 app.include_router(reference_router)
 app.include_router(onboarding_router)
 app.include_router(curriculum_router)
 app.include_router(profile_router)
 app.include_router(chat_router)
+app.include_router(tutor_router)
 app.include_router(modules_router)
 
 

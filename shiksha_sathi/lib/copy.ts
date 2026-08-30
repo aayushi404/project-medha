@@ -10,6 +10,7 @@ export const copy = {
     modules: "My Modules",
     tools: "Tools",
     attendance: "Attendance",
+    students: "Students",
   },
   profileMenu: { edit: "Edit profile", logout: "Log out" },
 

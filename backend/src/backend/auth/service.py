@@ -110,7 +110,14 @@ def login(
         )
 
     teacher = db.query(Teacher).filter(Teacher.email == email).first()
-    stored_hash = teacher.password_hash if teacher is not None else _DUMMY_HASH
+    # a student row can exist without a credential (registered, not yet
+    # activated) -- fall back to the dummy hash so the response time and message
+    # match the "no such account" case.
+    stored_hash = (
+        teacher.password_hash
+        if teacher is not None and teacher.password_hash
+        else _DUMMY_HASH
+    )
     if not verify_password(password, stored_hash) or teacher is None or not teacher.is_active:
         record_failure(email)
         # same message for missing user and wrong password -- don't reveal

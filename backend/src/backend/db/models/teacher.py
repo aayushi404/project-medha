@@ -13,6 +13,7 @@ class Teacher(Base):
     __table_args__ = (
         Index("idx_teachers_school", "school_id"),
         Index("idx_teachers_phone", "phone_number"),
+        Index("idx_teachers_grade", "grade_id"),
         Index(
             "idx_teachers_pending",
             "school_id",
@@ -27,8 +28,26 @@ class Teacher(Base):
             unique=True,
             postgresql_where=text("role = 'principal' AND approval_status = 'approved'"),
         ),
+        # one student per (school, class, roll number)
+        Index(
+            "idx_one_student_per_roll",
+            "school_id",
+            "grade_id",
+            "roll_number",
+            unique=True,
+            postgresql_where=text("role = 'student' AND roll_number IS NOT NULL"),
+        ),
+        # email is optional (a student row exists before it has a credential);
+        # uniqueness is kept over the rows that do have one
+        Index(
+            "uq_teachers_email",
+            "email",
+            unique=True,
+            postgresql_where=text("email IS NOT NULL"),
+        ),
         CheckConstraint(
-            "role IN ('admin', 'principal', 'teacher')", name="chk_teachers_role"
+            "role IN ('admin', 'principal', 'teacher', 'student')",
+            name="chk_teachers_role",
         ),
         CheckConstraint(
             "approval_status IN ('pending', 'approved', 'rejected')",
@@ -48,9 +67,12 @@ class Teacher(Base):
     # onboarding (a separate step) assigns a school
     school_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("schools.id"))
     full_name: Mapped[str]
-    # email + password are the login credential (unique index on email covers lookups)
-    email: Mapped[str] = mapped_column(unique=True)
-    password_hash: Mapped[str]
+    # email + password are the login credential. Nullable: a `student` row is
+    # created at registration (class + roll number only) and gains a credential
+    # later when the student activates their account. `uq_teachers_email` keeps
+    # non-NULL emails unique.
+    email: Mapped[str | None]
+    password_hash: Mapped[str | None]
     # optional profile data, no longer a credential. `phone_number` doubles as
     # the "mobile number" collected on the registration form.
     phone_number: Mapped[str | None] = mapped_column(unique=True)
@@ -58,6 +80,14 @@ class Teacher(Base):
     role: Mapped[str] = mapped_column(server_default="teacher")
     is_active: Mapped[bool] = mapped_column(server_default=text("true"))
     onboarded_at: Mapped[datetime | None]
+
+    # --- student profile ---
+    # the student's class, and their roll number within it -- the pair a teacher
+    # checks against the class register to verify a registration.
+    grade_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("grades.id")
+    )
+    roll_number: Mapped[str | None]
 
     # --- registration profile (teachers) ---
     # employee_code is the government teacher ID: the field a principal checks

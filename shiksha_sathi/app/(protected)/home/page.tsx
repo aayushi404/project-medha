@@ -21,6 +21,8 @@ export default function HomePage() {
       router.replace("/admin");
     } else if (teacher.role === "principal") {
       router.replace("/principal");
+    } else if (teacher.role === "student") {
+      router.replace("/learn");
     } else {
       router.replace(teacher.onboarded_at ? "/dashboard" : "/onboarding");
     }

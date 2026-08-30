@@ -3,28 +3,35 @@
 import { Dialog } from "@base-ui/react/dialog";
 import {
   BookOpen,
-  ClipboardCheck,
-  FolderOpen,
-  GraduationCap,
-  Home,
+  ChevronUp,
+  Library,
   Menu,
-  Wrench,
+  MessagesSquare,
+  NotebookText,
+  PencilRuler,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { ProfileMenu } from "@/components/app/profile-menu";
+import { Popover, PopoverItem } from "@/components/ui/popover";
+import { useAuth } from "@/lib/auth-context";
 import { copy } from "@/lib/copy";
+import { useStudentData } from "@/lib/student-context";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/dashboard", label: copy.nav.home, icon: Home },
-  { href: "/modules", label: copy.nav.modules, icon: FolderOpen },
-  { href: "/students", label: copy.nav.students, icon: GraduationCap },
-  { href: "/tools", label: copy.nav.tools, icon: Wrench },
-  { href: "/attendance", label: copy.nav.attendance, icon: ClipboardCheck },
+  { href: "/learn", label: "Ask Medha", icon: MessagesSquare },
+  { href: "/practice", label: "Practice", icon: PencilRuler },
+  { href: "/notes", label: "Notes", icon: NotebookText },
+  { href: "/library", label: "Library", icon: Library },
 ] as const;
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
 
 function Brand() {
   return (
@@ -64,8 +71,41 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AppSidebar() {
-  // drawer closes via onNavigate (link click) and Base UI's own backdrop/esc
+function StudentMenu() {
+  const { teacher, logout } = useAuth();
+  const { gradeLabel } = useStudentData();
+  const name = teacher?.full_name ?? "";
+  const subtitle = [gradeLabel, teacher?.roll_number ? `Roll ${teacher.roll_number}` : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  const chip = (
+    <span className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-card px-2 py-2 text-left transition-colors hover:bg-muted">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-foreground">
+        {initials(name || "?")}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px]">{name || "—"}</span>
+        <span className="block truncate text-[11px] text-muted-foreground">{subtitle}</span>
+      </span>
+      <ChevronUp className="size-3.5 shrink-0 text-muted-foreground" />
+    </span>
+  );
+
+  return (
+    <Popover trigger={chip} triggerClassName="w-full" side="top" align="center">
+      <PopoverItem
+        onClick={() => void logout()}
+        className="text-destructive hover:text-destructive"
+      >
+        <LogOut className="size-4" />
+        {copy.profileMenu.logout}
+      </PopoverItem>
+    </Popover>
+  );
+}
+
+export function StudentSidebar() {
   const [open, setOpen] = useState(false);
 
   return (
@@ -74,7 +114,7 @@ export function AppSidebar() {
         <Brand />
         <NavList />
         <div className="border-t border-sidebar-border p-2">
-          <ProfileMenu />
+          <StudentMenu />
         </div>
       </aside>
 
@@ -92,7 +132,7 @@ export function AppSidebar() {
               <Brand />
               <NavList onNavigate={() => setOpen(false)} />
               <div className="border-t border-sidebar-border p-2">
-                <ProfileMenu />
+                <StudentMenu />
               </div>
             </Dialog.Popup>
           </Dialog.Portal>

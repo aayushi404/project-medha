@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, GraduationCap, School } from "lucide-react";
+import { ArrowRight, BookOpenCheck, GraduationCap, School } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
 import { Reveal } from "./reveal";
 
 type Path = {
-  role: "principal" | "teacher";
+  role: "principal" | "teacher" | "student";
   icon: typeof School;
   title: string;
   blurb: string;
+  cta: string;
+  altHref: string;
+  altLabel: string;
 };
 
 const PATHS: Path[] = [
@@ -20,6 +23,9 @@ const PATHS: Path[] = [
     title: "I'm a Principal",
     blurb:
       "Register your school, then approve the teachers who join it. An administrator approves your account first.",
+    cta: "Register as principal",
+    altHref: "/login",
+    altLabel: "Log in",
   },
   {
     role: "teacher",
@@ -27,6 +33,19 @@ const PATHS: Path[] = [
     title: "I'm a Teacher",
     blurb:
       "Build lessons with Medha. Your principal approves your account before you start.",
+    cta: "Register as teacher",
+    altHref: "/login",
+    altLabel: "Log in",
+  },
+  {
+    role: "student",
+    icon: BookOpenCheck,
+    title: "I'm a Student",
+    blurb:
+      "Ask Medha your doubts, chapter by chapter. Register with your class and roll number; a teacher approves you, then you activate your account.",
+    cta: "Register as student",
+    altHref: "/student/activate",
+    altLabel: "Activate account",
   },
 ];
 
@@ -66,7 +85,7 @@ export function AuthSection() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {PATHS.map(({ role, icon: Icon, title, blurb }) => (
+              {PATHS.map(({ role, icon: Icon, title, blurb, cta, altHref, altLabel }) => (
                 <div key={role} className="warm-frame p-6 sm:p-7">
                   <div className="flex items-center gap-3">
                     <Icon className="size-5 text-terracotta" />
@@ -82,14 +101,14 @@ export function AuthSection() {
                       href={`/register?role=${role}`}
                       className="inline-flex items-center gap-2 bg-foreground px-6 py-3 text-sm font-medium tracking-wide text-background transition-opacity hover:opacity-90"
                     >
-                      Register as {role}
+                      {cta}
                       <ArrowRight className="size-4" />
                     </Link>
                     <Link
-                      href="/login"
+                      href={altHref}
                       className="text-sm text-terracotta underline-offset-2 hover:underline"
                     >
-                      Log in
+                      {altLabel}
                     </Link>
                   </div>
                 </div>

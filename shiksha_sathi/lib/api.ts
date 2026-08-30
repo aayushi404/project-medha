@@ -1,15 +1,17 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export type Role = "admin" | "principal" | "teacher";
+export type Role = "admin" | "principal" | "teacher" | "student";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
 export type Teacher = {
   id: string;
-  email: string;
+  email: string | null;
   full_name: string;
   role: Role;
   approval_status: ApprovalStatus;
   school_id: string | null;
+  grade_id: string | null;
+  roll_number: string | null;
   onboarded_at: string | null;
 };
 
@@ -428,3 +430,115 @@ export const rejectTeacher = (token: string | null, id: string, reason: string) 
   json<ApprovalResult>(
     apiFetch(`/principal/teachers/${id}/reject`, { method: "POST", token, body: { reason } }),
   );
+
+// ---------------------------------------------------------------------------
+// Student role. Two-phase onboarding: register (class + roll number, no
+// credential) -> a teacher approves -> activate (set email + password) ->
+// log in through /auth/login. See docs/medha-student-role-plan.md.
+// ---------------------------------------------------------------------------
+
+export type StudentRegisterInput = {
+  full_name: string;
+  school_id: string;
+  grade_id: string;
+  roll_number: string;
+};
+
+export type StudentActivateInput = {
+  school_id: string;
+  grade_id: string;
+  roll_number: string;
+  full_name: string;
+  email: string;
+  password: string;
+};
+
+export type StudentRegisterResult = { status: "pending"; message: string };
+export type StudentActivateResult = { status: "activated"; message: string };
+
+export const registerStudent = (input: StudentRegisterInput) =>
+  json<StudentRegisterResult>(
+    apiFetch("/student/register", { method: "POST", body: input }),
+  );
+
+export const activateStudent = (input: StudentActivateInput) =>
+  json<StudentActivateResult>(
+    apiFetch("/student/activate", { method: "POST", body: input }),
+  );
+
+// --- teacher-facing student approvals ---
+
+export type TeacherStudentStats = { students: number; pending_students: number };
+
+export type PendingStudent = {
+  id: string;
+  full_name: string;
+  grade_id: string;
+  grade_label: string;
+  roll_number: string | null;
+  applied_at: string;
+};
+
+export type StudentRosterItem = {
+  id: string;
+  full_name: string;
+  grade_id: string;
+  grade_label: string;
+  roll_number: string | null;
+  email: string | null;
+  activated: boolean;
+  approved_at: string | null;
+};
+
+export const getTeacherStudentStats = (token: string | null) =>
+  json<TeacherStudentStats>(apiFetch("/teacher/students/stats", { token }));
+
+export const getPendingStudents = (token: string | null) =>
+  json<PendingStudent[]>(apiFetch("/teacher/students/pending", { token }));
+
+export const getStudentRoster = (token: string | null) =>
+  json<StudentRosterItem[]>(apiFetch("/teacher/students", { token }));
+
+export const approveStudent = (token: string | null, id: string) =>
+  json<ApprovalResult>(
+    apiFetch(`/teacher/students/${id}/approve`, { method: "POST", token }),
+  );
+
+export const rejectStudent = (token: string | null, id: string, reason: string) =>
+  json<ApprovalResult>(
+    apiFetch(`/teacher/students/${id}/reject`, { method: "POST", token, body: { reason } }),
+  );
+
+// --- tutor (student doubt chat) ---
+
+export type TutorSession = {
+  id: string;
+  subject_id: string;
+  chapter_id: string | null;
+  topic_id: string | null;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TutorMessage = {
+  id: string;
+  role: "student" | "assistant";
+  content: string;
+  created_at: string;
+};
+
+export type TutorSessionDetail = TutorSession & { messages: TutorMessage[] };
+
+export const createTutorSession = (
+  token: string | null,
+  body: { subject_id: string; chapter_id: string },
+) => json<TutorSession>(apiFetch("/tutor/sessions", { method: "POST", token, body }));
+
+export const listTutorSessions = (token: string | null) =>
+  json<Pick<TutorSession, "id" | "title" | "subject_id" | "chapter_id" | "updated_at">[]>(
+    apiFetch("/tutor/sessions", { token }),
+  );
+
+export const getTutorSession = (token: string | null, id: string) =>
+  json<TutorSessionDetail>(apiFetch(`/tutor/sessions/${id}`, { token }));

@@ -8,9 +8,10 @@ import { copy } from "@/lib/copy";
 type ComposerProps = {
   onSend: (text: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 };
 
-export function Composer({ onSend, disabled }: ComposerProps) {
+export function Composer({ onSend, disabled, placeholder }: ComposerProps) {
   const [value, setValue] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -46,7 +47,7 @@ export function Composer({ onSend, disabled }: ComposerProps) {
               submit();
             }
           }}
-          placeholder={copy.inputPlaceholder}
+          placeholder={placeholder ?? copy.inputPlaceholder}
           className="max-h-32 flex-1 resize-none bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground"
         />
         <button

@@ -1,7 +1,9 @@
 import { API_BASE_URL, extractErrorMessage } from "@/lib/api";
 
 export type StreamDone = {
-  module_id: string;
+  // set by the teacher chat (a Module is derived per session); the student
+  // tutor chat has no modules and only sends `message_id`
+  module_id?: string;
   artifact_id?: string;
   artifact_type?: "quiz" | "activity";
   message_id?: string;

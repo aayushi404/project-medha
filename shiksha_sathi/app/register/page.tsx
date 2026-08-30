@@ -7,18 +7,28 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth-context";
-import type { RegisterRole, SchoolSearchResult } from "@/lib/api";
+import {
+  getGrades,
+  registerStudent,
+  type Grade,
+  type RegisterRole,
+  type SchoolSearchResult,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { SchoolTypeahead } from "@/components/auth/school-typeahead";
 import { PendingScreen } from "@/components/auth/pending-screen";
 import { cn } from "@/lib/utils";
 
-const ROLES: { value: RegisterRole; label: string }[] = [
+type FormRole = RegisterRole | "student";
+
+const ROLES: { value: FormRole; label: string }[] = [
   { value: "principal", label: "Principal" },
   { value: "teacher", label: "Teacher" },
+  { value: "student", label: "Student" },
 ];
 
 function RegisterForm() {
@@ -26,10 +36,11 @@ function RegisterForm() {
   const params = useSearchParams();
   const { status, register } = useAuth();
 
-  const initialRole: RegisterRole =
-    params.get("role") === "principal" ? "principal" : "teacher";
+  const roleParam = params.get("role");
+  const initialRole: FormRole =
+    roleParam === "principal" || roleParam === "student" ? roleParam : "teacher";
 
-  const [role, setRole] = useState<RegisterRole>(initialRole);
+  const [role, setRole] = useState<FormRole>(initialRole);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,6 +51,10 @@ function RegisterForm() {
   const [experience, setExperience] = useState("");
   const [qualification, setQualification] = useState("");
 
+  const [gradeId, setGradeId] = useState<string | null>(null);
+  const [rollNumber, setRollNumber] = useState("");
+  const [grades, setGrades] = useState<Grade[]>([]);
+
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -47,16 +62,29 @@ function RegisterForm() {
     if (status === "authenticated") router.replace("/home");
   }, [status, router]);
 
+  useEffect(() => {
+    if (role !== "student" || grades.length > 0) return;
+    getGrades()
+      .then((g) => setGrades(g))
+      .catch(() => {});
+  }, [role, grades.length]);
+
   const mobileDigits = mobile.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
   const isTeacher = role === "teacher";
+  const isStudent = role === "student";
 
   const error = useMemo(() => {
     if (fullName.trim().length < 2) return "Enter your full name.";
+    if (!school) return "Pick your school.";
+    if (isStudent) {
+      if (!gradeId) return "Select your class.";
+      if (rollNumber.trim().length === 0) return "Enter your roll number.";
+      return null;
+    }
     if (!email.includes("@")) return "Enter a valid email.";
     if (password.length < 8) return "Password must be at least 8 characters.";
     if (password !== confirm) return "Passwords don't match.";
     if (mobileDigits.length !== 10) return "Enter a valid 10-digit mobile number.";
-    if (!school) return "Pick your school.";
     if (isTeacher && employeeCode.trim().length === 0)
       return "Employee code (government teacher ID) is required.";
     if (experience && (Number(experience) < 0 || Number(experience) > 50))
@@ -70,6 +98,9 @@ function RegisterForm() {
     mobileDigits,
     school,
     isTeacher,
+    isStudent,
+    gradeId,
+    rollNumber,
     employeeCode,
     experience,
   ]);
@@ -82,17 +113,26 @@ function RegisterForm() {
     }
     setSubmitting(true);
     try {
-      await register({
-        role,
-        full_name: fullName.trim(),
-        email: email.trim(),
-        password,
-        mobile_number: mobileDigits,
-        school_id: school.id,
-        employee_code: isTeacher ? employeeCode.trim() : null,
-        years_of_experience: isTeacher && experience ? Number(experience) : null,
-        qualification: qualification.trim() || null,
-      });
+      if (isStudent) {
+        await registerStudent({
+          full_name: fullName.trim(),
+          school_id: school.id,
+          grade_id: gradeId!,
+          roll_number: rollNumber.trim(),
+        });
+      } else {
+        await register({
+          role: role as RegisterRole,
+          full_name: fullName.trim(),
+          email: email.trim(),
+          password,
+          mobile_number: mobileDigits,
+          school_id: school.id,
+          employee_code: isTeacher ? employeeCode.trim() : null,
+          years_of_experience: isTeacher && experience ? Number(experience) : null,
+          qualification: qualification.trim() || null,
+        });
+      }
       setDone(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not register.");
@@ -113,9 +153,11 @@ function RegisterForm() {
             Create your account
           </h1>
           <p className="text-sm text-muted-foreground">
-            {isTeacher
-              ? "Your principal approves teacher accounts."
-              : "An administrator approves principal accounts."}
+            {isStudent
+              ? "A teacher at your school approves student accounts."
+              : isTeacher
+                ? "Your principal approves teacher accounts."
+                : "An administrator approves principal accounts."}
           </p>
         </motion.div>
 
@@ -126,13 +168,23 @@ function RegisterForm() {
         >
           <Card className="shadow-sm">
             <CardContent className="px-6 py-5">
-              {done ? (
+              {done && isStudent ? (
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <PendingScreen message="Your registration was received. A teacher at your school will approve it. Once approved, activate your account to log in." />
+                  <Link
+                    href="/student/activate"
+                    className="text-sm text-primary underline-offset-2 hover:underline"
+                  >
+                    Activate my account
+                  </Link>
+                </div>
+              ) : done ? (
                 <PendingScreen
                   approver={isTeacher ? "your principal" : "an administrator"}
                 />
               ) : (
                 <>
-                  <div className="mb-5 grid grid-cols-2 rounded-lg border border-border p-0.5 text-sm">
+                  <div className="mb-5 grid grid-cols-3 rounded-lg border border-border p-0.5 text-sm">
                     {ROLES.map((r) => (
                       <button
                         key={r.value}
@@ -162,59 +214,87 @@ function RegisterForm() {
                       />
                     </Field>
 
-                    <Field label="Email" htmlFor="email">
-                      <Input
-                        id="email"
-                        type="email"
-                        autoComplete="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        className="h-11 text-base"
-                      />
-                    </Field>
+                    {!isStudent && (
+                      <>
+                        <Field label="Email" htmlFor="email">
+                          <Input
+                            id="email"
+                            type="email"
+                            autoComplete="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="you@example.com"
+                            className="h-11 text-base"
+                          />
+                        </Field>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Password" htmlFor="password">
-                        <Input
-                          id="password"
-                          type="password"
-                          autoComplete="new-password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="8+ characters"
-                          className="h-11 text-base"
-                        />
-                      </Field>
-                      <Field label="Confirm" htmlFor="confirm">
-                        <Input
-                          id="confirm"
-                          type="password"
-                          autoComplete="new-password"
-                          value={confirm}
-                          onChange={(e) => setConfirm(e.target.value)}
-                          placeholder="Repeat password"
-                          className="h-11 text-base"
-                        />
-                      </Field>
-                    </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field label="Password" htmlFor="password">
+                            <Input
+                              id="password"
+                              type="password"
+                              autoComplete="new-password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="8+ characters"
+                              className="h-11 text-base"
+                            />
+                          </Field>
+                          <Field label="Confirm" htmlFor="confirm">
+                            <Input
+                              id="confirm"
+                              type="password"
+                              autoComplete="new-password"
+                              value={confirm}
+                              onChange={(e) => setConfirm(e.target.value)}
+                              placeholder="Repeat password"
+                              className="h-11 text-base"
+                            />
+                          </Field>
+                        </div>
 
-                    <Field label="Mobile number" htmlFor="mobile">
-                      <Input
-                        id="mobile"
-                        type="tel"
-                        inputMode="numeric"
-                        autoComplete="tel"
-                        value={mobile}
-                        onChange={(e) => setMobile(e.target.value)}
-                        placeholder="10-digit number"
-                        className="h-11 text-base"
-                      />
-                    </Field>
+                        <Field label="Mobile number" htmlFor="mobile">
+                          <Input
+                            id="mobile"
+                            type="tel"
+                            inputMode="numeric"
+                            autoComplete="tel"
+                            value={mobile}
+                            onChange={(e) => setMobile(e.target.value)}
+                            placeholder="10-digit number"
+                            className="h-11 text-base"
+                          />
+                        </Field>
+                      </>
+                    )}
 
                     <Field label="School" htmlFor="school">
                       <SchoolTypeahead id="school" value={school} onChange={setSchool} />
                     </Field>
+
+                    {isStudent && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Class" htmlFor="grade">
+                          <Select
+                            ariaLabel="Class"
+                            placeholder="Select"
+                            value={gradeId}
+                            options={grades.map((g) => ({ value: g.id, label: g.label }))}
+                            onValueChange={setGradeId}
+                            className="h-11 w-full"
+                          />
+                        </Field>
+                        <Field label="Roll number" htmlFor="roll">
+                          <Input
+                            id="roll"
+                            value={rollNumber}
+                            onChange={(e) => setRollNumber(e.target.value)}
+                            placeholder="e.g. 23"
+                            className="h-11 text-base"
+                          />
+                        </Field>
+                      </div>
+                    )}
 
                     {isTeacher && (
                       <>
@@ -256,7 +336,7 @@ function RegisterForm() {
                       </>
                     )}
 
-                    {!isTeacher && (
+                    {!isTeacher && !isStudent && (
                       <Field label="Qualification (optional)" htmlFor="qualification">
                         <Input
                           id="qualification"
@@ -273,18 +353,36 @@ function RegisterForm() {
                       disabled={submitting}
                       className="mt-1 h-11 w-full text-base"
                     >
-                      {submitting ? "Submitting…" : "Create account"}
+                      {submitting
+                        ? "Submitting…"
+                        : isStudent
+                          ? "Register"
+                          : "Create account"}
                     </Button>
                   </form>
 
                   <p className="mt-4 text-center text-xs text-muted-foreground">
-                    Already have an account?{" "}
-                    <Link
-                      href="/login"
-                      className="text-primary underline-offset-2 hover:underline"
-                    >
-                      Log in
-                    </Link>
+                    {isStudent ? (
+                      <>
+                        Already approved?{" "}
+                        <Link
+                          href="/student/activate"
+                          className="text-primary underline-offset-2 hover:underline"
+                        >
+                          Activate your account
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        Already have an account?{" "}
+                        <Link
+                          href="/login"
+                          className="text-primary underline-offset-2 hover:underline"
+                        >
+                          Log in
+                        </Link>
+                      </>
+                    )}
                   </p>
                 </>
               )}
