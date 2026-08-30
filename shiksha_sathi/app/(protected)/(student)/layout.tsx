@@ -15,9 +15,13 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
   return (
     <RoleGate role="student">
       <StudentDataProvider>
-        <div className="flex min-h-full flex-1 flex-col md:flex-row">
+        {/* Shell is pinned to the viewport; the sidebar stays put and each
+            screen scrolls inside its own overflow-y-auto region. */}
+        <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
           <StudentSidebar />
-          <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {children}
+          </div>
         </div>
       </StudentDataProvider>
     </RoleGate>

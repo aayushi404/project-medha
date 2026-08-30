@@ -40,7 +40,7 @@ function Brand() {
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
-    <nav className="flex flex-1 flex-col gap-1 p-2">
+    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
       {NAV.map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
