@@ -12,7 +12,9 @@ class ModuleListItem(BaseModel):
     grade_label: str
     subject_id: uuid.UUID
     subject_name: str
+    chapter_id: uuid.UUID | None
     topic_id: uuid.UUID | None
+    topic_title: str | None
     artifact_types: list[str]
     updated_at: datetime
 

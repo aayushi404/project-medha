@@ -33,22 +33,26 @@ def list_modules(
     teacher: Teacher,
     grade_id: uuid.UUID | None = None,
     subject_id: uuid.UUID | None = None,
+    chapter_id: uuid.UUID | None = None,
 ) -> list[ModuleListItem]:
     query = (
-        db.query(Module, Grade.label, Subject.name)
+        db.query(Module, Grade.label, Subject.name, CurriculumTopic.title)
         .join(Grade, Module.grade_id == Grade.id)
         .join(Subject, Module.subject_id == Subject.id)
+        .outerjoin(CurriculumTopic, Module.topic_id == CurriculumTopic.id)
         .filter(Module.teacher_id == teacher.id)
     )
     if grade_id is not None:
         query = query.filter(Module.grade_id == grade_id)
     if subject_id is not None:
         query = query.filter(Module.subject_id == subject_id)
+    if chapter_id is not None:
+        query = query.filter(Module.chapter_id == chapter_id)
     rows = query.order_by(Module.updated_at.desc()).all()
     if not rows:
         return []
 
-    module_ids = [m.id for m, _, _ in rows]
+    module_ids = [m.id for m, _, _, _ in rows]
     types_by_module: dict[uuid.UUID, set[str]] = {}
     for mid, atype in (
         db.query(ModuleArtifact.module_id, ModuleArtifact.artifact_type)
@@ -66,11 +70,13 @@ def list_modules(
             grade_label=grade_label,
             subject_id=m.subject_id,
             subject_name=subject_name,
+            chapter_id=m.chapter_id,
             topic_id=m.topic_id,
+            topic_title=topic_title,
             artifact_types=sorted(types_by_module.get(m.id, set()), key=_order_key),
             updated_at=m.updated_at,
         )
-        for m, grade_label, subject_name in rows
+        for m, grade_label, subject_name, topic_title in rows
     ]
 
 

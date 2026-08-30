@@ -21,10 +21,11 @@ router = APIRouter(tags=["modules"])
 def list_modules(
     grade_id: uuid.UUID | None = None,
     subject_id: uuid.UUID | None = None,
+    chapter_id: uuid.UUID | None = None,
     current_teacher: Teacher = Depends(get_current_teacher),
     db: Session = Depends(get_db),
 ) -> list[ModuleListItem]:
-    return service.list_modules(db, current_teacher, grade_id, subject_id)
+    return service.list_modules(db, current_teacher, grade_id, subject_id, chapter_id)
 
 
 @router.get("/modules/{module_id}", response_model=ModuleDetailOut)

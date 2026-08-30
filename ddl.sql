@@ -219,6 +219,7 @@ create table modules (
     session_id      uuid references chat_sessions(id) on delete set null,
     grade_id        uuid not null references grades(id),
     subject_id      uuid not null references subjects(id),
+    chapter_id      uuid references curriculum_chapters(id),  -- 0007: dashboard scopes by chapter
     topic_id        uuid references curriculum_topics(id),
     title           text not null,
     created_at      timestamptz not null default now(),
@@ -226,6 +227,7 @@ create table modules (
 );
 
 create index idx_modules_teacher on modules(teacher_id, updated_at desc);
+create index idx_modules_chapter on modules(chapter_id);
 
 -- One row per generated artifact within a module
 create table module_artifacts (

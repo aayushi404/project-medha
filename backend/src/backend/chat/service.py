@@ -147,6 +147,7 @@ def _upsert_module(db: Session, teacher: Teacher, session: ChatSession) -> Modul
             session_id=session.id,
             grade_id=session.grade_id,
             subject_id=session.subject_id,
+            chapter_id=session.chapter_id,
             topic_id=session.topic_id,
             title=session.title or "Untitled",
         )
@@ -154,6 +155,9 @@ def _upsert_module(db: Session, teacher: Teacher, session: ChatSession) -> Modul
         db.flush()
     else:
         module.updated_at = func.now()
+        # backfill for modules created before chapter linkage existed
+        if module.chapter_id is None and session.chapter_id is not None:
+            module.chapter_id = session.chapter_id
     return module
 
 

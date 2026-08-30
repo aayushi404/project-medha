@@ -1,15 +1,17 @@
 "use client";
 
-import { Check, Copy, HelpCircle, RefreshCw, Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { ArtifactCard } from "@/components/dashboard/artifact-card";
 import { AssistantBody, AssistantMark, UserBubble } from "@/components/chat/turn";
+import { ArtifactCard } from "@/components/dashboard/artifact-card";
+import { ContentActions } from "@/components/dashboard/content-actions";
 import type { ActivityContent, QuizContent } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
 import { copy } from "@/lib/copy";
+import { speakableContent, stripMarkdown } from "@/lib/speech";
 import { cn } from "@/lib/utils";
 
 export type UiMessage = {
@@ -20,49 +22,6 @@ export type UiMessage = {
   failed?: boolean;
   artifact?: { type: "quiz" | "activity"; content: QuizContent | ActivityContent };
 };
-
-function CopyButton({ text }: { text: string }) {
-  const [done, setDone] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setDone(true);
-          window.setTimeout(() => setDone(false), 1500);
-        } catch {
-          /* clipboard unavailable */
-        }
-      }}
-      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-    >
-      {done ? <Check className="size-3" /> : <Copy className="size-3" />}
-      {done ? copy.copied : copy.copyText}
-    </button>
-  );
-}
-
-function ActionButton({
-  onClick,
-  icon: Icon,
-  children,
-}: {
-  onClick: () => void;
-  icon: typeof HelpCircle;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-    >
-      <Icon className="size-3.5" />
-      {children}
-    </button>
-  );
-}
 
 function AssistantTurn({
   msg,
@@ -76,6 +35,10 @@ function AssistantTurn({
   onRetry: () => void;
 }) {
   const showActions = !msg.streaming && !msg.failed;
+  const speechText = msg.artifact
+    ? speakableContent(msg.artifact.type, msg.artifact.content)
+    : stripMarkdown(msg.content);
+
   return (
     <div className="group flex flex-col gap-2">
       <AssistantMark />
@@ -110,19 +73,15 @@ function AssistantTurn({
         ) : null}
 
         {showActions ? (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
-            {msg.content ? <CopyButton text={msg.content} /> : null}
-            {!msg.artifact ? (
-              <>
-                <ActionButton onClick={onQuiz} icon={HelpCircle}>
-                  {copy.makeQuiz}
-                </ActionButton>
-                <ActionButton onClick={onActivity} icon={Users}>
-                  {copy.makeActivity}
-                </ActionButton>
-              </>
-            ) : null}
-          </div>
+          <ContentActions
+            className="mt-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+            speechId={msg.id}
+            speechText={speechText}
+            copyText={msg.content || undefined}
+            onQuiz={onQuiz}
+            onActivity={onActivity}
+            hide={msg.artifact ? [msg.artifact.type] : []}
+          />
         ) : null}
       </AssistantBody>
     </div>
@@ -134,9 +93,16 @@ type MessageThreadProps = {
   onQuiz: () => void;
   onActivity: () => void;
   onRetry: () => void;
+  header?: React.ReactNode;
 };
 
-export function MessageThread({ messages, onQuiz, onActivity, onRetry }: MessageThreadProps) {
+export function MessageThread({
+  messages,
+  onQuiz,
+  onActivity,
+  onRetry,
+  header,
+}: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
 
@@ -156,6 +122,7 @@ export function MessageThread({ messages, onQuiz, onActivity, onRetry }: Message
       className="flex-1 overflow-y-auto"
     >
       <div className={cn("mx-auto flex max-w-3xl flex-col gap-6 px-4 py-5")}>
+        {header}
         {messages.map((m) =>
           m.role === "teacher" ? (
             <UserBubble key={m.id}>{m.content}</UserBubble>

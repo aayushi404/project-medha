@@ -32,9 +32,24 @@ export const copy = {
   explanationPrompt: "How do I teach this topic in an engaging way?",
   makeQuiz: "Make a quiz",
   makeActivity: "Make an activity",
+  makeMindmap: "Mind map",
+  makePpt: "PPT",
+  comingSoonMindmapPpt: "Mind maps and slides are coming soon.",
+  readAloud: "Read aloud",
+  stopReading: "Stop",
   generating: "Generating…",
   streamError: "The response didn't finish. Please try again.",
   retry: "Retry",
+
+  // chapter history (dashboard)
+  chapterHistoryTitle: "Earlier in this chapter",
+  chapterHistoryHint: "Anything you generate below is saved here.",
+  chapterHistoryEmpty:
+    "Nothing generated for this chapter yet. Ask a question or use a quick action below.",
+  chapterHistoryFailed: "Couldn't load earlier content for this chapter.",
+  pickChapterForHistory: "Pick a chapter to see what you've already made for it.",
+  chapterHistoryCount: (n: number) => `${n} item${n === 1 ? "" : "s"}`,
+  openFullModule: "Open full module",
 
   // my modules
   myModules: "My Modules",

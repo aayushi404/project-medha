@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 
 import { ContextBar } from "@/components/app/context-bar";
+import { ChapterHistory } from "@/components/dashboard/chapter-history";
 import { Composer } from "@/components/dashboard/composer";
 import { MessageThread, type UiMessage } from "@/components/dashboard/message-thread";
 import { QuickActions } from "@/components/dashboard/quick-actions";
@@ -32,6 +33,8 @@ export default function DashboardPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [busy, setBusy] = useState(false);
+  // bumped after any successful generation so ChapterHistory refetches
+  const [historyKey, setHistoryKey] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const lastUserText = useRef<string>("");
 
@@ -102,7 +105,10 @@ export default function DashboardPage() {
           acc += t;
           patchMessage(asstId, { content: acc });
         },
-        onDone: () => patchMessage(asstId, { streaming: false }),
+        onDone: () => {
+          patchMessage(asstId, { streaming: false });
+          setHistoryKey((k) => k + 1);
+        },
         onError: (msg) => {
           if (acc) patchMessage(asstId, { streaming: false, failed: true });
           else setMessages((prev) => prev.filter((m) => m.id !== asstId));
@@ -145,7 +151,8 @@ export default function DashboardPage() {
             failed: !parsed,
             artifact: parsed ? { type, content: parsed } : undefined,
           });
-          if (!parsed) toast.error(copy.streamError);
+          if (parsed) setHistoryKey((k) => k + 1);
+          else toast.error(copy.streamError);
         },
         onError: (msg) => {
           setMessages((prev) => prev.filter((m) => m.id !== asstId));
@@ -163,6 +170,7 @@ export default function DashboardPage() {
   }
 
   const empty = messages.length === 0;
+  const hasChapter = Boolean(gradeId && subjectId && chapterId);
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
@@ -173,7 +181,7 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
-          className="flex flex-1 flex-col items-center justify-center gap-5 px-4"
+          className="flex flex-1 flex-col items-center gap-6 overflow-y-auto px-4 py-10"
         >
           <div className="text-center">
             <div className="text-lg">{copy.greeting(firstName)}</div>
@@ -185,6 +193,21 @@ export default function DashboardPage() {
             onQuiz={() => void runGenerate("quiz")}
             onActivity={() => void runGenerate("activity")}
           />
+          {hasChapter ? (
+            <div className="w-full max-w-2xl">
+              <ChapterHistory
+                gradeId={gradeId!}
+                subjectId={subjectId!}
+                chapterId={chapterId!}
+                refreshKey={historyKey}
+                onQuiz={() => void runGenerate("quiz")}
+                onActivity={() => void runGenerate("activity")}
+                defaultOpen
+              />
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{copy.pickChapterForHistory}</p>
+          )}
         </motion.div>
       ) : (
         <MessageThread
@@ -192,6 +215,18 @@ export default function DashboardPage() {
           onQuiz={() => void runGenerate("quiz")}
           onActivity={() => void runGenerate("activity")}
           onRetry={retryLast}
+          header={
+            hasChapter ? (
+              <ChapterHistory
+                gradeId={gradeId!}
+                subjectId={subjectId!}
+                chapterId={chapterId!}
+                refreshKey={historyKey}
+                onQuiz={() => void runGenerate("quiz")}
+                onActivity={() => void runGenerate("activity")}
+              />
+            ) : null
+          }
         />
       )}
 

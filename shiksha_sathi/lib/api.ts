@@ -213,7 +213,9 @@ export type ModuleListItem = {
   grade_label: string;
   subject_id: string;
   subject_name: string;
+  chapter_id: string | null;
   topic_id: string | null;
+  topic_title: string | null;
   artifact_types: ArtifactType[];
   updated_at: string;
 };
@@ -288,11 +290,12 @@ export const getSession = (token: string | null, id: string) =>
 
 export const listModules = (
   token: string | null,
-  filter: { gradeId?: string; subjectId?: string } = {},
+  filter: { gradeId?: string; subjectId?: string; chapterId?: string } = {},
 ) => {
   const qs = new URLSearchParams();
   if (filter.gradeId) qs.set("grade_id", filter.gradeId);
   if (filter.subjectId) qs.set("subject_id", filter.subjectId);
+  if (filter.chapterId) qs.set("chapter_id", filter.chapterId);
   const suffix = qs.toString() ? `?${qs}` : "";
   return json<ModuleListItem[]>(apiFetch(`/modules${suffix}`, { token }));
 };
