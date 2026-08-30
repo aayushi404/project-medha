@@ -3,19 +3,41 @@
 import type { ModuleArtifact } from "@/lib/api";
 
 /**
- * A tiny wrapper around the browser Web Speech API (`speechSynthesis`).
- * Frontend only -- no audio is generated on the server. One utterance plays at
- * a time; starting a new one cancels whatever was speaking. Components subscribe
- * to `subscribeSpeech` to reflect which block (by id) is currently being read.
+ * A wrapper around the browser Web Speech API (`speechSynthesis`). Frontend
+ * only -- no audio is generated on the server.
+ *
+ * Works around long-standing Chrome bugs:
+ *  - the utterance is garbage-collected mid-speech (audio stops, `onend` never
+ *    fires, the UI is stuck on "Stop") -> we keep a module-level reference to
+ *    whatever is playing;
+ *  - `speak()` in the same tick as `cancel()` is silently dropped -> when we
+ *    interrupt something we defer the next `speak()` by a tick; a fresh start
+ *    from idle stays synchronous so it keeps the click's user activation;
+ *  - long utterances are cut off after ~15s -> the text is split into short
+ *    chunks spoken back to back;
+ *  - a leftover paused state from a previous session -> `resume()` on start.
+ *
+ * One block plays at a time; components subscribe via `subscribeSpeech` to
+ * reflect which block id (if any) is being read.
  */
 
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
 let speakingId: string | null = null;
-// Chrome stops long utterances after ~15s unless it is nudged. This keeps it
-// going while something is actually speaking.
-let keepAlive: ReturnType<typeof setInterval> | null = null;
+
+type Job = {
+  id: string;
+  chunks: string[];
+  index: number;
+  errors: number;
+  lang: string | undefined;
+  utterance: SpeechSynthesisUtterance | null; // held so the browser can't GC it
+  cancelled: boolean;
+  watchdog: ReturnType<typeof setTimeout> | null;
+};
+
+let job: Job | null = null;
 
 export const NOOP_SUBSCRIBE = () => () => {};
 
@@ -35,50 +57,173 @@ export function getSpeakingId(): string | null {
 }
 
 export function speechSupported(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
+  return (
+    typeof window !== "undefined" &&
+    "speechSynthesis" in window &&
+    typeof window.SpeechSynthesisUtterance === "function"
+  );
 }
 
-function stopKeepAlive() {
-  if (keepAlive !== null) {
-    clearInterval(keepAlive);
-    keepAlive = null;
+// --- voices ------------------------------------------------------------
+// getVoices() is empty on the first call in Chrome; it fills in asynchronously
+// and fires `voiceschanged`. Cache whatever we can, refreshing opportunistically.
+
+let voices: SpeechSynthesisVoice[] = [];
+
+function refreshVoices() {
+  if (!speechSupported()) return;
+  const list = window.speechSynthesis.getVoices();
+  if (list.length) voices = list;
+}
+
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  refreshVoices();
+  try {
+    window.speechSynthesis.addEventListener("voiceschanged", refreshVoices);
+  } catch {
+    window.speechSynthesis.onvoiceschanged = refreshVoices;
   }
 }
 
-function startKeepAlive() {
-  stopKeepAlive();
-  keepAlive = setInterval(() => {
-    if (!window.speechSynthesis.speaking) {
-      stopKeepAlive();
-      return;
-    }
-    window.speechSynthesis.pause();
-    window.speechSynthesis.resume();
-  }, 10_000);
-}
-
+/** A tag we can hand to the engine, or undefined. `hi-BiharBoli` and other
+ *  non-standard values collapse to their base language. */
 function normalizeLang(pref: string | null | undefined): string | undefined {
   if (!pref) return undefined;
-  if (/^[a-z]{2}(-[A-Za-z]{2,})?$/.test(pref) && pref.length <= 5) return pref;
-  return pref.slice(0, 2).toLowerCase();
+  if (/^[a-z]{2}(-[A-Za-z]{2})?$/.test(pref)) return pref;
+  return /^[a-z]{2}/i.test(pref) ? pref.slice(0, 2).toLowerCase() : undefined;
 }
 
 function pickVoice(lang: string | undefined): SpeechSynthesisVoice | null {
   if (!lang) return null;
-  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) refreshVoices();
   if (voices.length === 0) return null;
   const want = lang.toLowerCase();
   const base = want.slice(0, 2);
   return (
     voices.find((v) => v.lang.toLowerCase() === want) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith(base)) ??
+    voices.find((v) => v.lang.toLowerCase().replace("_", "-").startsWith(base)) ??
     null
   );
 }
 
+// --- text -> chunks --------------------------------------------------
+
+function toChunks(text: string): string[] {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+  // split on sentence enders (incl. the Devanagari danda), keeping them
+  const sentences = clean.match(/[^.!?।]+[.!?।]+|\S[^.!?।]*$/g) ?? [clean];
+  const out: string[] = [];
+  for (const raw of sentences) {
+    let piece = raw.trim();
+    while (piece.length > 180) {
+      const space = piece.lastIndexOf(" ", 180);
+      const at = space > 60 ? space : 180;
+      out.push(piece.slice(0, at).trim());
+      piece = piece.slice(at).trim();
+    }
+    if (piece) out.push(piece);
+  }
+  return out;
+}
+
+// --- playback ------------------------------------------------------
+
+function clearWatchdog(j: Job) {
+  if (j.watchdog !== null) {
+    clearTimeout(j.watchdog);
+    j.watchdog = null;
+  }
+}
+
+function finish(j: Job) {
+  clearWatchdog(j);
+  if (job === j) {
+    job = null;
+    if (speakingId === j.id) {
+      speakingId = null;
+      emit();
+    }
+  }
+}
+
+function speakNext() {
+  const j = job;
+  if (!j || j.cancelled) return;
+  if (j.index >= j.chunks.length) {
+    finish(j);
+    return;
+  }
+
+  const u = new window.SpeechSynthesisUtterance(j.chunks[j.index]);
+  const voice = pickVoice(j.lang);
+  if (voice) {
+    u.voice = voice;
+    u.lang = voice.lang;
+  }
+  // Deliberately do NOT set u.lang without a matching voice -- Chrome then
+  // renders silence instead of falling back to the default voice.
+  u.rate = 1;
+  u.pitch = 1;
+
+  u.onend = () => {
+    if (job !== j || j.cancelled) return;
+    clearWatchdog(j);
+    j.errors = 0;
+    j.index += 1;
+    speakNext();
+  };
+  u.onerror = (event) => {
+    if (job !== j || j.cancelled) return;
+    clearWatchdog(j);
+    // our own cancel() surfaces here
+    if (event.error === "interrupted" || event.error === "canceled") return;
+    // no user activation -- stop cleanly so the button resets and the next
+    // click starts fresh inside a gesture
+    if (event.error === "not-allowed") {
+      finish(j);
+      return;
+    }
+    // tolerate one bad chunk; bail if the engine keeps failing
+    j.errors += 1;
+    if (j.errors >= 2) {
+      finish(j);
+      return;
+    }
+    j.index += 1;
+    speakNext();
+  };
+
+  j.utterance = u;
+  try {
+    window.speechSynthesis.speak(u);
+  } catch {
+    finish(j);
+    return;
+  }
+
+  // If speak() was silently ignored (a known state right after cancel) and
+  // nothing starts, reset the UI rather than leaving it stuck on "Stop".
+  clearWatchdog(j);
+  j.watchdog = setTimeout(() => {
+    if (job !== j || j.cancelled) return;
+    if (
+      j.index === 0 &&
+      !window.speechSynthesis.speaking &&
+      !window.speechSynthesis.pending
+    ) {
+      finish(j);
+    }
+  }, 1200);
+}
+
 export function stopSpeech(): void {
   if (!speechSupported()) return;
-  stopKeepAlive();
+  if (job) {
+    job.cancelled = true;
+    clearWatchdog(job);
+    job = null;
+  }
   window.speechSynthesis.cancel();
   if (speakingId !== null) {
     speakingId = null;
@@ -86,51 +231,55 @@ export function stopSpeech(): void {
   }
 }
 
-/** Start reading `text` for block `id`; clicking the block that's already
- *  playing stops it. */
+/** Start reading `text` for block `id`; calling it again for the block that is
+ *  already playing stops it. */
 export function toggleSpeech(
   id: string,
   text: string,
   opts: { lang?: string | null } = {},
 ): void {
   if (!speechSupported()) return;
-  if (speakingId === id) {
-    stopSpeech();
-    return;
-  }
 
-  window.speechSynthesis.cancel();
-  const clean = text.trim();
-  if (!clean) {
-    stopSpeech();
-    return;
-  }
+  const sameBlock = speakingId === id;
+  const engineBusy =
+    window.speechSynthesis.speaking || window.speechSynthesis.pending;
 
-  const utterance = new SpeechSynthesisUtterance(clean);
-  const lang = normalizeLang(opts.lang);
-  const voice = pickVoice(lang);
-  if (voice) {
-    utterance.voice = voice;
-    utterance.lang = voice.lang;
-  } else if (lang) {
-    utterance.lang = lang;
-  }
-  utterance.rate = 0.98;
+  stopSpeech();
+  if (sameBlock) return; // second click on the same block => just stop
 
-  const finish = () => {
-    if (speakingId === id) {
-      speakingId = null;
-      stopKeepAlive();
-      emit();
-    }
+  const chunks = toChunks(text);
+  if (chunks.length === 0) return;
+
+  const next: Job = {
+    id,
+    chunks,
+    index: 0,
+    errors: 0,
+    lang: normalizeLang(opts.lang),
+    utterance: null,
+    cancelled: false,
+    watchdog: null,
   };
-  utterance.onend = finish;
-  utterance.onerror = finish;
-
+  job = next;
   speakingId = id;
   emit();
-  window.speechSynthesis.speak(utterance);
-  startKeepAlive();
+
+  // clear any leftover paused state (e.g. from an older build's keep-alive hack)
+  try {
+    window.speechSynthesis.resume();
+  } catch {
+    /* ignore */
+  }
+
+  if (engineBusy) {
+    // we just cancel()'d a live utterance; let Chrome settle before speak()
+    setTimeout(() => {
+      if (job === next && !next.cancelled) speakNext();
+    }, 60);
+  } else {
+    // fresh start: stay inside the click's user activation
+    speakNext();
+  }
 }
 
 // --- text extraction -----------------------------------------------------
