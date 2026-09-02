@@ -74,7 +74,7 @@ service by hand.
    | **Region** | Singapore (closest to India) |
    | **Instance Type** | Free |
    | **Build Command** | `pip install uv && uv sync --frozen && uv run alembic upgrade head` |
-   | **Start Command** | `uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT` |
+   | **Start Command** | `./render-start.sh` *(or `unset VIRTUAL_ENV && uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT`)* |
    | **Health Check Path** | `/health` |
 
    Running `alembic upgrade head` in the build command is the free-tier
@@ -96,9 +96,27 @@ service by hand.
    | `COOKIE_SAMESITE` | `none` |
    | `LLM_PROVIDER` | `gemini` |
    | `GEMINI_MODEL` | `gemini-flash-lite-latest` |
+   | `SARVAM_API_KEY` | your Sarvam key (voice STT/TTS) |
 
 5. Create the service. Note the URL (e.g. `https://medha-backend.onrender.com`).
 6. Check `<render-url>/health` → `{"status":"ok"}` and `<render-url>/docs` loads.
+
+### Render troubleshooting
+
+**`VIRTUAL_ENV does not match the project environment path .venv`**
+This is a **warning**, not a crash. uv ignores Render's pre-activated venv and uses its own `.venv`. Safe to ignore, or use `./render-start.sh` as the Start Command (it `unset VIRTUAL_ENV` first).
+
+**`uv sync --frozen` fails on deploy**
+Run `uv lock` locally after changing `pyproject.toml`, commit `uv.lock`, and redeploy.
+
+**Service builds but `/health` never responds**
+Check the full Render logs *after* the uvicorn line — common causes:
+- `JWT_SECRET_KEY` not set in Render Environment (app crashes on import)
+- `DATABASE_URL` missing or wrong (Neon pooled URL with `?sslmode=require`)
+- Root Directory not set to `backend`
+
+**Alembic fails during build**
+Ensure `DATABASE_URL` is set under Render **Environment** (available at build time), not only as a secret file.
 
 ---
 
