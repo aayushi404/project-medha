@@ -127,10 +127,8 @@ export const TOOLS: Tool[] = [
       "Paste text and get a translation or a simpler rewrite at the reading level you choose, keeping the meaning intact.",
     icon: Languages,
     category: "create",
-    status: "soon",
+    status: "ready",
   },
-
-  // -- assess ----------------------------------------------------------
   {
     slug: "quick-mock",
     name: "Quick Mock Test",

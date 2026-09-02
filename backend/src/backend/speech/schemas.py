@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 class SynthesizeIn(BaseModel):
     text: str = Field(min_length=1, max_length=2500)
     language: str = "en-IN"
+    accent: str | None = None  # "bihari" for Bihari-tuned Hindi TTS
 
 
 class TranscribeOut(BaseModel):

@@ -1,13 +1,14 @@
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from backend.auth.dependencies import require_student
 from backend.db.models import Teacher
 from backend.db.session import get_db
-from backend.english import service
+from backend.english import pronunciation, service
+from backend.english.pronunciation_schemas import PronunciationOut
 from backend.english.schemas import (
     EnglishMessageCreateIn,
     EnglishMessageOut,
@@ -15,6 +16,7 @@ from backend.english.schemas import (
     EnglishSessionDetailOut,
     EnglishSessionOut,
 )
+from backend.speech import client as speech_client
 from backend.tutor.rate_limit import tutor_rate_limit
 
 router = APIRouter(
@@ -22,6 +24,7 @@ router = APIRouter(
 )
 
 _SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+_MAX_AUDIO_BYTES = 10 * 1024 * 1024
 
 
 @router.post(
@@ -79,3 +82,35 @@ async def post_message(
     session = service.load_owned_session(db, student, session_id)
     generator = service.stream_message(db, student, session, payload.content)
     return EventSourceResponse(generator, headers=_SSE_HEADERS)
+
+
+@router.post("/pronunciation-check", response_model=PronunciationOut)
+async def pronunciation_check(
+    file: UploadFile = File(...),
+    expected_text: str = Form(...),
+    student: Teacher = Depends(require_student),
+) -> PronunciationOut:
+    """Score spoken English against an expected phrase."""
+    _ = student
+    data = await file.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty audio file.")
+    if len(data) > _MAX_AUDIO_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Audio file too large.")
+
+    try:
+        return await pronunciation.check_pronunciation(
+            data,
+            expected_text=expected_text,
+            filename=file.filename or "audio.wav",
+            content_type=file.content_type or "audio/wav",
+        )
+    except speech_client.SpeechError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE
+            if "not configured" in str(exc).lower()
+            else status.HTTP_422_UNPROCESSABLE_ENTITY,
+            str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc

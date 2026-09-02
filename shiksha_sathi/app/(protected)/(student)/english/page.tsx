@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { AssistantBody, AssistantMark, UserBubble } from "@/components/chat/turn";
 import { Composer } from "@/components/dashboard/composer";
+import { PronunciationPractice } from "@/components/english/pronunciation-practice";
 import { VoiceChatLauncher } from "@/components/voice/voice-chat-panel";
 import { createEnglishSession } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
@@ -303,26 +304,30 @@ export default function EnglishPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm">{prompt}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void playSpeech(prompt, accessToken, { language: "en-IN" })}
-                      className="rounded-lg bg-accent px-2.5 py-1 text-xs hover:bg-accent/80"
-                    >
-                      🔊 Listen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void runMessage(
-                          `I want to practice speaking. The sentence is: "${prompt}". Listen to my attempt and help me improve.`,
-                        )
-                      }
-                      className="rounded-lg bg-terracotta/15 px-2.5 py-1 text-xs text-terracotta hover:bg-terracotta/25"
-                    >
-                      {copy.english.speakWithMedha}
-                    </button>
-                  </div>
+                  <PronunciationPractice
+                    prompt={prompt}
+                    accessToken={accessToken}
+                    labels={{
+                      listen: copy.english.listenBtn,
+                      record: copy.english.recordBtn,
+                      stop: copy.english.stopRecordBtn,
+                      checking: copy.english.checkingPronunciation,
+                      score: copy.english.scoreLabel,
+                      heard: copy.english.heardLabel,
+                      tips: copy.english.tipsLabel,
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void runMessage(
+                        `I want to practice speaking. The sentence is: "${prompt}". Listen to my attempt and help me improve.`,
+                      )
+                    }
+                    className="mt-2 rounded-lg bg-terracotta/15 px-2.5 py-1 text-xs text-terracotta hover:bg-terracotta/25"
+                  >
+                    {copy.english.speakWithMedha}
+                  </button>
                 </div>
               </div>
             ))}
