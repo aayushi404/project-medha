@@ -36,33 +36,78 @@ def _headers() -> dict[str, str]:
     return {"api-subscription-key": settings.sarvam_api_key}
 
 
-def _language_code(pref: str | None) -> str:
-    """Map Medha preferred_language tags to Sarvam BCP-47 codes."""
+def _language_code(pref: str | None) -> str | None:
+    """Map Medha preferred_language tags to Sarvam BCP-47 codes.
+
+    Returns None to let Saaras auto-detect (best for code-mixed speech).
+    """
     if not pref:
-        return "hi-IN"
+        return None
     p = pref.lower()
     if p.startswith("en"):
         return "en-IN"
     if p.startswith("hi"):
         return "hi-IN"
-    return "hi-IN"
+    return None
+
+
+def _input_audio_codec(content_type: str, filename: str) -> str | None:
+    ct = (content_type or "").lower()
+    fn = (filename or "").lower()
+    if "wav" in ct or fn.endswith(".wav"):
+        return "wav"
+    if "webm" in ct or fn.endswith(".webm"):
+        return "webm"
+    if "mp4" in ct or "m4a" in ct or fn.endswith(".mp4") or fn.endswith(".m4a"):
+        return "mp4"
+    if "ogg" in ct or fn.endswith(".ogg"):
+        return "ogg"
+    if "mpeg" in ct or "mp3" in ct or fn.endswith(".mp3"):
+        return "mp3"
+    return None
+
+
+def _parse_sarvam_error(resp: httpx.Response) -> str:
+    try:
+        body = resp.json()
+        if isinstance(body, dict):
+            for key in ("message", "error", "detail"):
+                val = body.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+    except Exception:
+        pass
+    text = resp.text.strip()
+    if text:
+        return text[:240]
+    return "Could not transcribe your voice. Please try again."
 
 
 async def transcribe(
     audio: bytes,
     *,
-    filename: str = "audio.webm",
-    content_type: str = "audio/webm",
+    filename: str = "audio.wav",
+    content_type: str = "audio/wav",
     language: str | None = None,
 ) -> TranscribeResult:
     """Transcribe short audio (<30s) via Sarvam REST STT."""
+    if len(audio) < 500:
+        raise SpeechError(
+            "Recording too short. Hold the mic a little longer while you speak."
+        )
+
     lang = _language_code(language)
+    codec = _input_audio_codec(content_type, filename)
     files = {"file": (filename, audio, content_type)}
-    data = {
+    data: dict[str, str] = {
         "model": settings.sarvam_stt_model,
         "mode": "transcribe",
-        "language_code": lang,
     }
+    if lang:
+        data["language_code"] = lang
+    if codec:
+        data["input_audio_codec"] = codec
+
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         try:
             resp = await client.post(
@@ -76,13 +121,27 @@ async def transcribe(
             raise SpeechError("Could not reach the speech service.") from exc
 
     if resp.status_code >= 400:
-        logger.warning("sarvam_stt_error status=%s body=%s", resp.status_code, resp.text[:200])
-        raise SpeechError("Could not transcribe your voice. Please try again.")
+        msg = _parse_sarvam_error(resp)
+        logger.warning(
+            "sarvam_stt_error status=%s codec=%s lang=%s body=%s",
+            resp.status_code,
+            codec,
+            lang,
+            resp.text[:400],
+        )
+        if resp.status_code in (401, 403):
+            raise SpeechError(
+                "Speech service authentication failed. Check SARVAM_API_KEY on the server."
+            )
+        raise SpeechError(msg)
 
     payload = resp.json()
     transcript = (payload.get("transcript") or "").strip()
     if not transcript:
-        raise SpeechError("No speech detected. Please speak clearly and try again.")
+        logger.warning("sarvam_stt_empty_transcript payload=%s", str(payload)[:200])
+        raise SpeechError(
+            "No speech detected. Speak clearly for at least one second, then tap the mic again to stop."
+        )
     return TranscribeResult(
         transcript=transcript,
         language_code=payload.get("language_code"),
@@ -95,7 +154,7 @@ async def synthesize(
     language: str | None = None,
 ) -> SynthesizeResult:
     """Convert text to speech via Sarvam Bulbul TTS."""
-    lang = _language_code(language)
+    lang = _language_code(language) or "hi-IN"
     body = {
         "text": text[:2500],
         "language_code": lang,

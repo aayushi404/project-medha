@@ -1,4 +1,5 @@
 import { API_BASE_URL, apiFetch, extractErrorMessage } from "@/lib/api";
+import { prepareAudioForStt } from "@/lib/speech-input";
 
 export type TranscribeResult = {
   transcript: string;
@@ -16,8 +17,11 @@ export async function transcribeAudio(
   token: string | null,
   language?: string | null,
 ): Promise<TranscribeResult> {
+  const prepared = await prepareAudioForStt(blob);
+  const isWav = prepared.type.includes("wav");
+
   const form = new FormData();
-  form.append("file", blob, blob.type.includes("wav") ? "audio.wav" : "audio.webm");
+  form.append("file", prepared, isWav ? "audio.wav" : "audio.webm");
   if (language) form.append("language", language);
 
   const headers: Record<string, string> = {};

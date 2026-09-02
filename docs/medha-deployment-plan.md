@@ -105,7 +105,7 @@ service by hand.
    | `COOKIE_SAMESITE` | `none` |
    | `LLM_PROVIDER` | `gemini` |
    | `GEMINI_MODEL` | `gemini-flash-lite-latest` |
-   | `SARVAM_API_KEY` | your Sarvam key (voice STT/TTS) |
+   | `SARVAM_API_KEY` | your Sarvam key (**required for voice mic / talk mode**) |
 
 5. Create the service. Note the URL (e.g. `https://medha-backend.onrender.com`).
 6. Check `<render-url>/health` → `{"status":"ok"}` and `<render-url>/docs` loads.

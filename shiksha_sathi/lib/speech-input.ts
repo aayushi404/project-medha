@@ -7,6 +7,9 @@
 
 export type RecordingState = "idle" | "recording" | "processing";
 
+const MIN_RECORDING_BYTES = 800;
+const MIN_RECORDING_MS = 600;
+
 /** Minimal Web Speech API types — not included in all TS DOM lib builds. */
 interface BrowserSpeechRecognitionAlternative {
   transcript: string;
@@ -65,23 +68,114 @@ export function browserSttSupported(): boolean {
   return getRecognition() !== null;
 }
 
+function writeString(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i += 1) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+function mixToMono(buffer: AudioBuffer): Float32Array {
+  if (buffer.numberOfChannels === 1) {
+    return buffer.getChannelData(0).slice();
+  }
+  const length = buffer.length;
+  const out = new Float32Array(length);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch += 1) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i += 1) {
+      out[i] = (out[i] ?? 0) + data[i]! / buffer.numberOfChannels;
+    }
+  }
+  return out;
+}
+
+function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {
+  const numSamples = samples.length;
+  const dataSize = numSamples * 2;
+  const out = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(out);
+
+  writeString(view, 0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(view, 8, "WAVE");
+  writeString(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, "data");
+  view.setUint32(40, dataSize, true);
+
+  let offset = 44;
+  for (let i = 0; i < numSamples; i += 1) {
+    const s = Math.max(-1, Math.min(1, samples[i] ?? 0));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    offset += 2;
+  }
+  return out;
+}
+
+/**
+ * Convert browser MediaRecorder output (often webm/opus) to 16 kHz mono WAV
+ * for Sarvam STT, which works most reliably with WAV.
+ */
+export async function prepareAudioForStt(blob: Blob): Promise<Blob> {
+  if (blob.size < MIN_RECORDING_BYTES) {
+    throw new Error("Recording too short. Hold the mic a little longer while you speak.");
+  }
+
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    const decodeCtx = new AudioContext();
+    const decoded = await decodeCtx.decodeAudioData(arrayBuffer.slice(0));
+    await decodeCtx.close();
+
+    const targetRate = 16000;
+    const offline = new OfflineAudioContext(
+      1,
+      Math.max(1, Math.ceil(decoded.duration * targetRate)),
+      targetRate,
+    );
+    const source = offline.createBufferSource();
+    source.buffer = decoded;
+    source.connect(offline.destination);
+    source.start(0);
+    const rendered = await offline.startRendering();
+    const mono = mixToMono(rendered);
+    const wav = encodeWav(mono, targetRate);
+    return new Blob([wav], { type: "audio/wav" });
+  } catch {
+    // If decode fails (rare codec), send the original blob.
+    return blob;
+  }
+}
+
 export class VoiceRecorder {
   private media: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private stream: MediaStream | null = null;
+  private startedAt = 0;
 
   async start(): Promise<void> {
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+    });
     const mime =
       MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : MediaRecorder.isTypeSupported("audio/webm")
           ? "audio/webm"
-          : "";
+          : MediaRecorder.isTypeSupported("audio/mp4")
+            ? "audio/mp4"
+            : "";
     this.media = mime
       ? new MediaRecorder(this.stream, { mimeType: mime })
       : new MediaRecorder(this.stream);
     this.chunks = [];
+    this.startedAt = Date.now();
     this.media.ondataavailable = (e) => {
       if (e.data.size > 0) this.chunks.push(e.data);
     };
@@ -95,6 +189,14 @@ export class VoiceRecorder {
         reject(new Error("Not recording"));
         return;
       }
+
+      const elapsed = Date.now() - this.startedAt;
+      if (elapsed < MIN_RECORDING_MS) {
+        reject(new Error("Recording too short. Hold the mic a little longer while you speak."));
+        this.cancel();
+        return;
+      }
+
       rec.onstop = () => {
         const type = rec.mimeType || "audio/webm";
         const blob = new Blob(this.chunks, { type });
@@ -105,6 +207,11 @@ export class VoiceRecorder {
         this.cleanup();
         reject(new Error("Recording failed"));
       };
+      try {
+        rec.requestData();
+      } catch {
+        /* older browsers */
+      }
       rec.stop();
     });
   }
@@ -123,10 +230,11 @@ export class VoiceRecorder {
     this.stream = null;
     this.media = null;
     this.chunks = [];
+    this.startedAt = 0;
   }
 }
 
-/** One-shot browser speech recognition (fallback when Sarvam STT fails). */
+/** Live mic dictation — only when Sarvam is unavailable (not after a failed upload). */
 export function listenWithBrowser(
   lang: string,
   timeoutMs = 15000,
@@ -139,6 +247,8 @@ export function listenWithBrowser(
     }
 
     let settled = false;
+    let gotResult = false;
+
     const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
@@ -153,13 +263,18 @@ export function listenWithBrowser(
 
     rec.onresult = (event: BrowserSpeechRecognitionEvent) => {
       const text = event.results[0]?.[0]?.transcript?.trim() ?? "";
-      finish(() => (text ? resolve(text) : reject(new Error("No speech detected."))));
+      if (text) {
+        gotResult = true;
+        finish(() => resolve(text));
+      }
     };
     rec.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
       finish(() => reject(new Error(event.error || "Speech recognition failed")));
     };
     rec.onend = () => {
-      finish(() => reject(new Error("No speech detected.")));
+      if (!gotResult) {
+        finish(() => reject(new Error("No speech detected. Try speaking right after tapping the mic.")));
+      }
     };
 
     const timer = setTimeout(() => {

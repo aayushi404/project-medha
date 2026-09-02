@@ -87,15 +87,8 @@ export function VoiceChatPanel({
   const transcribe = useCallback(
     async (blob?: Blob): Promise<string | null> => {
       if (blob) {
-        try {
-          const result = await transcribeAudio(blob, accessToken, language);
-          return result.transcript;
-        } catch {
-          if (browserSttSupported()) {
-            return listenWithBrowser(language ?? "hi-IN");
-          }
-          throw new Error(copy.voice.transcribeFailed);
-        }
+        const result = await transcribeAudio(blob, accessToken, language);
+        return result.transcript;
       }
       if (browserSttSupported()) {
         return listenWithBrowser(language ?? "hi-IN");
