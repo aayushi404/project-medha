@@ -50,7 +50,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      // the authenticated effect above shows the role confirmation, then routes
+      // the authenticated effect above shows the role confirmation, then routes #Mannu Yadav
     } catch (err) {
       setCameFromForm(false);
       if (err instanceof AuthError && err.code === "PENDING_APPROVAL") {
