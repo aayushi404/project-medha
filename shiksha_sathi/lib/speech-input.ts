@@ -7,13 +7,48 @@
 
 export type RecordingState = "idle" | "recording" | "processing";
 
-type SpeechRecognitionCtor = new () => SpeechRecognition;
+/** Minimal Web Speech API types — not included in all TS DOM lib builds. */
+interface BrowserSpeechRecognitionAlternative {
+  transcript: string;
+}
 
-function getRecognition(): SpeechRecognition | null {
+interface BrowserSpeechRecognitionResult {
+  readonly [index: number]: BrowserSpeechRecognitionAlternative;
+  readonly length: number;
+}
+
+interface BrowserSpeechRecognitionResultList {
+  readonly [index: number]: BrowserSpeechRecognitionResult;
+  readonly length: number;
+}
+
+interface BrowserSpeechRecognitionEvent extends Event {
+  readonly results: BrowserSpeechRecognitionResultList;
+}
+
+interface BrowserSpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+}
+
+interface BrowserSpeechRecognition {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  continuous: boolean;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type BrowserSpeechRecognitionCtor = new () => BrowserSpeechRecognition;
+
+function getRecognition(): BrowserSpeechRecognition | null {
   if (typeof window === "undefined") return null;
   const w = window as Window & {
-    SpeechRecognition?: SpeechRecognitionCtor;
-    webkitSpeechRecognition?: SpeechRecognitionCtor;
+    SpeechRecognition?: BrowserSpeechRecognitionCtor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionCtor;
   };
   const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
   return Ctor ? new Ctor() : null;
@@ -116,11 +151,11 @@ export function listenWithBrowser(
     rec.maxAlternatives = 1;
     rec.continuous = false;
 
-    rec.onresult = (event) => {
+    rec.onresult = (event: BrowserSpeechRecognitionEvent) => {
       const text = event.results[0]?.[0]?.transcript?.trim() ?? "";
       finish(() => (text ? resolve(text) : reject(new Error("No speech detected."))));
     };
-    rec.onerror = (event) => {
+    rec.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
       finish(() => reject(new Error(event.error || "Speech recognition failed")));
     };
     rec.onend = () => {
