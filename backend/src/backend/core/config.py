@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     chat_rate_limit_per_min: int = 6
     chat_rate_limit_per_day: int = 200
 
+    # Sarvam AI — speech (STT/TTS) for voice input and conversational mode
+    sarvam_api_key: str = ""
+    sarvam_stt_model: str = "saaras:v3"
+    sarvam_tts_model: str = "bulbul:v3"
+    sarvam_tts_speaker: str = "shubh"
+
 
 @lru_cache
 def get_settings() -> Settings:

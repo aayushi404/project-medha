@@ -11,11 +11,13 @@ from backend.core.errors import install_error_handlers
 from backend.core.logging import configure_logging
 from backend.chat.router import router as chat_router
 from backend.curriculum.router import router as curriculum_router
+from backend.english.router import router as english_router
 from backend.modules.router import router as modules_router
 from backend.onboarding.router import router as onboarding_router
 from backend.principal.router import router as principal_router
 from backend.profile.router import router as profile_router
 from backend.reference.router import router as reference_router
+from backend.speech.router import router as speech_router
 from backend.student.router import router as student_router
 from backend.teacher.router import router as teacher_router
 from backend.tutor.router import router as tutor_router
@@ -67,6 +69,8 @@ app.include_router(curriculum_router)
 app.include_router(profile_router)
 app.include_router(chat_router)
 app.include_router(tutor_router)
+app.include_router(english_router)
+app.include_router(speech_router)
 app.include_router(modules_router)
 
 

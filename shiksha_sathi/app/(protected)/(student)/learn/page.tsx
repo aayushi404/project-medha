@@ -11,6 +11,7 @@ import {
   SubjectChapterBar,
   useSubjectChapter,
 } from "@/components/student/subject-chapter-bar";
+import { VoiceChatLauncher } from "@/components/voice/voice-chat-panel";
 import { createTutorSession } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
 import { useAuth } from "@/lib/auth-context";
@@ -190,6 +191,17 @@ export default function LearnPage() {
         disabled={busy}
         placeholder={canAsk ? copy.student.askPlaceholder : copy.student.pickPlaceholder}
         onSend={(t) => void runMessage(t)}
+        accessToken={accessToken}
+        language="hi-BiharBoli"
+      />
+
+      <VoiceChatLauncher
+        config={{
+          accessToken,
+          language: "hi-BiharBoli",
+          ensureSession,
+          messagePath: (id) => `/tutor/sessions/${id}/messages`,
+        }}
       />
     </main>
   );

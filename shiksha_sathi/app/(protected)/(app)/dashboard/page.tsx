@@ -9,6 +9,7 @@ import { ChapterHistory } from "@/components/dashboard/chapter-history";
 import { Composer } from "@/components/dashboard/composer";
 import { MessageThread, type UiMessage } from "@/components/dashboard/message-thread";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { VoiceChatLauncher } from "@/components/voice/voice-chat-panel";
 import { createSession, type ActivityContent, type QuizContent } from "@/lib/api";
 import { ackLine, extractJson } from "@/lib/artifact";
 import { useAuth } from "@/lib/auth-context";
@@ -231,7 +232,21 @@ export default function DashboardPage() {
         />
       )}
 
-      <Composer disabled={busy} onSend={(t) => void runMessage(t)} />
+      <Composer
+        disabled={busy}
+        onSend={(t) => void runMessage(t)}
+        accessToken={accessToken}
+        language={profile?.preferred_language}
+      />
+
+      <VoiceChatLauncher
+        config={{
+          accessToken,
+          language: profile?.preferred_language,
+          ensureSession,
+          messagePath: (id) => `/chat/sessions/${id}/messages`,
+        }}
+      />
     </main>
   );
 }

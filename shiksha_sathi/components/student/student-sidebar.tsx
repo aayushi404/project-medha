@@ -4,6 +4,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import {
   BookOpen,
   ChevronUp,
+  Languages,
   Library,
   Menu,
   MessagesSquare,
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 
 const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[] = [
   { href: "/learn", navKey: "ask", icon: MessagesSquare },
+  { href: "/english", navKey: "english", icon: Languages },
   { href: "/practice", navKey: "practice", icon: PencilRuler },
   { href: "/notes", navKey: "notes", icon: NotebookText },
   { href: "/library", navKey: "library", icon: Library },

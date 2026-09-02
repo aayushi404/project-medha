@@ -545,3 +545,31 @@ export const listTutorSessions = (token: string | null) =>
 
 export const getTutorSession = (token: string | null, id: string) =>
   json<TutorSessionDetail>(apiFetch(`/tutor/sessions/${id}`, { token }));
+
+// --- Learn English (student) ---
+
+export type EnglishSession = {
+  id: string;
+  lesson_topic: string | null;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EnglishMessage = {
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
+};
+
+export type EnglishSessionDetail = EnglishSession & { messages: EnglishMessage[] };
+
+export const createEnglishSession = (
+  token: string | null,
+  body: { lesson_topic?: string | null } = {},
+) => json<EnglishSession>(apiFetch("/english/sessions", { method: "POST", token, body }));
+
+export const getEnglishSession = (token: string | null, id: string) =>
+  json<EnglishSessionDetail>(apiFetch(`/english/sessions/${id}`, { token }));
+
