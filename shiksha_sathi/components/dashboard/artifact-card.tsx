@@ -3,25 +3,32 @@
 import {
   CircleCheck,
   Clock,
+  Download,
   HelpCircle,
   Lightbulb,
+  Loader2,
   Package,
+  Presentation,
   Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
-import type { ActivityContent, QuizContent } from "@/lib/api";
+import type { ActivityContent, DeckContent, QuizContent } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
+import { downloadFile } from "@/lib/download";
 import { cn } from "@/lib/utils";
 
-type ArtifactKind = "explanation" | "quiz" | "activity";
+type ArtifactKind = "explanation" | "quiz" | "activity" | "ppt";
 
 const FRAME: Record<ArtifactKind, { icon: LucideIcon; label: string; accent: string }> = {
   explanation: { icon: Lightbulb, label: "Explanation", accent: "bg-gold/15 text-earth" },
   quiz: { icon: HelpCircle, label: "Quiz", accent: "bg-accent text-terracotta" },
   activity: { icon: Users, label: "Class activity", accent: "bg-sage/15 text-sage" },
+  ppt: { icon: Presentation, label: "Slides", accent: "bg-accent text-terracotta" },
 };
 
 /** Labelled card chrome shared by every artifact type. */
@@ -329,18 +336,108 @@ function ActivityView({ content }: { content: ActivityContent }) {
   );
 }
 
+// --- slide deck -------------------------------------------------------
+
+function DeckView({
+  content,
+  downloadUrl,
+  filename,
+}: {
+  content: DeckContent;
+  downloadUrl?: string;
+  filename?: string;
+}) {
+  const copy = useCopy();
+  const { accessToken } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const slides = content.slides ?? [];
+
+  async function onDownload() {
+    if (!downloadUrl || busy) return;
+    setBusy(true);
+    try {
+      await downloadFile(downloadUrl, accessToken, `${filename || "medha-slides"}.pptx`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : copy.streamError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ArtifactFrame
+      kind="ppt"
+      meta={copy.deckSlides(slides.length)}
+      action={
+        downloadUrl ? (
+          <button
+            type="button"
+            onClick={onDownload}
+            disabled={busy}
+            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline disabled:opacity-50"
+          >
+            {busy ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Download className="size-3" />
+            )}
+            {copy.deckDownload}
+          </button>
+        ) : null
+      }
+    >
+      {content.subtitle ? (
+        <p className="mb-2 text-[11px] text-muted-foreground">{content.subtitle}</p>
+      ) : null}
+      <ol className="flex flex-col gap-2.5">
+        {slides.map((s, i) => (
+          <li key={i} className="rounded-xl border border-border/70 p-3">
+            <div className="flex items-start gap-2.5">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-medium tabular-nums">
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{s.heading}</p>
+                {s.bullets?.length ? (
+                  <ul className="mt-1.5 flex list-disc flex-col gap-0.5 pl-4 text-[13px] text-muted-foreground">
+                    {s.bullets.map((b, j) => (
+                      <li key={j}>{b}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </ArtifactFrame>
+  );
+}
+
 export function ArtifactCard({
   type,
   content,
   interactive,
+  downloadUrl,
+  filename,
 }: {
-  type: "quiz" | "activity";
-  content: QuizContent | ActivityContent;
+  type: "quiz" | "activity" | "ppt";
+  content: QuizContent | ActivityContent | DeckContent;
   interactive?: boolean;
+  downloadUrl?: string;
+  filename?: string;
 }) {
-  return type === "quiz" ? (
-    <QuizView content={content as QuizContent} interactive={interactive} />
-  ) : (
-    <ActivityView content={content as ActivityContent} />
-  );
+  if (type === "quiz") {
+    return <QuizView content={content as QuizContent} interactive={interactive} />;
+  }
+  if (type === "ppt") {
+    return (
+      <DeckView
+        content={content as DeckContent}
+        downloadUrl={downloadUrl}
+        filename={filename}
+      />
+    );
+  }
+  return <ActivityView content={content as ActivityContent} />;
 }

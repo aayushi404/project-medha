@@ -1,5 +1,6 @@
 import uuid
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.core.ownership import assert_owned
@@ -19,9 +20,11 @@ from backend.modules.schemas import (
     ModuleDetailOut,
     ModuleListItem,
 )
+from backend.ppt.builder import render_pptx, slugify_filename
+from backend.ppt.schema import DeckParseError, parse_deck
 
 # canonical display order for artifact types
-_ARTIFACT_ORDER = {"explanation": 0, "quiz": 1, "activity": 2}
+_ARTIFACT_ORDER = {"explanation": 0, "quiz": 1, "activity": 2, "ppt": 3}
 
 
 def _order_key(artifact_type: str) -> int:
@@ -121,6 +124,40 @@ def get_module_detail(db: Session, teacher: Teacher, module_id: uuid.UUID) -> Mo
         artifacts=[ArtifactOut.model_validate(a) for a in artifacts],
         feedback=FeedbackOut.model_validate(feedback) if feedback is not None else None,
     )
+
+
+def render_module_ppt(
+    db: Session, teacher: Teacher, module_id: uuid.UUID, artifact_id: uuid.UUID
+) -> tuple[bytes, str]:
+    """Render a module's `ppt` artifact to .pptx bytes on demand.
+
+    Returns (data, filename_slug). 404 unless the module is this teacher's and
+    the artifact is a `ppt` artifact of that module; 422 if the stored spec
+    can't be rendered."""
+    module = _load_owned_module(db, teacher, module_id)
+    artifact = db.get(ModuleArtifact, artifact_id)
+    if (
+        artifact is None
+        or artifact.module_id != module.id
+        or artifact.artifact_type != "ppt"
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found.")
+
+    try:
+        deck = parse_deck(artifact.content_json)
+    except DeckParseError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "These slides can't be rendered. Try generating them again.",
+        ) from exc
+
+    grade = db.get(Grade, module.grade_id)
+    subject = db.get(Subject, module.subject_id)
+    footer = (
+        f"Medha · {grade.label} {subject.name}" if grade and subject else "Medha"
+    )
+    data = render_pptx(deck, footer=footer)
+    return data, slugify_filename(module.title)
 
 
 def delete_module(db: Session, teacher: Teacher, module_id: uuid.UUID) -> None:

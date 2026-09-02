@@ -64,4 +64,4 @@ class MessageCreateIn(BaseModel):
 
 class GenerateIn(BaseModel):
     # 'explanation' is produced by /messages, not here
-    artifact_type: Literal["quiz", "activity"]
+    artifact_type: Literal["quiz", "activity", "ppt"]

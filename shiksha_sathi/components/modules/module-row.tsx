@@ -1,6 +1,13 @@
 "use client";
 
-import { ChevronRight, HelpCircle, Lightbulb, Users, type LucideIcon } from "lucide-react";
+import {
+  ChevronRight,
+  HelpCircle,
+  Lightbulb,
+  Presentation,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 
 import type { ArtifactType, ModuleListItem } from "@/lib/api";
@@ -12,9 +19,10 @@ const TYPE_META: Record<ArtifactType, { icon: LucideIcon; className: string }> =
   explanation: { icon: Lightbulb, className: "text-earth" },
   quiz: { icon: HelpCircle, className: "text-terracotta" },
   activity: { icon: Users, className: "text-sage" },
+  ppt: { icon: Presentation, className: "text-terracotta" },
 };
 
-const ORDER: ArtifactType[] = ["explanation", "quiz", "activity"];
+const ORDER: ArtifactType[] = ["explanation", "quiz", "activity", "ppt"];
 
 export function ModuleRow({ module }: { module: ModuleListItem }) {
   const copy = useCopy();

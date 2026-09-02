@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_teacher
@@ -13,6 +13,7 @@ from backend.modules.schemas import (
     ModuleDetailOut,
     ModuleListItem,
 )
+from backend.ppt.builder import PPTX_MEDIA_TYPE
 
 router = APIRouter(tags=["modules"])
 
@@ -35,6 +36,21 @@ def get_module(
     db: Session = Depends(get_db),
 ) -> ModuleDetailOut:
     return service.get_module_detail(db, current_teacher, module_id)
+
+
+@router.get("/modules/{module_id}/artifacts/{artifact_id}/pptx")
+def download_module_ppt(
+    module_id: uuid.UUID,
+    artifact_id: uuid.UUID,
+    current_teacher: Teacher = Depends(get_current_teacher),
+    db: Session = Depends(get_db),
+) -> Response:
+    data, slug = service.render_module_ppt(db, current_teacher, module_id, artifact_id)
+    return Response(
+        content=data,
+        media_type=PPTX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{slug}.pptx"'},
+    )
 
 
 @router.delete("/modules/{module_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -57,6 +57,17 @@ class Settings(BaseSettings):
     chat_rate_limit_per_min: int = 6
     chat_rate_limit_per_day: int = 200
 
+    # --- PPT object storage (Tier 2, unused today) ---
+    # Generated slide decks are rendered from a stored spec on demand
+    # (backend.ppt), so no object storage is needed while decks are text-only.
+    # When decks gain images / thumbnails / cross-instance sharing, set these to
+    # an S3-compatible bucket (e.g. Cloudflare R2) and switch downloads to
+    # presigned URLs. See the plan's "Tier 2" section.
+    ppt_storage_endpoint_url: str = ""
+    ppt_storage_bucket: str = ""
+    ppt_storage_access_key_id: str = ""
+    ppt_storage_secret_access_key: str = ""
+
     # Sarvam AI — speech (STT/TTS) for voice input and conversational mode
     sarvam_api_key: str = ""
     sarvam_stt_model: str = "saaras:v3"

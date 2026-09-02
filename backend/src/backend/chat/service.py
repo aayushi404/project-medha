@@ -24,8 +24,10 @@ from backend.db.models import (
 from backend.llm import LLMError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.prompts import activity as activity_prompt
 from backend.llm.prompts import explanation
+from backend.llm.prompts import ppt as ppt_prompt
 from backend.llm.prompts import quiz as quiz_prompt
 from backend.llm.prompts import title as title_prompt
+from backend.ppt.schema import DeckParseError, parse_deck
 from backend.retrieval.retriever import Retriever
 
 logger = logging.getLogger("backend.chat")
@@ -34,7 +36,7 @@ _ERR_GENERATION = "Could not generate a response. Please try again in a moment."
 _ERR_EMPTY = "Got an empty response. Please try again."
 _ERR_PARSE = "The response wasn't formatted correctly. Please try again."
 
-_GEN_BUILDERS = {"quiz": quiz_prompt, "activity": activity_prompt}
+_GEN_BUILDERS = {"quiz": quiz_prompt, "activity": activity_prompt, "ppt": ppt_prompt}
 
 
 # ---------------------------------------------------------------- sessions
@@ -220,6 +222,9 @@ def _ack_line(artifact_type: str, content_json: dict) -> str:
     if artifact_type == "quiz":
         n = len(content_json.get("questions", []))
         return f"Quiz ready — {n} question{'' if n == 1 else 's'}."
+    if artifact_type == "ppt":
+        n = len(content_json.get("slides", []))
+        return f"Slides ready — {n} slide{'' if n == 1 else 's'}."
     title = (content_json.get("title") or "").strip()
     return f"Class activity ready{': ' + title if title else ''}."
 
@@ -329,10 +334,20 @@ async def run_generator(
     grade = db.get(Grade, session.grade_id)
     subject = db.get(Subject, session.subject_id)
     topic = db.get(CurriculumTopic, session.topic_id) if session.topic_id else None
-
-    query = _last_teacher_message(db, session.id) or (
-        topic.title if topic else f"{grade.label} {subject.name}"
+    chapter = (
+        db.get(CurriculumChapter, session.chapter_id) if session.chapter_id else None
     )
+
+    # what the deck / quiz / activity is *about*: the topic if one is picked,
+    # otherwise the chapter, otherwise just the subject.
+    subject_label = (
+        topic.title
+        if topic
+        else chapter.title
+        if chapter
+        else f"{grade.label} {subject.name}"
+    )
+    query = _last_teacher_message(db, session.id) or subject_label
 
     chunk_ids: list[uuid.UUID] = []
     chunks: list[str] = []
@@ -347,7 +362,7 @@ async def run_generator(
     system, messages = builder.build(
         grade_label=grade.label,
         subject_name=subject.name,
-        topic_title=topic.title if topic else "this topic",
+        topic_title=topic.title if topic else (chapter.title if chapter else "this topic"),
         topic_description=topic.description if topic else None,
         language=teacher.preferred_language,
         chunks=chunks,
@@ -376,8 +391,17 @@ async def run_generator(
         return
     content_json["_prompt_version"] = builder.VERSION
 
+    if artifact_type == "ppt":
+        # keep a spec we can't render out of the DB
+        try:
+            parse_deck(content_json)
+        except DeckParseError as exc:
+            logger.warning("ppt spec failed validation: %s", exc)
+            yield _sse("error", {"message": _ERR_PARSE})
+            return
+
     if session.title is None:
-        session.title = topic.title if topic else f"{grade.label} {subject.name}"
+        session.title = subject_label
     module = _upsert_module(db, teacher, session)
     if module.title in (None, "Untitled") and session.title:
         module.title = session.title

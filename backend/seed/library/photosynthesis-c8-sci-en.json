@@ -1,0 +1,91 @@
+{
+  "slug": "photosynthesis-c8-sci-en",
+  "language": "en",
+  "grade_label": "Class 8",
+  "subject_name": "Science",
+  "chapter_title": "How Plants Make Their Food",
+  "description": "How green plants make their own food by photosynthesis - a ready-to-present lesson.",
+  "tags": ["photosynthesis", "chlorophyll", "nutrition in plants", "food", "leaf"],
+  "spec": {
+    "title": "How Plants Make Their Food",
+    "subtitle": "Class 8 - Science",
+    "slides": [
+      {
+        "layout": "bullets",
+        "heading": "Where does a plant's food come from?",
+        "bullets": [
+          "Animals eat plants or other animals for food.",
+          "Green plants make their own food - they are called autotrophs.",
+          "The process is called photosynthesis.",
+          "It mostly happens in the green leaves."
+        ],
+        "notes": "Ask students what a plant 'eats'. Lead them to see that plants do not eat - they build food themselves."
+      },
+      {
+        "layout": "bullets",
+        "heading": "What photosynthesis needs",
+        "bullets": [
+          "Carbon dioxide - taken from air through tiny pores called stomata.",
+          "Water - absorbed by roots and carried up to the leaves.",
+          "Sunlight - the energy source.",
+          "Chlorophyll - the green pigment that traps sunlight."
+        ],
+        "notes": "List the four requirements on the board. Point out that only chlorophyll-containing cells can do this."
+      },
+      {
+        "layout": "summary",
+        "heading": "The photosynthesis word equation",
+        "bullets": [
+          "Carbon dioxide + Water --(sunlight, chlorophyll)--> Glucose + Oxygen",
+          "Glucose is the food; it is stored as starch.",
+          "Oxygen is released into the air as a by-product."
+        ],
+        "notes": "Write the equation once, then have the class repeat it aloud together."
+      },
+      {
+        "layout": "bullets",
+        "heading": "The role of the leaf",
+        "bullets": [
+          "Broad, flat shape catches maximum sunlight.",
+          "Stomata let carbon dioxide in and oxygen out.",
+          "Veins carry water in and food out.",
+          "Cells are packed with chloroplasts holding chlorophyll."
+        ],
+        "notes": "If a leaf is available, hold it up and point to the veins and the underside where stomata sit."
+      },
+      {
+        "layout": "bullets",
+        "heading": "Testing a leaf for starch",
+        "bullets": [
+          "Keep a plant in the dark for 2-3 days to remove stored starch.",
+          "Expose one leaf to sunlight, cover part of it with black paper.",
+          "Boil the leaf in water, then in alcohol to remove green colour.",
+          "Add iodine - the lit part turns blue-black, the covered part does not."
+        ],
+        "notes": "This is the classic starch test. Emphasise it shows starch forms only where light reached."
+      },
+      {
+        "layout": "bullets",
+        "heading": "Why photosynthesis matters",
+        "bullets": [
+          "It is the source of almost all food on Earth.",
+          "It puts oxygen into the air that we breathe.",
+          "It removes carbon dioxide, helping balance the atmosphere.",
+          "Fossil fuels are stored energy from ancient photosynthesis."
+        ],
+        "notes": "Connect to daily life: the rice, wheat and vegetables they ate today all trace back to photosynthesis."
+      },
+      {
+        "layout": "summary",
+        "heading": "Quick recap",
+        "bullets": [
+          "Green plants make food by photosynthesis.",
+          "Needs: carbon dioxide, water, sunlight, chlorophyll.",
+          "Makes: glucose (food) and oxygen.",
+          "Happens mainly in the leaves."
+        ],
+        "notes": "Cold-call four students, one point each, to close the lesson."
+      }
+    ]
+  }
+}

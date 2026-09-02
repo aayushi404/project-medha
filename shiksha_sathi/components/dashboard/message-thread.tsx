@@ -8,7 +8,12 @@ import remarkGfm from "remark-gfm";
 import { AssistantBody, AssistantMark, UserBubble } from "@/components/chat/turn";
 import { ArtifactCard } from "@/components/dashboard/artifact-card";
 import { ContentActions } from "@/components/dashboard/content-actions";
-import type { ActivityContent, QuizContent } from "@/lib/api";
+import {
+  modulePptUrl,
+  type ActivityContent,
+  type DeckContent,
+  type QuizContent,
+} from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
 import { useCopy } from "@/lib/copy";
 import { speakableContent, stripMarkdown } from "@/lib/speech";
@@ -20,18 +25,25 @@ export type UiMessage = {
   content: string;
   streaming?: boolean;
   failed?: boolean;
-  artifact?: { type: "quiz" | "activity"; content: QuizContent | ActivityContent };
+  artifact?: {
+    type: "quiz" | "activity" | "ppt";
+    content: QuizContent | ActivityContent | DeckContent;
+    moduleId?: string;
+    artifactId?: string;
+  };
 };
 
 function AssistantTurn({
   msg,
   onQuiz,
   onActivity,
+  onPpt,
   onRetry,
 }: {
   msg: UiMessage;
   onQuiz: () => void;
   onActivity: () => void;
+  onPpt: () => void;
   onRetry: () => void;
 }) {
   const copy = useCopy();
@@ -69,7 +81,22 @@ function AssistantTurn({
 
         {msg.artifact ? (
           <div className="mt-3">
-            <ArtifactCard type={msg.artifact.type} content={msg.artifact.content} />
+            <ArtifactCard
+              type={msg.artifact.type}
+              content={msg.artifact.content}
+              downloadUrl={
+                msg.artifact.type === "ppt" &&
+                msg.artifact.moduleId &&
+                msg.artifact.artifactId
+                  ? modulePptUrl(msg.artifact.moduleId, msg.artifact.artifactId)
+                  : undefined
+              }
+              filename={
+                msg.artifact.type === "ppt"
+                  ? (msg.artifact.content as DeckContent).title
+                  : undefined
+              }
+            />
           </div>
         ) : null}
 
@@ -81,6 +108,7 @@ function AssistantTurn({
             copyText={msg.content || undefined}
             onQuiz={onQuiz}
             onActivity={onActivity}
+            onPpt={onPpt}
             hide={msg.artifact ? [msg.artifact.type] : []}
           />
         ) : null}
@@ -93,6 +121,7 @@ type MessageThreadProps = {
   messages: UiMessage[];
   onQuiz: () => void;
   onActivity: () => void;
+  onPpt: () => void;
   onRetry: () => void;
   header?: React.ReactNode;
 };
@@ -101,6 +130,7 @@ export function MessageThread({
   messages,
   onQuiz,
   onActivity,
+  onPpt,
   onRetry,
   header,
 }: MessageThreadProps) {
@@ -133,6 +163,7 @@ export function MessageThread({
               msg={m}
               onQuiz={onQuiz}
               onActivity={onActivity}
+              onPpt={onPpt}
               onRetry={onRetry}
             />
           ),

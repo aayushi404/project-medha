@@ -7,10 +7,16 @@ import { toast } from "sonner";
 import { ContextBar } from "@/components/app/context-bar";
 import { ChapterHistory } from "@/components/dashboard/chapter-history";
 import { Composer } from "@/components/dashboard/composer";
+import { LibrarySuggestions } from "@/components/dashboard/library-suggestions";
 import { MessageThread, type UiMessage } from "@/components/dashboard/message-thread";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { VoiceChatLauncher } from "@/components/voice/voice-chat-panel";
-import { createSession, type ActivityContent, type QuizContent } from "@/lib/api";
+import {
+  createSession,
+  type ActivityContent,
+  type DeckContent,
+  type QuizContent,
+} from "@/lib/api";
 import { ackLine, extractJson } from "@/lib/artifact";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
@@ -122,7 +128,7 @@ export default function DashboardPage() {
     setBusy(false);
   }
 
-  async function runGenerate(type: "quiz" | "activity") {
+  async function runGenerate(type: "quiz" | "activity" | "ppt") {
     const id = await ensureSession();
     if (!id) return;
     setBusy(true);
@@ -145,13 +151,20 @@ export default function DashboardPage() {
         onToken: (t) => {
           acc += t;
         }, // raw JSON -- not shown; parsed on done
-        onDone: () => {
-          const parsed = extractJson<QuizContent | ActivityContent>(acc);
+        onDone: (payload) => {
+          const parsed = extractJson<QuizContent | ActivityContent | DeckContent>(acc);
           patchMessage(asstId, {
             streaming: false,
             content: ackLine(type, parsed),
             failed: !parsed,
-            artifact: parsed ? { type, content: parsed } : undefined,
+            artifact: parsed
+              ? {
+                  type,
+                  content: parsed,
+                  moduleId: payload.module_id,
+                  artifactId: payload.artifact_id,
+                }
+              : undefined,
           });
           if (parsed) setHistoryKey((k) => k + 1);
           else toast.error(copy.streamError);
@@ -194,9 +207,11 @@ export default function DashboardPage() {
             onExplain={() => void runMessage(copy.explanationPrompt)}
             onQuiz={() => void runGenerate("quiz")}
             onActivity={() => void runGenerate("activity")}
+            onPpt={() => void runGenerate("ppt")}
           />
           {hasChapter ? (
-            <div className="w-full max-w-2xl">
+            <div className="flex w-full max-w-2xl flex-col gap-4">
+              <LibrarySuggestions chapterId={chapterId!} />
               <ChapterHistory
                 gradeId={gradeId!}
                 subjectId={subjectId!}
@@ -204,6 +219,7 @@ export default function DashboardPage() {
                 refreshKey={historyKey}
                 onQuiz={() => void runGenerate("quiz")}
                 onActivity={() => void runGenerate("activity")}
+                onPpt={() => void runGenerate("ppt")}
                 defaultOpen
               />
             </div>
@@ -216,6 +232,7 @@ export default function DashboardPage() {
           messages={messages}
           onQuiz={() => void runGenerate("quiz")}
           onActivity={() => void runGenerate("activity")}
+          onPpt={() => void runGenerate("ppt")}
           onRetry={retryLast}
           header={
             hasChapter ? (
@@ -226,6 +243,7 @@ export default function DashboardPage() {
                 refreshKey={historyKey}
                 onQuiz={() => void runGenerate("quiz")}
                 onActivity={() => void runGenerate("activity")}
+                onPpt={() => void runGenerate("ppt")}
               />
             ) : null
           }

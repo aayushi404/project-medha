@@ -178,7 +178,7 @@ export type ChatSessionDetail = ChatSession & {
   module_id: string | null;
 };
 
-export type ArtifactType = "explanation" | "quiz" | "activity";
+export type ArtifactType = "explanation" | "quiz" | "activity" | "ppt";
 
 export type QuizContent = {
   questions: {
@@ -199,10 +199,27 @@ export type ActivityContent = {
   variation: string;
 };
 
+export type SlideSpec = {
+  layout?: string;
+  heading: string;
+  bullets: string[];
+  notes?: string;
+};
+
+export type DeckContent = {
+  title: string;
+  subtitle?: string;
+  slides: SlideSpec[];
+};
+
 export type ModuleArtifact = {
   id: string;
   artifact_type: ArtifactType;
-  content_json: ({ text?: string } & Partial<QuizContent> & Partial<ActivityContent>) | null;
+  content_json:
+    | ({ text?: string } & Partial<QuizContent> &
+        Partial<ActivityContent> &
+        Partial<DeckContent>)
+    | null;
   created_at: string;
 };
 
@@ -313,6 +330,64 @@ export const sendFeedback = (
   id: string,
   body: { rating: 1 | -1; comment?: string | null },
 ) => json<Feedback>(apiFetch(`/modules/${id}/feedback`, { method: "POST", token, body }));
+
+/** Authenticated URLs for a rendered .pptx -- fetch via `downloadFile` (a plain
+ *  <a href> can't send the bearer header). */
+export const modulePptUrl = (moduleId: string, artifactId: string) =>
+  `${API_BASE_URL}/modules/${moduleId}/artifacts/${artifactId}/pptx`;
+export const libraryPptUrl = (presentationId: string) =>
+  `${API_BASE_URL}/library/presentations/${presentationId}/pptx`;
+
+// --- curated presentation library ---
+
+export type LibraryPresentationItem = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  language: string;
+  grade_label: string | null;
+  subject_name: string | null;
+  chapter_title: string | null;
+  slide_count: number | null;
+  updated_at: string;
+};
+
+export type LibraryPresentationDetail = LibraryPresentationItem & {
+  tags: string[] | null;
+  spec: DeckContent | null;
+};
+
+export const listLibraryPresentations = (
+  token: string | null,
+  filter: {
+    gradeId?: string;
+    subjectId?: string;
+    chapterId?: string;
+    topicId?: string;
+    language?: string;
+    q?: string;
+    limit?: number;
+  } = {},
+) => {
+  const qs = new URLSearchParams();
+  if (filter.gradeId) qs.set("grade_id", filter.gradeId);
+  if (filter.subjectId) qs.set("subject_id", filter.subjectId);
+  if (filter.chapterId) qs.set("chapter_id", filter.chapterId);
+  if (filter.topicId) qs.set("topic_id", filter.topicId);
+  if (filter.language) qs.set("language", filter.language);
+  if (filter.q) qs.set("q", filter.q);
+  if (filter.limit) qs.set("limit", String(filter.limit));
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return json<LibraryPresentationItem[]>(
+    apiFetch(`/library/presentations${suffix}`, { token }),
+  );
+};
+
+export const getLibraryPresentation = (token: string | null, id: string) =>
+  json<LibraryPresentationDetail>(
+    apiFetch(`/library/presentations/${id}`, { token }),
+  );
 
 // ---------------------------------------------------------------------------
 // Role-based registration + approval. Registering never logs you in -- it

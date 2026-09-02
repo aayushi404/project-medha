@@ -5,6 +5,7 @@ import {
   HelpCircle,
   Lightbulb,
   Loader2,
+  Presentation,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -30,9 +31,10 @@ const TYPE_META: Record<ArtifactType, { icon: LucideIcon; className: string }> =
   explanation: { icon: Lightbulb, className: "text-earth" },
   quiz: { icon: HelpCircle, className: "text-terracotta" },
   activity: { icon: Users, className: "text-sage" },
+  ppt: { icon: Presentation, className: "text-terracotta" },
 };
 
-const ORDER: ArtifactType[] = ["explanation", "quiz", "activity"];
+const ORDER: ArtifactType[] = ["explanation", "quiz", "activity", "ppt"];
 
 type ListState =
   | { key: string; modules: ModuleListItem[] }
@@ -47,6 +49,7 @@ type ChapterHistoryProps = {
   refreshKey: number;
   onQuiz: () => void;
   onActivity: () => void;
+  onPpt: () => void;
   defaultOpen?: boolean;
 };
 
@@ -57,6 +60,7 @@ export function ChapterHistory({
   refreshKey,
   onQuiz,
   onActivity,
+  onPpt,
   defaultOpen = false,
 }: ChapterHistoryProps) {
   const copy = useCopy();
@@ -143,6 +147,7 @@ export function ChapterHistory({
                     item={m}
                     onQuiz={onQuiz}
                     onActivity={onActivity}
+                    onPpt={onPpt}
                   />
                 ))}
               </div>
@@ -163,10 +168,12 @@ function HistoryModule({
   item,
   onQuiz,
   onActivity,
+  onPpt,
 }: {
   item: ModuleListItem;
   onQuiz: () => void;
   onActivity: () => void;
+  onPpt: () => void;
 }) {
   const copy = useCopy();
   const { accessToken } = useAuth();
@@ -245,18 +252,19 @@ function HistoryModule({
             <>
               {artifacts.map((a) => (
                 <div key={a.id} className="flex flex-col gap-2">
-                  <ArtifactView artifact={a} />
+                  <ArtifactView artifact={a} moduleId={item.id} />
                   <ContentActions
                     speechId={a.id}
                     speechText={speakableArtifact(a)}
                     onQuiz={onQuiz}
                     onActivity={onActivity}
+                    onPpt={onPpt}
                     hide={
-                      a.artifact_type === "quiz"
-                        ? ["quiz"]
-                        : a.artifact_type === "activity"
-                          ? ["activity"]
-                          : []
+                      a.artifact_type === "quiz" ||
+                      a.artifact_type === "activity" ||
+                      a.artifact_type === "ppt"
+                        ? [a.artifact_type]
+                        : []
                     }
                   />
                 </div>

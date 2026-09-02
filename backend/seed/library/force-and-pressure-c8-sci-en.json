@@ -1,0 +1,92 @@
+{
+  "slug": "force-and-pressure-c8-sci-en",
+  "language": "en",
+  "grade_label": "Class 8",
+  "subject_name": "Science",
+  "chapter_title": "Force and Pressure",
+  "description": "Force and pressure - what a force does, contact and non-contact forces, and why pressure depends on area.",
+  "tags": ["force", "pressure", "contact force", "gravity", "area"],
+  "spec": {
+    "title": "Force and Pressure",
+    "subtitle": "Class 8 - Science",
+    "slides": [
+      {
+        "layout": "bullets",
+        "heading": "What is a force?",
+        "bullets": [
+          "A push or a pull on an object.",
+          "A force has both size and direction.",
+          "Forces are measured in newtons (N).",
+          "Two or more forces can add up or cancel out."
+        ],
+        "notes": "Push a desk one way, then have a student push the other way - show forces in opposite directions."
+      },
+      {
+        "layout": "bullets",
+        "heading": "What a force can do",
+        "bullets": [
+          "Make a still object start moving.",
+          "Make a moving object speed up, slow down or stop.",
+          "Change the direction of motion.",
+          "Change the shape of an object."
+        ],
+        "notes": "Demonstrate with a ball roll, a catch, and squeezing a piece of dough or a sponge."
+      },
+      {
+        "layout": "two_column",
+        "heading": "Contact and non-contact forces",
+        "bullets": [
+          "Contact force - acts only by touching: muscular force, friction.",
+          "Non-contact force - acts from a distance.",
+          "Magnetic force - between magnets and magnetic materials.",
+          "Gravitational force - pulls every object towards the Earth."
+        ],
+        "notes": "Drop a chalk piece (gravity, non-contact) and lift a book (muscular, contact)."
+      },
+      {
+        "layout": "bullets",
+        "heading": "What is pressure?",
+        "bullets": [
+          "Pressure = force divided by the area it acts on.",
+          "Same force on a smaller area gives more pressure.",
+          "Same force on a larger area gives less pressure.",
+          "Measured in newtons per square metre (pascal)."
+        ],
+        "notes": "Press a pencil between two fingers - the sharp tip hurts more though the force is equal."
+      },
+      {
+        "layout": "bullets",
+        "heading": "Pressure in everyday life",
+        "bullets": [
+          "Knives and needles are sharp to raise pressure and cut easily.",
+          "School bags have wide straps to lower pressure on the shoulder.",
+          "A tractor has wide tyres so it does not sink in soft soil.",
+          "Nails are pointed; hammers are broad."
+        ],
+        "notes": "Ask students for two more examples of shapes designed to raise or lower pressure."
+      },
+      {
+        "layout": "bullets",
+        "heading": "Pressure by liquids and gases",
+        "bullets": [
+          "Liquids press on the walls and bottom of their container.",
+          "Liquid pressure increases with depth.",
+          "Gases also exert pressure in all directions - like air in a balloon.",
+          "The atmosphere presses on us from all sides."
+        ],
+        "notes": "A tin with holes at different heights squirts water farther from the lower holes - deeper means more pressure."
+      },
+      {
+        "layout": "summary",
+        "heading": "Quick recap",
+        "bullets": [
+          "Force is a push or pull; it changes motion or shape.",
+          "Contact forces need touching; gravity and magnetism act at a distance.",
+          "Pressure = force / area.",
+          "Small area -> high pressure; large area -> low pressure."
+        ],
+        "notes": "Four students, one point each, to close the lesson."
+      }
+    ]
+  }
+}

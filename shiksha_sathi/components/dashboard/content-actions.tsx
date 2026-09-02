@@ -16,7 +16,7 @@ import { SpeakButton } from "@/components/chat/speak-button";
 import { useCopy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
-type GenKind = "quiz" | "activity";
+type GenKind = "quiz" | "activity" | "ppt";
 
 function Pill({
   onClick,
@@ -46,8 +46,8 @@ function Pill({
 
 /**
  * The row of actions under a block of AI-generated content: read aloud, copy,
- * and "turn this into ..." generators. Mind map / PPT are stubbed until the
- * backend can produce them.
+ * and "turn this into ..." generators. Mind map is stubbed until the backend
+ * can produce it.
  */
 export function ContentActions({
   speechId,
@@ -55,6 +55,7 @@ export function ContentActions({
   copyText,
   onQuiz,
   onActivity,
+  onPpt,
   hide = [],
   className,
 }: {
@@ -63,6 +64,7 @@ export function ContentActions({
   copyText?: string;
   onQuiz?: () => void;
   onActivity?: () => void;
+  onPpt?: () => void;
   hide?: GenKind[];
   className?: string;
 }) {
@@ -80,7 +82,7 @@ export function ContentActions({
     }
   }
 
-  const comingSoon = () => toast(copy.comingSoonMindmapPpt);
+  const comingSoon = () => toast(copy.comingSoonMindmap);
 
   return (
     <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
@@ -107,11 +109,13 @@ export function ContentActions({
           {copy.makeActivity}
         </Pill>
       ) : null}
+      {onPpt && !hide.includes("ppt") ? (
+        <Pill onClick={onPpt} icon={Presentation}>
+          {copy.makePpt}
+        </Pill>
+      ) : null}
       <Pill onClick={comingSoon} icon={Network} muted>
         {copy.makeMindmap}
-      </Pill>
-      <Pill onClick={comingSoon} icon={Presentation} muted>
-        {copy.makePpt}
       </Pill>
     </div>
   );

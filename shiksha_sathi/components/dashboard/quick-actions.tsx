@@ -10,10 +10,17 @@ type QuickActionsProps = {
   onExplain: () => void;
   onQuiz: () => void;
   onActivity: () => void;
+  onPpt: () => void;
   disabled?: boolean;
 };
 
-export function QuickActions({ onExplain, onQuiz, onActivity, disabled }: QuickActionsProps) {
+export function QuickActions({
+  onExplain,
+  onQuiz,
+  onActivity,
+  onPpt,
+  disabled,
+}: QuickActionsProps) {
   const copy = useCopy();
   const cards: {
     key: string;
@@ -25,7 +32,7 @@ export function QuickActions({ onExplain, onQuiz, onActivity, disabled }: QuickA
     { key: "explanation", ...copy.quickActions.explanation, icon: Lightbulb, onClick: onExplain },
     { key: "quiz", ...copy.quickActions.quiz, icon: HelpCircle, onClick: onQuiz },
     { key: "activity", ...copy.quickActions.activity, icon: Users, onClick: onActivity },
-    { key: "ppt", ...copy.quickActions.ppt, icon: Presentation },
+    { key: "ppt", ...copy.quickActions.ppt, icon: Presentation, onClick: onPpt },
     { key: "mindmap", ...copy.quickActions.mindmap, icon: Network },
   ];
 

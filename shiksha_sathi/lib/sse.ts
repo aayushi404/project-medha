@@ -5,7 +5,7 @@ export type StreamDone = {
   // tutor chat has no modules and only sends `message_id`
   module_id?: string;
   artifact_id?: string;
-  artifact_type?: "quiz" | "activity";
+  artifact_type?: "quiz" | "activity" | "ppt";
   message_id?: string;
 };
 

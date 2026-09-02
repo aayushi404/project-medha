@@ -7,6 +7,7 @@ from backend.db.models.curriculum import (
     TeacherSubject,
     TextbookContentChunk,
 )
+from backend.db.models.library import LibraryPresentation
 from backend.db.models.module import Module, ModuleArtifact, ModuleFeedback
 from backend.db.models.organization import Block, District, School
 from backend.db.models.teacher import ApprovalEvent, AuthSession, Teacher
@@ -26,6 +27,7 @@ __all__ = [
     "TextbookContentChunk",
     "ChatSession",
     "ChatMessage",
+    "LibraryPresentation",
     "Module",
     "ModuleArtifact",
     "ModuleFeedback",

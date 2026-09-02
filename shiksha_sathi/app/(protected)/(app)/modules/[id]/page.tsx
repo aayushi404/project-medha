@@ -5,6 +5,7 @@ import {
   HelpCircle,
   Lightbulb,
   Loader2,
+  Presentation,
   Trash2,
   Users,
   type LucideIcon,
@@ -34,6 +35,7 @@ const SECTIONS: { type: ArtifactType; icon: LucideIcon; accent: string }[] = [
   { type: "explanation", icon: Lightbulb, accent: "bg-gold/15 text-earth" },
   { type: "quiz", icon: HelpCircle, accent: "bg-accent text-terracotta" },
   { type: "activity", icon: Users, accent: "bg-sage/15 text-sage" },
+  { type: "ppt", icon: Presentation, accent: "bg-accent text-terracotta" },
 ];
 
 export default function ModuleDetailPage() {
@@ -186,7 +188,7 @@ export default function ModuleDetailPage() {
                   </div>
                   <div className="flex flex-col gap-3">
                     {items.map((a) => (
-                      <ArtifactView key={a.id} artifact={a} />
+                      <ArtifactView key={a.id} artifact={a} moduleId={id} />
                     ))}
                   </div>
                 </section>

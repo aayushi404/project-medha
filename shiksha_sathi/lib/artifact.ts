@@ -1,4 +1,4 @@
-import type { ActivityContent, QuizContent } from "@/lib/api";
+import type { ActivityContent, DeckContent, QuizContent } from "@/lib/api";
 
 /** Tailwind child-selector classes for rendering markdown without the
  *  typography plugin. Shared by the chat thread and the module detail view. */
@@ -28,13 +28,21 @@ export function extractJson<T = Record<string, unknown>>(raw: string): T | null 
 }
 
 export function ackLine(
-  type: "quiz" | "activity",
-  content: QuizContent | ActivityContent | null,
+  type: "quiz" | "activity" | "ppt",
+  content: QuizContent | ActivityContent | DeckContent | null,
 ): string {
-  if (!content) return type === "quiz" ? "Couldn't build the quiz." : "Couldn't build the activity.";
+  if (!content) {
+    if (type === "quiz") return "Couldn't build the quiz.";
+    if (type === "ppt") return "Couldn't build the slides.";
+    return "Couldn't build the activity.";
+  }
   if (type === "quiz") {
     const n = (content as QuizContent).questions?.length ?? 0;
     return `Quiz ready — ${n} question${n === 1 ? "" : "s"}.`;
+  }
+  if (type === "ppt") {
+    const n = (content as DeckContent).slides?.length ?? 0;
+    return `Slides ready — ${n} slide${n === 1 ? "" : "s"}.`;
   }
   const title = (content as ActivityContent).title?.trim();
   return `Class activity ready${title ? `: ${title}` : ""}.`;

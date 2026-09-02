@@ -315,17 +315,32 @@ type SpeakableContent = {
   title?: string;
   steps?: string[];
   variation?: string;
+  subtitle?: string;
+  slides?: { heading?: string; bullets?: string[] }[];
 };
 
 /** A read-aloud script for a block of generated content of a given type. */
 export function speakableContent(
-  type: "explanation" | "quiz" | "activity",
+  type: "explanation" | "quiz" | "activity" | "ppt",
   content: SpeakableContent | null | undefined,
 ): string {
   if (!content) return "";
 
   if (type === "explanation") {
     return stripMarkdown(content.text ?? "");
+  }
+
+  if (type === "ppt") {
+    const slides = content.slides ?? [];
+    return [
+      content.title ?? "",
+      ...slides.map(
+        (s, i) =>
+          `Slide ${i + 1}. ${s.heading ?? ""}. ${(s.bullets ?? []).join(". ")}`,
+      ),
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
 
   if (type === "quiz") {

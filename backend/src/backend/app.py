@@ -12,6 +12,7 @@ from backend.core.logging import configure_logging
 from backend.chat.router import router as chat_router
 from backend.curriculum.router import router as curriculum_router
 from backend.english.router import router as english_router
+from backend.library.router import router as library_router
 from backend.modules.router import router as modules_router
 from backend.onboarding.router import router as onboarding_router
 from backend.principal.router import router as principal_router
@@ -72,6 +73,7 @@ app.include_router(tutor_router)
 app.include_router(english_router)
 app.include_router(speech_router)
 app.include_router(modules_router)
+app.include_router(library_router)
 
 
 @app.get("/health")
