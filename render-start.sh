@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Render start — do NOT use "uv run" here (it rebuilds and exits on Render).
+# Render start — use when Root Directory is blank (monorepo root).
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/backend"
 unset VIRTUAL_ENV
 
 if [[ ! -x ".venv/bin/python" ]]; then
-  echo "ERROR: .venv not found — run render-build.sh during build first." >&2
+  echo "ERROR: backend/.venv not found — check build command." >&2
   exit 1
 fi
 

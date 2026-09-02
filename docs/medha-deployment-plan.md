@@ -69,20 +69,29 @@ service by hand.
 3. Settings:
    | Field | Value |
    |---|---|
-   | **Root Directory** | `backend` |
+   | **Root Directory** | `backend` ← **must be set** |
    | **Runtime** | Python 3 (Render reads `backend/.python-version` → 3.12) |
    | **Region** | Singapore (closest to India) |
    | **Instance Type** | Free |
-   | **Build Command** | `pip install uv && uv sync --frozen && uv run alembic upgrade head` |
-   | **Start Command** | `./render-start.sh` *(or `unset VIRTUAL_ENV && uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT`)* |
+   | **Build Command** | `bash render-build.sh` |
+   | **Start Command** | `bash render-start.sh` |
    | **Health Check Path** | `/health` |
 
-   Running `alembic upgrade head` in the build command is the free-tier
-   substitute for a pre-deploy hook — build env vars (incl. `DATABASE_URL`) are
-   available, and if a migration fails the deploy fails, which is what you want.
+   **Do not use `uv run uvicorn …` as the Start Command.** On Render it
+   rebuilds the package on every boot and often exits with status 1 before
+   uvicorn ever starts. The scripts above install once at build time and
+   start with `.venv/bin/python -m uvicorn` instead.
+
+   *If Root Directory is blank* (monorepo root — your logs will show
+   `file:///…/src/backend`), use the repo-root scripts instead:
+   - Build: `bash render-build.sh`
+   - Start: `bash render-start.sh`
+   (these live at the repo root and `cd` into `backend/` automatically)
+
    *Pip fallback* (if uv gives trouble): Build Command
-   `pip install -r requirements.txt && alembic upgrade head`, and add env var
-   `PYTHONPATH=src` so `import backend` resolves.
+   `pip install -r requirements.txt && alembic upgrade head`, Start Command
+   `PYTHONPATH=src python -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT`,
+   and add env var `PYTHONPATH=src`.
 
 4. **Environment** tab — add:
    | Key | Value |
@@ -103,20 +112,29 @@ service by hand.
 
 ### Render troubleshooting
 
+**`Exited with status 1` right after `Installed 1 package` (no uvicorn logs)**
+Your Start Command is almost certainly `uv run uvicorn …`. **Change it to**
+`bash render-start.sh` (see §3). The `VIRTUAL_ENV` warning above that line is
+harmless — the real bug is `uv run` rebuilding on start and dying silently.
+
+**Logs show `file:///…/src/backend` instead of `file:///…/src`**
+Root Directory is **not** set to `backend`. Either set it to `backend` and use
+the scripts in `backend/`, or leave it blank and use the repo-root
+`render-build.sh` / `render-start.sh`.
+
 **`VIRTUAL_ENV does not match the project environment path .venv`**
-This is a **warning**, not a crash. uv ignores Render's pre-activated venv and uses its own `.venv`. Safe to ignore, or use `./render-start.sh` as the Start Command (it `unset VIRTUAL_ENV` first).
+Warning only — safe to ignore once you switch to `bash render-start.sh`.
 
 **`uv sync --frozen` fails on deploy**
-Run `uv lock` locally after changing `pyproject.toml`, commit `uv.lock`, and redeploy.
+Run `uv lock` locally after changing `pyproject.toml`, commit `uv.lock`, redeploy.
 
 **Service builds but `/health` never responds**
-Check the full Render logs *after* the uvicorn line — common causes:
+Check logs after uvicorn starts — common causes:
 - `JWT_SECRET_KEY` not set in Render Environment (app crashes on import)
 - `DATABASE_URL` missing or wrong (Neon pooled URL with `?sslmode=require`)
-- Root Directory not set to `backend`
 
 **Alembic fails during build**
-Ensure `DATABASE_URL` is set under Render **Environment** (available at build time), not only as a secret file.
+Ensure `DATABASE_URL` is set under Render **Environment** (available at build time).
 
 ---
 
