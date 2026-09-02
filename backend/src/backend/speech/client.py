@@ -148,19 +148,37 @@ async def transcribe(
     )
 
 
+def _tts_voice(language: str | None, accent: str | None) -> tuple[str, str, float | None]:
+    """Resolve Sarvam lang, speaker, and optional pace."""
+    lang = _language_code(language) or "hi-IN"
+    speaker = settings.sarvam_tts_speaker
+    pace: float | None = None
+
+    pref = (language or "").lower()
+    use_bihari = (accent or "").lower() == "bihari" or "bihar" in pref
+    if use_bihari and lang == "hi-IN":
+        speaker = settings.sarvam_tts_speaker_bihari
+        pace = settings.sarvam_tts_pace_bihari
+
+    return lang, speaker, pace
+
+
 async def synthesize(
     text: str,
     *,
     language: str | None = None,
+    accent: str | None = None,
 ) -> SynthesizeResult:
     """Convert text to speech via Sarvam Bulbul TTS."""
-    lang = _language_code(language) or "hi-IN"
-    body = {
+    lang, speaker, pace = _tts_voice(language, accent)
+    body: dict[str, str | float] = {
         "text": text[:2500],
         "language_code": lang,
         "model": settings.sarvam_tts_model,
-        "speaker": settings.sarvam_tts_speaker,
+        "speaker": speaker,
     }
+    if pace is not None:
+        body["pace"] = pace
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         try:
             resp = await client.post(

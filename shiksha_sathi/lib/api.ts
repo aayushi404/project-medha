@@ -575,3 +575,19 @@ export const createEnglishSession = (
 export const getEnglishSession = (token: string | null, id: string) =>
   json<EnglishSessionDetail>(apiFetch(`/english/sessions/${id}`, { token }));
 
+export type TranslatePayload = {
+  text: string;
+  target_language: string;
+  mode: string;
+  reading_level: string;
+};
+
+export type TranslateResult = {
+  result: string;
+  mode: string;
+  target_language: string;
+};
+
+export const translateText = (token: string | null, body: TranslatePayload) =>
+  json<TranslateResult>(apiFetch("/tools/translate", { method: "POST", token, body }));
+

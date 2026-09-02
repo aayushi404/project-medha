@@ -11,6 +11,7 @@ import { LessonPlan } from "@/components/tools/lesson-plan";
 import { NamePicker } from "@/components/tools/name-picker";
 import { PdfQa } from "@/components/tools/pdf-qa";
 import { QuickMock } from "@/components/tools/quick-mock";
+import { TranslateSimplify } from "@/components/tools/translate-simplify";
 import { ToolShell } from "@/components/tools/tool-shell";
 import { toolBySlug } from "@/lib/tools";
 
@@ -20,6 +21,7 @@ const READY: Record<string, ComponentType> = {
   "quick-mock": QuickMock,
   "group-maker": GroupMaker,
   "name-picker": NamePicker,
+  translate: TranslateSimplify,
   timer: ClassTimer,
 };
 

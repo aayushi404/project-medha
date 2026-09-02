@@ -234,6 +234,139 @@ export class VoiceRecorder {
   }
 }
 
+/** Hands-free capture — auto-stops after a pause in speech. */
+export class ContinuousVoiceListener {
+  private media: MediaRecorder | null = null;
+  private chunks: Blob[] = [];
+  private stream: MediaStream | null = null;
+  private ctx: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private raf = 0;
+  private cancelled = false;
+  private speechStartedAt = 0;
+
+  async start(onAutoStop: (blob: Blob) => void): Promise<void> {
+    this.cancelled = false;
+    this.speechStartedAt = 0;
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+    });
+
+    this.ctx = new AudioContext();
+    const source = this.ctx.createMediaStreamSource(this.stream);
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 2048;
+    source.connect(this.analyser);
+
+    const mime =
+      MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : "";
+    this.media = mime
+      ? new MediaRecorder(this.stream, { mimeType: mime })
+      : new MediaRecorder(this.stream);
+    this.chunks = [];
+    this.media.ondataavailable = (e) => {
+      if (e.data.size > 0) this.chunks.push(e.data);
+    };
+    this.media.start(250);
+
+    const SILENCE_THRESHOLD = 0.018;
+    const SILENCE_MS = 1400;
+    const MIN_SPEECH_MS = 600;
+    const MAX_MS = 20000;
+    const startedAt = Date.now();
+    let silenceStart = 0;
+
+    const tick = () => {
+      if (this.cancelled || !this.analyser) return;
+
+      if (Date.now() - startedAt > MAX_MS) {
+        void this.finish(onAutoStop);
+        return;
+      }
+
+      const buf = new Uint8Array(this.analyser.fftSize);
+      this.analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i += 1) {
+        const v = (buf[i]! - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / buf.length);
+
+      if (rms > SILENCE_THRESHOLD) {
+        if (!this.speechStartedAt) this.speechStartedAt = Date.now();
+        silenceStart = 0;
+      } else if (this.speechStartedAt) {
+        if (!silenceStart) silenceStart = Date.now();
+        else if (
+          Date.now() - silenceStart > SILENCE_MS &&
+          Date.now() - this.speechStartedAt > MIN_SPEECH_MS
+        ) {
+          void this.finish(onAutoStop);
+          return;
+        }
+      }
+
+      this.raf = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  private async finish(onAutoStop: (blob: Blob) => void): Promise<void> {
+    if (this.cancelled) return;
+    this.cancelled = true;
+    cancelAnimationFrame(this.raf);
+
+    const rec = this.media;
+    if (!rec || rec.state === "inactive") {
+      this.cleanup();
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      rec.onstop = () => {
+        const type = rec.mimeType || "audio/webm";
+        const blob = new Blob(this.chunks, { type });
+        this.cleanup();
+        if (blob.size >= MIN_RECORDING_BYTES) onAutoStop(blob);
+        resolve();
+      };
+      try {
+        rec.requestData();
+      } catch {
+        /* older browsers */
+      }
+      rec.stop();
+    });
+  }
+
+  cancel(): void {
+    this.cancelled = true;
+    cancelAnimationFrame(this.raf);
+    try {
+      if (this.media?.state !== "inactive") this.media?.stop();
+    } catch {
+      /* ignore */
+    }
+    this.cleanup();
+  }
+
+  private cleanup(): void {
+    void this.ctx?.close();
+    this.ctx = null;
+    this.analyser = null;
+    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream = null;
+    this.media = null;
+    this.chunks = [];
+    this.speechStartedAt = 0;
+  }
+}
+
 /** Live mic dictation — only when Sarvam is unavailable (not after a failed upload). */
 export function listenWithBrowser(
   lang: string,
