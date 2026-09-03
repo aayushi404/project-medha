@@ -50,7 +50,7 @@ export function SpeakButton({
       onClick={() => toggleSpeech(id, text, { lang: profile?.preferred_language })}
       aria-pressed={speaking}
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors hover:bg-muted hover:text-foreground",
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors hover:bg-muted hover:text-foreground pointer-coarse:px-2 pointer-coarse:py-1.5",
         speaking ? "text-terracotta" : "text-muted-foreground",
         className,
       )}

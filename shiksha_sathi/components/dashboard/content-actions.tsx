@@ -34,7 +34,7 @@ function Pill({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs transition-colors hover:bg-muted hover:text-foreground",
+        "inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs transition-colors hover:bg-muted hover:text-foreground pointer-coarse:px-3 pointer-coarse:py-1.5",
         muted ? "text-muted-foreground/70" : "text-muted-foreground",
       )}
     >
@@ -85,14 +85,14 @@ export function ContentActions({
   const comingSoon = () => toast(copy.comingSoonMindmap);
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
+    <div className={cn("flex flex-wrap items-center gap-1.5 pointer-coarse:gap-2", className)}>
       <SpeakButton id={speechId} text={speechText} />
 
       {copyText ? (
         <button
           type="button"
           onClick={doCopy}
-          className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-coarse:px-2 pointer-coarse:py-1.5"
         >
           {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
           {copied ? copy.copied : copy.copyText}

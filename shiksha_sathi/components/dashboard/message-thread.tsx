@@ -102,7 +102,9 @@ function AssistantTurn({
 
         {showActions ? (
           <ContentActions
-            className="mt-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+            // Always visible on touch (no hover); reveal on hover only for
+            // mouse/trackpad devices, where the resting state stays uncluttered.
+            className="mt-2 opacity-100 transition-opacity pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100"
             speechId={msg.id}
             speechText={speechText}
             copyText={msg.content || undefined}
