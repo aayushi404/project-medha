@@ -11,8 +11,9 @@ import { AssistantBody, AssistantMark, UserBubble } from "@/components/chat/turn
 import { VoiceWaveform } from "@/components/voice/voice-waveform";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
 import { useCopy } from "@/lib/copy";
-import { playSpeech, transcribeAudio } from "@/lib/speech-api";
+import { playSpeech, resolveTtsParams, transcribeAudio } from "@/lib/speech-api";
 import {
+  ContinuousVoiceListener,
   VoiceRecorder,
   browserSttSupported,
   listenWithBrowser,
@@ -64,11 +65,19 @@ export function VoiceChatPanel({
   const [state, setState] = useState<VoiceState>("idle");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [autoListen, setAutoListen] = useState(true);
+  const [handsFreeActive, setHandsFreeActive] = useState(false);
+
   const recorderRef = useRef<VoiceRecorder | null>(null);
+  const continuousRef = useRef<ContinuousVoiceListener | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
+  const autoListenRef = useRef(autoListen);
+  const handsFreeRef = useRef(handsFreeActive);
+
   openRef.current = open;
+  autoListenRef.current = autoListen;
+  handsFreeRef.current = handsFreeActive;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -79,23 +88,29 @@ export function VoiceChatPanel({
   useEffect(() => {
     if (!open) {
       recorderRef.current?.cancel();
+      continuousRef.current?.cancel();
+      continuousRef.current = null;
       abortRef.current?.abort();
+      setHandsFreeActive(false);
       setState("idle");
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!autoListen && handsFreeActive) {
+      recorderRef.current?.cancel();
+      continuousRef.current?.cancel();
+      continuousRef.current = null;
+      setHandsFreeActive(false);
+      if (state === "listening") setState("idle");
+    }
+  }, [autoListen, handsFreeActive, state]);
+
   const transcribe = useCallback(
     async (blob?: Blob): Promise<string | null> => {
       if (blob) {
-        try {
-          const result = await transcribeAudio(blob, accessToken, language);
-          return result.transcript;
-        } catch {
-          if (browserSttSupported()) {
-            return listenWithBrowser(language ?? "hi-IN");
-          }
-          throw new Error(copy.voice.transcribeFailed);
-        }
+        const result = await transcribeAudio(blob, accessToken, language);
+        return result.transcript;
       }
       if (browserSttSupported()) {
         return listenWithBrowser(language ?? "hi-IN");
@@ -105,12 +120,73 @@ export function VoiceChatPanel({
     [accessToken, language, copy.voice],
   );
 
+  const beginContinuousListening = useCallback(async () => {
+    if (!micSupported()) {
+      toast.error(copy.voice.micUnavailable);
+      return;
+    }
+
+    continuousRef.current?.cancel();
+    const listener = new ContinuousVoiceListener();
+    continuousRef.current = listener;
+
+    try {
+      await listener.start(async (blob) => {
+        continuousRef.current = null;
+        if (!openRef.current || !handsFreeRef.current) {
+          setState("idle");
+          return;
+        }
+
+        setState("thinking");
+        try {
+          const text = await transcribe(blob);
+          if (text?.trim()) {
+            await sendMessageRef.current(text.trim());
+          } else if (handsFreeRef.current && autoListenRef.current && openRef.current) {
+            void beginContinuousListeningRef.current();
+          } else {
+            setState("idle");
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : copy.voice.recordFailed);
+          if (handsFreeRef.current && autoListenRef.current && openRef.current) {
+            void beginContinuousListeningRef.current();
+          } else {
+            setState("idle");
+          }
+        }
+      });
+      setState("listening");
+    } catch {
+      toast.error(copy.voice.micDenied);
+      setHandsFreeActive(false);
+      setState("idle");
+    }
+  }, [copy.voice, transcribe]);
+
+  const beginContinuousListeningRef = useRef(beginContinuousListening);
+  beginContinuousListeningRef.current = beginContinuousListening;
+
+  const maybeRestartListening = useCallback(() => {
+    if (handsFreeRef.current && autoListenRef.current && openRef.current) {
+      void beginContinuousListeningRef.current();
+    } else {
+      setState("idle");
+    }
+  }, []);
+
+  const sendMessageRef = useRef<(content: string) => Promise<void>>(async () => {});
+
   const sendMessage = useCallback(
     async (content: string) => {
       let sid = sessionId;
       if (!sid) {
         sid = await ensureSession();
-        if (!sid) return;
+        if (!sid) {
+          maybeRestartListening();
+          return;
+        }
         setSessionId(sid);
       }
 
@@ -140,31 +216,40 @@ export function VoiceChatPanel({
           onDone: async () => {
             const reply = acc.trim();
             if (!reply) {
-              setState("idle");
+              maybeRestartListening();
               return;
             }
             setState("speaking");
-            const ttsLang = language?.startsWith("en") ? "en-IN" : "hi-IN";
+            const tts = resolveTtsParams(language);
             await playSpeech(reply.slice(0, 800), accessToken, {
-              language: ttsLang,
-              onEnd: () => setState("idle"),
+              language: tts.language,
+              accent: tts.accent,
+              onEnd: maybeRestartListening,
             });
           },
           onError: (msg) => {
             toast.error(msg);
             setMessages((prev) => prev.filter((m) => m.id !== asstId));
-            setState("idle");
+            maybeRestartListening();
           },
         },
         ac.signal,
       );
     },
-    [sessionId, ensureSession, messagePath, accessToken, language],
+    [sessionId, ensureSession, messagePath, accessToken, language, maybeRestartListening],
   );
+
+  sendMessageRef.current = sendMessage;
 
   const beginListening = useCallback(async () => {
     if (!micSupported() && !browserSttSupported()) {
       toast.error(copy.voice.micUnavailable);
+      return;
+    }
+
+    if (autoListenRef.current && micSupported()) {
+      setHandsFreeActive(true);
+      await beginContinuousListening();
       return;
     }
 
@@ -189,7 +274,7 @@ export function VoiceChatPanel({
     } finally {
       setState("idle");
     }
-  }, [copy.voice, sendMessage, transcribe]);
+  }, [copy.voice, sendMessage, transcribe, beginContinuousListening]);
 
   const finishListening = useCallback(async () => {
     const rec = recorderRef.current;
@@ -213,7 +298,10 @@ export function VoiceChatPanel({
   const stopAll = () => {
     recorderRef.current?.cancel();
     recorderRef.current = null;
+    continuousRef.current?.cancel();
+    continuousRef.current = null;
     abortRef.current?.abort();
+    setHandsFreeActive(false);
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
@@ -221,12 +309,16 @@ export function VoiceChatPanel({
   };
 
   const handleMicPress = () => {
-    if (state === "thinking" || state === "speaking") {
+    if (handsFreeActive || state === "thinking" || state === "speaking") {
       stopAll();
       return;
     }
     if (state === "listening") {
-      void finishListening();
+      if (handsFreeActive) {
+        stopAll();
+      } else {
+        void finishListening();
+      }
       return;
     }
     if (state === "idle") {
@@ -234,12 +326,19 @@ export function VoiceChatPanel({
     }
   };
 
-  const stateLabel = {
-    idle: copy.voice.tapToTalk,
-    listening: copy.voice.listening,
-    thinking: copy.voice.thinking,
-    speaking: copy.voice.speaking,
-  }[state];
+  const stateLabel = handsFreeActive
+    ? {
+        idle: copy.voice.handsFreeStart,
+        listening: copy.voice.handsFreeListening,
+        thinking: copy.voice.thinking,
+        speaking: copy.voice.speaking,
+      }[state]
+    : {
+        idle: autoListen ? copy.voice.handsFreeStart : copy.voice.tapToTalk,
+        listening: copy.voice.listening,
+        thinking: copy.voice.thinking,
+        speaking: copy.voice.speaking,
+      }[state];
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -326,7 +425,11 @@ export function VoiceChatPanel({
                         ? "bg-gold/80 text-ink"
                         : "bg-terracotta text-white hover:scale-105",
                 )}
-                aria-label={state === "idle" ? copy.voice.tapToTalk : copy.voice.stopRecording}
+                aria-label={
+                  handsFreeActive || state !== "idle"
+                    ? copy.voice.stopRecording
+                    : copy.voice.tapToTalk
+                }
               >
                 {state === "thinking" ? (
                   <Loader2 className="size-7 animate-spin" />

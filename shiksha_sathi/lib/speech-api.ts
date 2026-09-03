@@ -1,4 +1,5 @@
 import { API_BASE_URL, apiFetch, extractErrorMessage } from "@/lib/api";
+import { prepareAudioForStt } from "@/lib/speech-input";
 
 export type TranscribeResult = {
   transcript: string;
@@ -10,14 +11,37 @@ export type SynthesizeResult = {
   content_type: string;
 };
 
+export type PronunciationResult = {
+  score: number;
+  heard: string;
+  expected: string;
+  feedback: string;
+  tips: string[];
+};
+
+/** Map profile/UI language tags to Sarvam TTS params (incl. Bihari accent). */
+export function resolveTtsParams(language?: string | null): {
+  language: string;
+  accent?: string;
+} {
+  const p = (language ?? "").toLowerCase();
+  if (p.includes("bihar")) return { language: "hi-IN", accent: "bihari" };
+  if (p.startsWith("en")) return { language: "en-IN" };
+  if (p.startsWith("hi")) return { language: "hi-IN" };
+  return { language: "hi-IN" };
+}
+
 /** Upload recorded audio to Sarvam STT via our backend proxy. */
 export async function transcribeAudio(
   blob: Blob,
   token: string | null,
   language?: string | null,
 ): Promise<TranscribeResult> {
+  const prepared = await prepareAudioForStt(blob);
+  const isWav = prepared.type.includes("wav");
+
   const form = new FormData();
-  form.append("file", blob, blob.type.includes("wav") ? "audio.wav" : "audio.webm");
+  form.append("file", prepared, isWav ? "audio.wav" : "audio.webm");
   if (language) form.append("language", language);
 
   const headers: Record<string, string> = {};
@@ -41,11 +65,15 @@ export async function synthesizeSpeech(
   text: string,
   token: string | null,
   language = "en-IN",
+  accent?: string | null,
 ): Promise<string> {
+  const body: { text: string; language: string; accent?: string } = { text, language };
+  if (accent) body.accent = accent;
+
   const res = await apiFetch("/speech/synthesize", {
     method: "POST",
     token,
-    body: { text, language },
+    body,
   });
   if (!res.ok) {
     throw new Error(await extractErrorMessage(res));
@@ -64,7 +92,7 @@ export async function synthesizeSpeech(
 export async function playSpeech(
   text: string,
   token: string | null,
-  opts: { language?: string; onEnd?: () => void } = {},
+  opts: { language?: string; accent?: string; onEnd?: () => void } = {},
 ): Promise<void> {
   const clean = text.trim();
   if (!clean) {
@@ -72,8 +100,12 @@ export async function playSpeech(
     return;
   }
 
+  const resolved = resolveTtsParams(opts.language);
+  const language = resolved.language;
+  const accent = opts.accent ?? resolved.accent;
+
   try {
-    const url = await synthesizeSpeech(clean, token, opts.language ?? "en-IN");
+    const url = await synthesizeSpeech(clean, token, language, accent);
     await new Promise<void>((resolve, reject) => {
       const audio = new Audio(url);
       audio.onended = () => {
@@ -102,4 +134,33 @@ export async function playSpeech(
     });
   }
   opts.onEnd?.();
+}
+
+/** Score spoken English against an expected phrase. */
+export async function checkPronunciation(
+  blob: Blob,
+  expected: string,
+  token: string | null,
+): Promise<PronunciationResult> {
+  const prepared = await prepareAudioForStt(blob);
+  const isWav = prepared.type.includes("wav");
+
+  const form = new FormData();
+  form.append("file", prepared, isWav ? "audio.wav" : "audio.webm");
+  form.append("expected_text", expected);
+
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE_URL}/english/pronunciation-check`, {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: form,
+  });
+
+  if (!res.ok) {
+    throw new Error(await extractErrorMessage(res));
+  }
+  return res.json() as Promise<PronunciationResult>;
 }

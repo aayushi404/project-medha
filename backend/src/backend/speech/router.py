@@ -50,7 +50,11 @@ async def synthesize_speech(
     """Text-to-speech via Sarvam Bulbul. Returns base64-encoded WAV audio."""
     _ = user
     try:
-        result = await client.synthesize(payload.text, language=payload.language)
+        result = await client.synthesize(
+            payload.text,
+            language=payload.language,
+            accent=payload.accent,
+        )
     except client.SpeechError as exc:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE if "not configured" in str(exc).lower() else status.HTTP_422_UNPROCESSABLE_ENTITY,

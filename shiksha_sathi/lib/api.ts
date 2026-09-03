@@ -106,10 +106,12 @@ export { API_BASE_URL };
 export async function extractErrorMessage(res: Response): Promise<string> {
   try {
     const data = await res.json();
+    if (typeof data.error?.message === "string") return data.error.message;
     if (typeof data.detail === "string") return data.detail;
     if (Array.isArray(data.detail) && typeof data.detail[0]?.msg === "string") {
       return data.detail[0].msg as string;
     }
+    if (typeof data.message === "string") return data.message;
   } catch {
     // response body wasn't JSON -- fall through to the generic message
   }
@@ -647,4 +649,20 @@ export const createEnglishSession = (
 
 export const getEnglishSession = (token: string | null, id: string) =>
   json<EnglishSessionDetail>(apiFetch(`/english/sessions/${id}`, { token }));
+
+export type TranslatePayload = {
+  text: string;
+  target_language: string;
+  mode: string;
+  reading_level: string;
+};
+
+export type TranslateResult = {
+  result: string;
+  mode: string;
+  target_language: string;
+};
+
+export const translateText = (token: string | null, body: TranslatePayload) =>
+  json<TranslateResult>(apiFetch("/tools/translate", { method: "POST", token, body }));
 

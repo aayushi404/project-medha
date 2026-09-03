@@ -19,6 +19,7 @@ from backend.principal.router import router as principal_router
 from backend.profile.router import router as profile_router
 from backend.reference.router import router as reference_router
 from backend.speech.router import router as speech_router
+from backend.tools.router import router as tools_router
 from backend.student.router import router as student_router
 from backend.teacher.router import router as teacher_router
 from backend.tutor.router import router as tutor_router
@@ -72,6 +73,7 @@ app.include_router(chat_router)
 app.include_router(tutor_router)
 app.include_router(english_router)
 app.include_router(speech_router)
+app.include_router(tools_router)
 app.include_router(modules_router)
 app.include_router(library_router)
 

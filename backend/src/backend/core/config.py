@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     sarvam_stt_model: str = "saaras:v3"
     sarvam_tts_model: str = "bulbul:v3"
     sarvam_tts_speaker: str = "shubh"
+    # Bihari-flavoured Hindi — warmer voice + slightly slower pace (Bulbul v3)
+    sarvam_tts_speaker_bihari: str = "ritu"
+    sarvam_tts_pace_bihari: float = 0.92
 
 
 @lru_cache

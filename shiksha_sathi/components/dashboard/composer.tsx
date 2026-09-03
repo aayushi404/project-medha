@@ -61,19 +61,8 @@ export function Composer({
       setValue((prev) => (prev ? `${prev} ${result.transcript}` : result.transcript));
       requestAnimationFrame(resize);
       taRef.current?.focus();
-    } catch {
-      if (browserSttSupported()) {
-        try {
-          const text = await listenWithBrowser(language ?? "hi-IN");
-          setValue((prev) => (prev ? `${prev} ${text}` : text));
-          requestAnimationFrame(resize);
-          return;
-        } catch (err) {
-          toast.error(err instanceof Error ? err.message : copy.voice.transcribeFailed);
-          return;
-        }
-      }
-      toast.error(copy.voice.transcribeFailed);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : copy.voice.transcribeFailed);
     } finally {
       setTranscribing(false);
     }
@@ -89,8 +78,8 @@ export function Composer({
       try {
         const blob = await rec.stop();
         await transcribeBlob(blob);
-      } catch {
-        toast.error(copy.voice.recordFailed);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : copy.voice.recordFailed);
       }
       recorderRef.current = null;
       return;
