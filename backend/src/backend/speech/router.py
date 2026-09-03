@@ -1,13 +1,27 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+import uuid
 
-from backend.auth.dependencies import get_current_user
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy.orm import Session
+from sse_starlette.sse import EventSourceResponse
+
+from backend.auth.dependencies import get_current_teacher, get_current_user
+from backend.chat.service import load_owned_session
 from backend.db.models import Teacher
-from backend.speech import client
-from backend.speech.schemas import SynthesizeIn, SynthesizeOut, TranscribeOut
+from backend.db.session import get_db
+from backend.speech import client, service
+from backend.speech.rate_limit import voice_rate_limit
+from backend.speech.schemas import (
+    ConverseIn,
+    SynthesizeIn,
+    SynthesizeOut,
+    TranscribeOut,
+    VoiceTurnOut,
+)
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 
 _MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB
+_SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
 @router.post("/transcribe", response_model=TranscribeOut)
@@ -67,3 +81,33 @@ async def synthesize_speech(
         audio_base64=base64.b64encode(result.audio_bytes).decode("ascii"),
         content_type=result.content_type,
     )
+
+
+@router.post("/converse", dependencies=[Depends(voice_rate_limit)])
+async def converse(
+    payload: ConverseIn,
+    teacher: Teacher = Depends(get_current_teacher),
+    db: Session = Depends(get_db),
+) -> EventSourceResponse:
+    """One spoken turn with Medha. SSE: `token`* → `audio` (base64 WAV) → `done`,
+    or a single `error`. Ownership is checked here so a bad session is a clean
+    JSON 404, not an error mid-stream."""
+    session = load_owned_session(db, teacher, payload.session_id)
+    generator = service.stream_converse(
+        db, teacher, session, payload.transcript, payload.language, payload.style
+    )
+    return EventSourceResponse(generator, headers=_SSE_HEADERS)
+
+
+@router.get("/sessions/{session_id}/turns", response_model=list[VoiceTurnOut])
+def list_voice_turns(
+    session_id: uuid.UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    teacher: Teacher = Depends(get_current_teacher),
+    db: Session = Depends(get_db),
+) -> list[VoiceTurnOut]:
+    """Recent completed voice turns for a session, oldest first -- the panel
+    replays these when it reopens."""
+    load_owned_session(db, teacher, session_id)
+    turns = service.list_recent_turns(db, session_id, limit)
+    return [VoiceTurnOut.model_validate(t) for t in turns]

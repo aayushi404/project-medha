@@ -7,12 +7,25 @@ export type StreamDone = {
   artifact_id?: string;
   artifact_type?: "quiz" | "activity" | "ppt";
   message_id?: string;
+  // set by /speech/converse (voice assistant)
+  turn_id?: string;
+  reply_style?: "normal" | "short" | "detail";
+  tts_failed?: boolean;
+  fallback?: "type_instead" | "browser_tts" | "retry";
+};
+
+/** A chunk of synthesised speech (base64) from /speech/converse. */
+export type StreamAudio = {
+  seq: number;
+  b64: string;
+  mime: string;
 };
 
 type StreamHandlers = {
   onToken: (text: string) => void;
   onDone: (payload: StreamDone) => void;
-  onError: (message: string) => void;
+  onError: (message: string, fallback?: StreamDone["fallback"]) => void;
+  onAudio?: (audio: StreamAudio) => void;
 };
 
 /**
@@ -95,6 +108,10 @@ function dispatchFrame(frame: string, handlers: StreamHandlers): void {
   }
 
   if (event === "token") handlers.onToken((data as { text: string }).text);
+  else if (event === "audio") handlers.onAudio?.(data as StreamAudio);
   else if (event === "done") handlers.onDone(data as StreamDone);
-  else if (event === "error") handlers.onError((data as { message: string }).message);
+  else if (event === "error") {
+    const e = data as { message: string; fallback?: StreamDone["fallback"] };
+    handlers.onError(e.message, e.fallback);
+  }
 }

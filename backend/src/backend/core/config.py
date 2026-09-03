@@ -77,6 +77,16 @@ class Settings(BaseSettings):
     sarvam_tts_speaker_bihari: str = "ritu"
     sarvam_tts_pace_bihari: float = 0.92
 
+    # --- Voice assistant (/speech/converse) — see docs/medha-voice-assistant-plan.md ---
+    voice_enabled: bool = True  # kill switch; hides the FE launcher when false
+    # Spoken replies are short by contract; caps keep TTS latency + cost down.
+    voice_max_reply_tokens: int = 200  # "normal" / "short" styles
+    voice_detail_reply_tokens: int = 450  # when the teacher asks to go deeper
+    voice_history_turns: int = 6  # prior voice turns fed back as context
+    # Per-teacher caps on this LLM+TTS-spending endpoint (DB-count, like chat).
+    voice_rate_limit_per_min: int = 20
+    voice_rate_limit_per_day: int = 400
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,4 +1,4 @@
-from backend.db.models.chat import ChatMessage, ChatSession
+from backend.db.models.chat import ChatMessage, ChatSession, VoiceTurn
 from backend.db.models.curriculum import (
     CurriculumChapter,
     CurriculumTopic,
@@ -27,6 +27,7 @@ __all__ = [
     "TextbookContentChunk",
     "ChatSession",
     "ChatMessage",
+    "VoiceTurn",
     "LibraryPresentation",
     "Module",
     "ModuleArtifact",

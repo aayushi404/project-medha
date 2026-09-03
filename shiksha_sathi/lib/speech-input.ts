@@ -249,7 +249,14 @@ export class ContinuousVoiceListener {
     this.cancelled = false;
     this.speechStartedAt = 0;
     this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true },
+      // autoGainControl off: AGC ramps up gain during silence, which lifts
+      // faint speaker bleed (Medha's own reply) over the VAD threshold and
+      // makes hands-free re-trigger on itself.
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: false,
+      },
     });
 
     this.ctx = new AudioContext();
@@ -273,9 +280,13 @@ export class ContinuousVoiceListener {
     };
     this.media.start(250);
 
-    const SILENCE_THRESHOLD = 0.018;
+    // Tuned to resist self-triggering on Medha's TTS bleeding into the mic:
+    // higher energy floor, longer minimum utterance, and a warm-up window while
+    // the fresh stream's echo canceller converges.
+    const SILENCE_THRESHOLD = 0.03;
     const SILENCE_MS = 1400;
-    const MIN_SPEECH_MS = 600;
+    const MIN_SPEECH_MS = 900;
+    const WARMUP_MS = 400;
     const MAX_MS = 20000;
     const startedAt = Date.now();
     let silenceStart = 0;
@@ -285,6 +296,11 @@ export class ContinuousVoiceListener {
 
       if (Date.now() - startedAt > MAX_MS) {
         void this.finish(onAutoStop);
+        return;
+      }
+
+      if (Date.now() - startedAt < WARMUP_MS) {
+        this.raf = requestAnimationFrame(tick);
         return;
       }
 

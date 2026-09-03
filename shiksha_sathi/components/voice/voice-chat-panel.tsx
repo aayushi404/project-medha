@@ -11,7 +11,13 @@ import { AssistantBody, AssistantMark, UserBubble } from "@/components/chat/turn
 import { VoiceWaveform } from "@/components/voice/voice-waveform";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
 import { useCopy } from "@/lib/copy";
-import { playSpeech, resolveTtsParams, transcribeAudio } from "@/lib/speech-api";
+import {
+  browserSpeak,
+  fetchVoiceTurns,
+  playSpeech,
+  resolveTtsParams,
+  transcribeAudio,
+} from "@/lib/speech-api";
 import {
   ContinuousVoiceListener,
   VoiceRecorder,
@@ -21,6 +27,10 @@ import {
 } from "@/lib/speech-input";
 import { streamGeneration } from "@/lib/sse";
 import { cn } from "@/lib/utils";
+import {
+  SequentialAudioPlayer,
+  objectUrlFromBase64,
+} from "@/lib/voice-playback";
 
 type VoiceMessage = {
   id: string;
@@ -32,7 +42,16 @@ export type VoiceChatConfig = {
   accessToken: string | null;
   language?: string | null;
   ensureSession: () => Promise<string | null>;
-  messagePath: (sessionId: string) => string;
+  /**
+   * Teacher voice assistant: one SSE call to `/speech/converse` does context +
+   * LLM + TTS and streams back `token` then `audio` frames. When false (the
+   * student pages), the transcript is POSTed to `messagePath` as a plain chat
+   * stream and speech is synthesised client-side.
+   */
+  converse?: boolean;
+  messagePath?: (sessionId: string) => string;
+  /** Read the caller's current session id without creating one (for history). */
+  peekSession?: () => string | null;
   title?: string;
   subtitle?: string;
 };
@@ -56,7 +75,9 @@ export function VoiceChatPanel({
   accessToken,
   language,
   ensureSession,
+  converse = false,
   messagePath,
+  peekSession,
   title,
   subtitle,
 }: VoiceChatPanelProps) {
@@ -70,6 +91,13 @@ export function VoiceChatPanel({
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const continuousRef = useRef<ContinuousVoiceListener | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const playerRef = useRef<SequentialAudioPlayer | null>(null);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True from the moment we start handling an utterance until its reply has
+  // finished playing. Gates the mic so a second turn can't start on top of one
+  // already running (which is what makes two replies talk over each other).
+  const turnInFlightRef = useRef(false);
+  const hydratedRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
   const autoListenRef = useRef(autoListen);
@@ -91,10 +119,51 @@ export function VoiceChatPanel({
       continuousRef.current?.cancel();
       continuousRef.current = null;
       abortRef.current?.abort();
+      playerRef.current?.stop();
+      if (restartTimerRef.current) {
+        clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = null;
+      }
+      turnInFlightRef.current = false;
       setHandsFreeActive(false);
       setState("idle");
     }
   }, [open]);
+
+  // Repopulate the transcript with this session's earlier spoken turns.
+  useEffect(() => {
+    if (!open || !converse) return;
+    // `sendMessage` calls `ensureSession()` (which returns this same id) before
+    // its first turn, so the panel doesn't need to hold the id itself here.
+    const sid = peekSession?.() ?? sessionId;
+    if (!sid || hydratedRef.current === sid) return;
+    hydratedRef.current = sid;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const turns = await fetchVoiceTurns(sid, accessToken);
+        if (cancelled) return;
+        setMessages((prev) => {
+          if (prev.length > 0) return prev; // don't clobber a live conversation
+          return turns.flatMap((t) => {
+            const rows: VoiceMessage[] = [
+              { id: uid(), role: "user", content: t.user_transcript },
+            ];
+            if (t.assistant_text) {
+              rows.push({ id: uid(), role: "assistant", content: t.assistant_text });
+            }
+            return rows;
+          });
+        });
+      } catch {
+        // history hydration is best-effort
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, converse, peekSession, sessionId, accessToken]);
 
   useEffect(() => {
     if (!autoListen && handsFreeActive) {
@@ -125,8 +194,10 @@ export function VoiceChatPanel({
       toast.error(copy.voice.micUnavailable);
       return;
     }
+    // Mutex: never run two listeners, and never listen while a reply is still
+    // in flight. Assignments below are synchronous, so this is race-free.
+    if (continuousRef.current || turnInFlightRef.current) return;
 
-    continuousRef.current?.cancel();
     const listener = new ContinuousVoiceListener();
     continuousRef.current = listener;
 
@@ -138,27 +209,27 @@ export function VoiceChatPanel({
           return;
         }
 
+        // Claim the turn now, before the (async) transcribe, so a stray
+        // restart can't open a second listener while we're mid-utterance.
+        turnInFlightRef.current = true;
         setState("thinking");
         try {
           const text = await transcribe(blob);
           if (text?.trim()) {
             await sendMessageRef.current(text.trim());
-          } else if (handsFreeRef.current && autoListenRef.current && openRef.current) {
-            void beginContinuousListeningRef.current();
           } else {
-            setState("idle");
+            turnInFlightRef.current = false;
+            maybeRestartListeningRef.current();
           }
         } catch (err) {
           toast.error(err instanceof Error ? err.message : copy.voice.recordFailed);
-          if (handsFreeRef.current && autoListenRef.current && openRef.current) {
-            void beginContinuousListeningRef.current();
-          } else {
-            setState("idle");
-          }
+          turnInFlightRef.current = false;
+          maybeRestartListeningRef.current();
         }
       });
       setState("listening");
     } catch {
+      continuousRef.current = null;
       toast.error(copy.voice.micDenied);
       setHandsFreeActive(false);
       setState("idle");
@@ -168,15 +239,38 @@ export function VoiceChatPanel({
   const beginContinuousListeningRef = useRef(beginContinuousListening);
   beginContinuousListeningRef.current = beginContinuousListening;
 
+  // After Medha finishes speaking, wait out a short cooldown before reopening
+  // the mic — otherwise the tail of her reply (speaker bleed, plus the AEC
+  // reconverging on a fresh stream) gets captured and she talks to herself.
+  const RESTART_COOLDOWN_MS = 650;
+
   const maybeRestartListening = useCallback(() => {
-    if (handsFreeRef.current && autoListenRef.current && openRef.current) {
-      void beginContinuousListeningRef.current();
-    } else {
-      setState("idle");
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
     }
+    if (!(handsFreeRef.current && autoListenRef.current && openRef.current)) {
+      setState("idle");
+      return;
+    }
+    setState("idle");
+    restartTimerRef.current = setTimeout(() => {
+      restartTimerRef.current = null;
+      if (handsFreeRef.current && autoListenRef.current && openRef.current) {
+        void beginContinuousListeningRef.current();
+      }
+    }, RESTART_COOLDOWN_MS);
   }, []);
 
+  const maybeRestartListeningRef = useRef(maybeRestartListening);
+  maybeRestartListeningRef.current = maybeRestartListening;
+
   const sendMessageRef = useRef<(content: string) => Promise<void>>(async () => {});
+
+  const ensurePlayer = useCallback(() => {
+    if (!playerRef.current) playerRef.current = new SequentialAudioPlayer();
+    return playerRef.current;
+  }, []);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -184,6 +278,7 @@ export function VoiceChatPanel({
       if (!sid) {
         sid = await ensureSession();
         if (!sid) {
+          turnInFlightRef.current = false;
           maybeRestartListening();
           return;
         }
@@ -198,20 +293,104 @@ export function VoiceChatPanel({
         { id: asstId, role: "assistant", content: "" },
       ]);
 
+      // Abort any still-open stream from a previous turn before starting this
+      // one, so two replies can't stream into the player at the same time.
+      abortRef.current?.abort();
       const ac = new AbortController();
       abortRef.current = ac;
       let acc = "";
+      const patchReply = () =>
+        setMessages((prev) =>
+          prev.map((m) => (m.id === asstId ? { ...m, content: acc } : m)),
+        );
+      const dropReplyIfEmpty = () => {
+        if (!acc.trim()) {
+          setMessages((prev) => prev.filter((m) => m.id !== asstId));
+        }
+      };
 
+      if (converse) {
+        turnInFlightRef.current = true;
+        const player = ensurePlayer();
+        player.stop();
+        // kill any browser-TTS fallback still speaking from a previous turn
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+        }
+
+        // Restart the mic exactly once, and only after BOTH the stream has
+        // ended and every audio chunk has finished — otherwise the mid-stream
+        // queue running dry, or an error mid-playback, reopens the mic while
+        // Medha is still talking and she records herself.
+        let streamEnded = false;
+        let restarted = false;
+        const endTurn = () => {
+          if (restarted) return;
+          restarted = true;
+          turnInFlightRef.current = false;
+          maybeRestartListening();
+        };
+        const finishTurn = () => {
+          if (restarted || !streamEnded || player.active) return;
+          endTurn();
+        };
+        const speakFallback = () => {
+          setState("speaking");
+          browserSpeak(acc.trim(), { language, onEnd: endTurn });
+        };
+        player.onDrain = finishTurn;
+
+        await streamGeneration(
+          "/speech/converse",
+          { session_id: sid, transcript: content, language: language ?? undefined },
+          accessToken,
+          {
+            onToken: (t) => {
+              acc += t;
+              patchReply();
+            },
+            onAudio: (a) => {
+              setState("speaking");
+              player.enqueue(objectUrlFromBase64(a.b64, a.mime));
+            },
+            onDone: (payload) => {
+              streamEnded = true;
+              if (!acc.trim()) {
+                dropReplyIfEmpty();
+                finishTurn();
+                return;
+              }
+              if (payload.tts_failed || payload.fallback === "browser_tts") {
+                speakFallback();
+                return;
+              }
+              finishTurn();
+            },
+            onError: (msg, fallback) => {
+              streamEnded = true;
+              toast.error(msg);
+              if (fallback === "browser_tts" && acc.trim()) {
+                speakFallback();
+                return;
+              }
+              dropReplyIfEmpty();
+              finishTurn();
+            },
+          },
+          ac.signal,
+        );
+        return;
+      }
+
+      // Legacy chat transport (student pages): plain stream + client-side TTS.
       await streamGeneration(
-        messagePath(sid),
+        messagePath!(sid),
         { content },
         accessToken,
         {
           onToken: (t) => {
             acc += t;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === asstId ? { ...m, content: acc } : m)),
-            );
+            patchReply();
           },
           onDone: async () => {
             const reply = acc.trim();
@@ -229,14 +408,23 @@ export function VoiceChatPanel({
           },
           onError: (msg) => {
             toast.error(msg);
-            setMessages((prev) => prev.filter((m) => m.id !== asstId));
+            dropReplyIfEmpty();
             maybeRestartListening();
           },
         },
         ac.signal,
       );
     },
-    [sessionId, ensureSession, messagePath, accessToken, language, maybeRestartListening],
+    [
+      sessionId,
+      ensureSession,
+      converse,
+      ensurePlayer,
+      messagePath,
+      accessToken,
+      language,
+      maybeRestartListening,
+    ],
   );
 
   sendMessageRef.current = sendMessage;
@@ -301,6 +489,12 @@ export function VoiceChatPanel({
     continuousRef.current?.cancel();
     continuousRef.current = null;
     abortRef.current?.abort();
+    playerRef.current?.stop();
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
+    turnInFlightRef.current = false;
     setHandsFreeActive(false);
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();

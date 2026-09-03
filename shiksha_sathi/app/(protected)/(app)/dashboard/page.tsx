@@ -262,7 +262,8 @@ export default function DashboardPage() {
           accessToken,
           language: profile?.preferred_language,
           ensureSession,
-          messagePath: (id) => `/chat/sessions/${id}/messages`,
+          converse: true,
+          peekSession: () => sessionId,
         }}
       />
     </main>

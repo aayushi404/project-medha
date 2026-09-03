@@ -19,6 +19,50 @@ export type PronunciationResult = {
   tips: string[];
 };
 
+export type VoiceTurn = {
+  id: string;
+  user_transcript: string;
+  assistant_text: string | null;
+  created_at: string;
+};
+
+/** Past spoken turns for a session, oldest first — repopulates the voice panel. */
+export async function fetchVoiceTurns(
+  sessionId: string,
+  token: string | null,
+  limit = 20,
+): Promise<VoiceTurn[]> {
+  const res = await apiFetch(`/speech/sessions/${sessionId}/turns?limit=${limit}`, {
+    token,
+  });
+  if (!res.ok) {
+    throw new Error(await extractErrorMessage(res));
+  }
+  return res.json() as Promise<VoiceTurn[]>;
+}
+
+/**
+ * Speak text with the browser's built-in voice — no server call. Used as the
+ * fallback when Sarvam TTS is down (the server already tried it), so calling
+ * /speech/synthesize again would only fail again.
+ */
+export function browserSpeak(
+  text: string,
+  opts: { language?: string | null; onEnd?: () => void } = {},
+): void {
+  const clean = text.trim();
+  if (!clean || typeof window === "undefined" || !("speechSynthesis" in window)) {
+    opts.onEnd?.();
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(clean.slice(0, 600));
+  u.lang = (opts.language ?? "").toLowerCase().startsWith("en") ? "en-IN" : "hi-IN";
+  u.onend = () => opts.onEnd?.();
+  u.onerror = () => opts.onEnd?.();
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
+
 /** Map profile/UI language tags to Sarvam TTS params (incl. Bihari accent). */
 export function resolveTtsParams(language?: string | null): {
   language: string;
