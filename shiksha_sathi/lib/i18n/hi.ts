@@ -13,12 +13,13 @@ export const hi: Copy = {
     timetable: "समय सारिणी",
     reportCard: "रिपोर्ट कार्ड",
     resources: "ई-लाइब्रेरी",
+    notes: "नोट्स",
+    practice: "अभ्यास",
   },
   studentNav: {
     ask: "मेधा से पूछें",
     practice: "अभ्यास",
     notes: "नोट्स",
-    library: "लाइब्रेरी",
     english: "अंग्रेज़ी सीखें",
     homework: "गृहकार्य",
     timetable: "समय सारिणी",
@@ -146,29 +147,14 @@ export const hi: Copy = {
     importantTerms: "महत्वपूर्ण शब्द",
     notesPreparing: (title: string) => `“${title}” के नोट्स तैयार किए जा रहे हैं`,
     notesPreparingBody:
-      "हर अध्याय में एक छोटा सारांश, मुख्य बिंदु, समझाए गए भाग और महत्वपूर्ण शब्दों की सूची होगी।",
-    pdfSoon: "पीडीएफ डाउनलोड जल्द आ रहा है।",
+      "आपके शिक्षक ने अभी इस अध्याय के नोट्स नहीं जोड़े हैं — जोड़ते ही यहाँ सारांश, मुख्य बिंदु और महत्वपूर्ण शब्द दिखेंगे।",
 
     practiceTitle: "अभ्यास",
-    practiceSub:
-      "यह जाँचने के लिए मॉक टेस्ट और अध्याय-वार प्रश्न कि आप कितने तैयार हैं।",
-    practicePickToStart: "अभ्यास सेट देखने के लिए विषय और अध्याय चुनें।",
-    practiceSampleNote:
-      "इस अध्याय के लिए पूरे प्रश्न-बैंक अभी तैयार किए जा रहे हैं — फ़िलहाल आपको एक छोटा नमूना सेट दिखेगा।",
+    practiceSub: "यह जाँचने के लिए आपके शिक्षक के अध्याय-वार प्रश्न कि आप कितने तैयार हैं।",
+    practicePickToStart: "अभ्यास प्रश्न देखने के लिए विषय और अध्याय चुनें।",
+    practiceEmpty: "आपके शिक्षक ने अभी इस अध्याय के लिए अभ्यास प्रश्न नहीं जोड़े हैं।",
     questionsCount: (n: number) => `${n} प्रश्न`,
     startBtn: "शुरू करें",
-
-    libraryTitle: "लाइब्रेरी",
-    librarySub:
-      "पाठ्यपुस्तकें, संदर्भ पुस्तकें, कहानी की किताबें और बहुत कुछ — सब एक ही जगह।",
-    searchBooks: "किताबें खोजें",
-    categoryAll: "सभी",
-    noBooksMatch: "उस खोज से कोई किताब मेल नहीं खाती।",
-    pagesCount: (n: number) => `${n} पृष्ठ`,
-    downloadBtn: "डाउनलोड",
-    readOnlineBtn: "ऑनलाइन पढ़ें",
-    downloadSoon: "डाउनलोड जल्द आ रहा है।",
-    readerSoon: "रीडर जल्द आ रहा है।",
   },
 
   voice: {
@@ -357,6 +343,40 @@ export const hi: Copy = {
     openLink: "खोलें",
     allClasses: "सभी कक्षाएँ",
     allSubjects: "सभी विषय",
+  },
+
+  notesPage: {
+    title: "अध्याय नोट्स",
+    sub: "किसी अध्याय के लिए संक्षिप्त रिवीज़न नोट लिखें — आपके छात्र इसे देखेंगे।",
+    pickChapter: "एक अध्याय चुनें",
+    summaryLabel: "सारांश",
+    keyPointsLabel: "मुख्य बिंदु (एक पंक्ति में एक)",
+    importantTermsLabel: "महत्वपूर्ण शब्द (अल्पविराम से अलग करें)",
+    saveBtn: "नोट सहेजें",
+    saving: "सहेजा जा रहा है…",
+    savedToast: "नोट सहेजा गया।",
+    empty: "इस अध्याय के लिए अभी कोई नोट सहेजा नहीं गया।",
+  },
+
+  practicePage: {
+    title: "अभ्यास प्रश्न",
+    sub: "किसी अध्याय के लिए अभ्यास प्रश्न जोड़ें — आपके छात्र इन्हें देखेंगे।",
+    pickChapter: "एक अध्याय चुनें",
+    newBtn: "नया प्रश्न",
+    questionLabel: "प्रश्न",
+    typeLabel: "प्रकार",
+    typeMcq: "बहुविकल्पीय",
+    typeShort: "लघु उत्तर",
+    typeTrueFalse: "सही / गलत",
+    optionsLabel: "विकल्प (एक पंक्ति में एक)",
+    answerLabel: "सही उत्तर",
+    difficultyLabel: "कठिनाई",
+    addBtn: "प्रश्न जोड़ें",
+    adding: "जोड़ा जा रहा है…",
+    addedToast: "प्रश्न जोड़ा गया।",
+    deleteConfirm: "यह प्रश्न हटाएँ?",
+    deletedToast: "हटा दिया गया।",
+    empty: "इस अध्याय के लिए अभी कोई अभ्यास प्रश्न नहीं जोड़ा गया।",
   },
 
   feesPage: {

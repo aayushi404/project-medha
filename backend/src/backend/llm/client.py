@@ -10,6 +10,13 @@ class LLMError(RuntimeError):
     """Raised for any upstream LLM failure so callers don't import the SDK."""
 
 
+class LLMRateLimitError(LLMError):
+    """The upstream provider rejected the request for hitting a rate limit
+    or quota (HTTP 429). Distinct from other upstream failures so callers
+    can show a specific, actionable message instead of a generic
+    "try again" one -- retrying immediately won't help here."""
+
+
 @dataclass
 class Message:
     role: str  # 'user' | 'assistant'

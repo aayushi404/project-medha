@@ -10,8 +10,10 @@ import {
   GraduationCap,
   Home,
   Library,
+  ListChecks,
   Menu,
   NotebookPen,
+  NotebookText,
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -36,6 +38,8 @@ const NAV: { href: string; navKey: keyof Copy["nav"]; icon: LucideIcon }[] = [
   { href: "/timetable", navKey: "timetable", icon: CalendarDays },
   { href: "/report-card", navKey: "reportCard", icon: ClipboardList },
   { href: "/resources", navKey: "resources", icon: Library },
+  { href: "/notes", navKey: "notes", icon: NotebookText },
+  { href: "/practice", navKey: "practice", icon: ListChecks },
 ];
 
 function Brand() {

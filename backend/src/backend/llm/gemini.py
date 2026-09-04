@@ -11,6 +11,7 @@ from backend.llm.client import (
     Completion,
     LLMClient,
     LLMError,
+    LLMRateLimitError,
     Message,
     StreamEnd,
     TokenDelta,
@@ -18,6 +19,14 @@ from backend.llm.client import (
 )
 
 logger = logging.getLogger("backend.llm")
+
+
+def _raise_for(exc: genai_errors.APIError) -> None:
+    """429 covers both plain rate limiting and quota exhaustion (Gemini
+    reports both as RESOURCE_EXHAUSTED under this same status code)."""
+    if exc.code == 429:
+        raise LLMRateLimitError(str(exc)) from exc
+    raise LLMError(str(exc)) from exc
 
 # our Message.role -> Gemini content role
 _ROLE = {"user": "user", "assistant": "model"}
@@ -71,7 +80,7 @@ class GeminiClient(LLMClient):
                     last_usage = _usage(chunk.usage_metadata)
         except genai_errors.APIError as exc:
             logger.warning("llm_stream_error model=%s err=%s", self._model, exc)
-            raise LLMError(str(exc)) from exc
+            _raise_for(exc)
 
         logger.info(
             "llm_call kind=stream provider=gemini model=%s latency_ms=%d input_tokens=%d output_tokens=%d cache_hit=false",
@@ -95,7 +104,7 @@ class GeminiClient(LLMClient):
             )
         except genai_errors.APIError as exc:
             logger.warning("llm_complete_error model=%s err=%s", self._model, exc)
-            raise LLMError(str(exc)) from exc
+            _raise_for(exc)
 
         usage = _usage(resp.usage_metadata)
         logger.info(

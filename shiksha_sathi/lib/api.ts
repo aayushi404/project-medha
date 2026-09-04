@@ -394,7 +394,12 @@ export const rejectPrincipal = (token: string | null, id: string, reason: string
 
 // --- principal ---
 
-export type PrincipalStats = { teachers: number; pending_teachers: number };
+export type PrincipalStats = {
+  teachers: number;
+  pending_teachers: number;
+  students: number;
+  pending_students: number;
+};
 
 export type PendingTeacher = {
   id: string;
@@ -835,4 +840,63 @@ export const listFees = (token: string | null, studentId: string) =>
 
 export const getPrincipalStudents = (token: string | null) =>
   json<StudentRosterItem[]>(apiFetch("/principal/students", { token }));
+
+// ---------------------------------------------------------------------------
+// Chapter notes and practice questions: teacher/principal-curated student
+// content, kept separate from the private `modules` feature (those stay
+// visible only to the teacher who generated them).
+// ---------------------------------------------------------------------------
+
+export type ChapterNote = {
+  id: string;
+  chapter_id: string;
+  summary: string;
+  key_points: string[];
+  important_terms: string[];
+  updated_at: string;
+};
+
+export type ChapterNoteInput = {
+  chapter_id: string;
+  summary: string;
+  key_points: string[];
+  important_terms: string[];
+};
+
+export const getChapterNotes = (token: string | null, chapterId: string) =>
+  json<ChapterNote | null>(apiFetch(`/notes?chapter_id=${chapterId}`, { token }));
+
+export const upsertChapterNote = (token: string | null, body: ChapterNoteInput) =>
+  json<ChapterNote>(apiFetch("/notes", { method: "POST", token, body }));
+
+export type PracticeQuestion = {
+  id: string;
+  chapter_id: string;
+  question: string;
+  type: "mcq" | "short" | "truefalse";
+  options: string[] | null;
+  answer: string;
+  difficulty: "easy" | "medium" | "hard";
+  created_at: string;
+};
+
+export type PracticeQuestionInput = {
+  chapter_id: string;
+  question: string;
+  type: "mcq" | "short" | "truefalse";
+  options?: string[] | null;
+  answer: string;
+  difficulty: "easy" | "medium" | "hard";
+};
+
+export const getPracticeQuestions = (token: string | null, chapterId: string) =>
+  json<PracticeQuestion[]>(apiFetch(`/practice?chapter_id=${chapterId}`, { token }));
+
+export const addPracticeQuestion = (token: string | null, body: PracticeQuestionInput) =>
+  json<PracticeQuestion>(apiFetch("/practice", { method: "POST", token, body }));
+
+export const deletePracticeQuestion = async (token: string | null, id: string) => {
+  const res = await apiFetch(`/practice/${id}`, { method: "DELETE", token });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+};
 

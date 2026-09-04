@@ -19,6 +19,8 @@ __all__ = [
 class PrincipalStats(BaseModel):
     teachers: int  # approved at this school
     pending_teachers: int
+    students: int  # approved at this school
+    pending_students: int
 
 
 class PendingTeacher(BaseModel):

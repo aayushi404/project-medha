@@ -12,13 +12,14 @@ from sqlalchemy.orm import Session
 from backend.core.ownership import assert_owned
 from backend.db.models import ChatMessage, ChatSession, Grade, Subject, Teacher
 from backend.english.schemas import EnglishSessionCreateIn
-from backend.llm import LLMError, Message, StreamEnd, TokenDelta, get_llm_client
+from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.prompts import english as english_prompt
 
 logger = logging.getLogger("backend.english")
 
 _ERR_GENERATION = "Could not get an answer. Please try again in a moment."
 _ERR_EMPTY = "Got an empty answer. Please try again."
+_ERR_RATE_LIMIT = "AI service limit has been reached. Please contact the app developer."
 
 
 def _student_grade_id(student: Teacher) -> uuid.UUID:
@@ -121,6 +122,10 @@ async def stream_message(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, StreamEnd):
                 output_tokens = event.usage.output_tokens
+    except LLMRateLimitError as exc:
+        logger.warning("english generation rate-limited: %s", exc)
+        yield _sse("error", {"message": _ERR_RATE_LIMIT})
+        return
     except LLMError as exc:
         logger.warning("english generation failed: %s", exc)
         yield _sse("error", {"message": _ERR_GENERATION})

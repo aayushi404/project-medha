@@ -12,8 +12,10 @@ from backend.db.models.fee import FeePayment
 from backend.db.models.homework import Homework, HomeworkStatus
 from backend.db.models.library import LibraryItem
 from backend.db.models.module import Module, ModuleArtifact, ModuleFeedback
+from backend.db.models.notes import ChapterNote
 from backend.db.models.notification import DeviceToken, Notification
 from backend.db.models.organization import Block, District, School
+from backend.db.models.practice import PracticeQuestion
 from backend.db.models.report_card import ReportCardMark
 from backend.db.models.teacher import ApprovalEvent, AuthSession, Teacher
 from backend.db.models.timetable import TimetableEntry
@@ -45,4 +47,6 @@ __all__ = [
     "ReportCardMark",
     "LibraryItem",
     "FeePayment",
+    "ChapterNote",
+    "PracticeQuestion",
 ]

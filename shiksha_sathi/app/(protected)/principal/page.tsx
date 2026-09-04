@@ -31,6 +31,7 @@ import { AnnounceForm } from "@/components/notifications/announce-form";
 import { FeesList } from "@/components/fees/fees-list";
 import { PendingTeachers } from "@/components/principal/pending-teachers";
 import { TeacherRoster } from "@/components/principal/teacher-roster";
+import { StudentRoster } from "@/components/students/student-roster";
 
 function FeeLogSection() {
   const { accessToken } = useAuth();
@@ -170,6 +171,7 @@ function PrincipalDashboard() {
   const [stats, setStats] = useState<PrincipalStats | null>(null);
   const [pending, setPending] = useState<PendingTeacher[]>([]);
   const [roster, setRoster] = useState<TeacherRosterItem[]>([]);
+  const [students, setStudents] = useState<StudentRosterItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -178,11 +180,13 @@ function PrincipalDashboard() {
       getPrincipalStats(accessToken),
       getPendingTeachers(accessToken),
       getPrincipalTeachers(accessToken),
+      getPrincipalStudents(accessToken),
     ])
-      .then(([s, p, r]) => {
+      .then(([s, p, r, st]) => {
         setStats(s);
         setPending(p);
         setRoster(r);
+        setStudents(st);
       })
       .catch((e: unknown) => {
         toast.error(e instanceof Error ? e.message : "Could not load the dashboard.");
@@ -226,7 +230,9 @@ function PrincipalDashboard() {
             <StatGrid
               stats={[
                 { label: "Approved teachers", value: stats.teachers },
-                { label: "Pending", value: stats.pending_teachers },
+                { label: "Pending teachers", value: stats.pending_teachers },
+                { label: "Approved students", value: stats.students },
+                { label: "Pending students", value: stats.pending_students },
               ]}
             />
           )}
@@ -252,6 +258,13 @@ function PrincipalDashboard() {
               Your teachers
             </h2>
             <TeacherRoster teachers={roster} />
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
+              Students
+            </h2>
+            <StudentRoster students={students} />
           </section>
 
           <section>

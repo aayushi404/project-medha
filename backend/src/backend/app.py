@@ -17,8 +17,10 @@ from backend.fees.router import router as fees_router
 from backend.homework.router import router as homework_router
 from backend.library.router import router as library_router
 from backend.modules.router import router as modules_router
+from backend.notes.router import router as notes_router
 from backend.notifications.router import router as notifications_router
 from backend.onboarding.router import router as onboarding_router
+from backend.practice.router import router as practice_router
 from backend.principal.router import router as principal_router
 from backend.profile.router import router as profile_router
 from backend.reference.router import router as reference_router
@@ -88,6 +90,8 @@ app.include_router(timetable_router)
 app.include_router(report_card_router)
 app.include_router(library_router)
 app.include_router(fees_router)
+app.include_router(notes_router)
+app.include_router(practice_router)
 
 
 @app.get("/health")

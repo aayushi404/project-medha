@@ -9,6 +9,7 @@ from backend.llm.client import (
     Completion,
     LLMClient,
     LLMError,
+    LLMRateLimitError,
     Message,
     StreamEnd,
     TokenDelta,
@@ -50,6 +51,9 @@ class ClaudeClient(LLMClient):
                     if event.type == "text":
                         yield TokenDelta(text=event.text)
                 final = await stream.get_final_message()
+        except anthropic.RateLimitError as exc:
+            logger.warning("llm_stream_rate_limited model=%s err=%s", self._model, exc)
+            raise LLMRateLimitError(str(exc)) from exc
         except anthropic.AnthropicError as exc:
             logger.warning("llm_stream_error model=%s err=%s", self._model, exc)
             raise LLMError(str(exc)) from exc
@@ -75,6 +79,9 @@ class ClaudeClient(LLMClient):
                 messages=_to_anthropic(messages),
                 max_tokens=max_tokens,
             )
+        except anthropic.RateLimitError as exc:
+            logger.warning("llm_complete_rate_limited model=%s err=%s", self._model, exc)
+            raise LLMRateLimitError(str(exc)) from exc
         except anthropic.AnthropicError as exc:
             logger.warning("llm_complete_error model=%s err=%s", self._model, exc)
             raise LLMError(str(exc)) from exc

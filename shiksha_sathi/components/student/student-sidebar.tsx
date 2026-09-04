@@ -33,9 +33,8 @@ import { cn } from "@/lib/utils";
 const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[] = [
   { href: "/learn", navKey: "ask", icon: MessagesSquare },
   { href: "/english", navKey: "english", icon: Languages },
-  { href: "/practice", navKey: "practice", icon: PencilRuler },
-  { href: "/notes", navKey: "notes", icon: NotebookText },
-  { href: "/library", navKey: "library", icon: Library },
+  { href: "/my-practice", navKey: "practice", icon: PencilRuler },
+  { href: "/my-notes", navKey: "notes", icon: NotebookText },
   { href: "/my-homework", navKey: "homework", icon: NotebookPen },
   { href: "/my-timetable", navKey: "timetable", icon: CalendarDays },
   { href: "/my-report-card", navKey: "reportCard", icon: ClipboardList },

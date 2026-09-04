@@ -34,9 +34,19 @@ def get_stats(db: Session, principal: Teacher) -> PrincipalStats:
             or 0
         )
 
+    def _count_role(role: str, *extra) -> int:
+        return (
+            db.query(func.count(Teacher.id))
+            .filter(Teacher.role == role, Teacher.school_id == school_id, *extra)
+            .scalar()
+            or 0
+        )
+
     return PrincipalStats(
         teachers=_count(Teacher.approval_status == "approved"),
         pending_teachers=_count(Teacher.approval_status == "pending"),
+        students=_count_role("student", Teacher.approval_status == "approved"),
+        pending_students=_count_role("student", Teacher.approval_status == "pending"),
     )
 
 
