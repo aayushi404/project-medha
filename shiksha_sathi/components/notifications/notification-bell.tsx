@@ -29,8 +29,9 @@ function fmtTime(iso: string) {
  * there's no push channel into the web client.
  */
 export function NotificationBell({ className }: { className?: string }) {
-  const { accessToken } = useAuth();
+  const { accessToken, teacher } = useAuth();
   const copy = useCopy();
+  const inboxHref = teacher?.role === "student" ? "/my-notifications" : "/notifications";
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<AppNotification[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -71,7 +72,7 @@ export function NotificationBell({ className }: { className?: string }) {
   const trigger = (
     <span
       className={cn(
-        "relative flex size-8 items-center justify-center rounded-lg text-sidebar-foreground/70 outline-none transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+        "relative flex size-8 items-center justify-center rounded-lg text-foreground/70 outline-none transition-colors hover:bg-muted hover:text-foreground",
         className,
       )}
       aria-label={copy.notifications.title}
@@ -94,9 +95,11 @@ export function NotificationBell({ className }: { className?: string }) {
       <div className="flex flex-col">
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
           <span className="text-sm font-medium text-foreground">{copy.notifications.title}</span>
-          <Link href="/notifications" className="text-xs text-primary hover:underline">
-            {copy.notifications.viewAll}
-          </Link>
+          {(teacher?.role === "teacher" || teacher?.role === "student") && (
+            <Link href={inboxHref} className="text-xs text-primary hover:underline">
+              {copy.notifications.viewAll}
+            </Link>
+          )}
         </div>
         <div className="max-h-80 overflow-y-auto">
           {items === null ? (

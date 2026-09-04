@@ -3,11 +3,15 @@
 import { Dialog } from "@base-ui/react/dialog";
 import {
   BookOpen,
+  CalendarDays,
   ClipboardCheck,
+  ClipboardList,
   FolderOpen,
   GraduationCap,
   Home,
+  Library,
   Menu,
+  NotebookPen,
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -17,6 +21,7 @@ import { useState } from "react";
 
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { ProfileMenu } from "@/components/app/profile-menu";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useCopy } from "@/lib/copy";
 import type { Copy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
@@ -27,6 +32,10 @@ const NAV: { href: string; navKey: keyof Copy["nav"]; icon: LucideIcon }[] = [
   { href: "/students", navKey: "students", icon: GraduationCap },
   { href: "/tools", navKey: "tools", icon: Wrench },
   { href: "/attendance", navKey: "attendance", icon: ClipboardCheck },
+  { href: "/homework", navKey: "homework", icon: NotebookPen },
+  { href: "/timetable", navKey: "timetable", icon: CalendarDays },
+  { href: "/report-card", navKey: "reportCard", icon: ClipboardList },
+  { href: "/resources", navKey: "resources", icon: Library },
 ];
 
 function Brand() {
@@ -36,6 +45,7 @@ function Brand() {
       <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
         Medha
       </span>
+      <NotificationBell className="ml-auto" />
     </div>
   );
 }
@@ -110,7 +120,8 @@ export function AppSidebar() {
         <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
           Medha
         </span>
-        <LanguageToggle className="ml-auto" />
+        <NotificationBell className="ml-auto" />
+        <LanguageToggle />
       </div>
     </>
   );

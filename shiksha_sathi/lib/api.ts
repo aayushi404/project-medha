@@ -70,7 +70,7 @@ export type OnboardingCompleteInput = {
 };
 
 type ApiFetchOptions = {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   token?: string | null;
   signal?: AbortSignal;

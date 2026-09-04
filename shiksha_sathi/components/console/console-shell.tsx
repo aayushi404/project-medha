@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { BookOpen, LogOut } from "lucide-react";
 
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/lib/auth-context";
 
 /**
@@ -33,6 +34,7 @@ export function ConsoleShell({
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <NotificationBell />
             {teacher?.email && (
               <span className="hidden text-xs text-muted-foreground sm:inline">
                 {teacher.email}

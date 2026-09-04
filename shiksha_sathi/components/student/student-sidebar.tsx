@@ -3,11 +3,15 @@
 import { Dialog } from "@base-ui/react/dialog";
 import {
   BookOpen,
+  CalendarDays,
   ChevronUp,
+  ClipboardList,
+  IndianRupee,
   Languages,
   Library,
   Menu,
   MessagesSquare,
+  NotebookPen,
   NotebookText,
   PencilRuler,
   LogOut,
@@ -18,6 +22,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { LanguageToggle } from "@/components/app/language-toggle";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy, useCurriculumT } from "@/lib/copy";
@@ -31,6 +36,11 @@ const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[
   { href: "/practice", navKey: "practice", icon: PencilRuler },
   { href: "/notes", navKey: "notes", icon: NotebookText },
   { href: "/library", navKey: "library", icon: Library },
+  { href: "/my-homework", navKey: "homework", icon: NotebookPen },
+  { href: "/my-timetable", navKey: "timetable", icon: CalendarDays },
+  { href: "/my-report-card", navKey: "reportCard", icon: ClipboardList },
+  { href: "/my-resources", navKey: "resources", icon: Library },
+  { href: "/fees", navKey: "fees", icon: IndianRupee },
 ];
 
 function initials(name: string): string {
@@ -45,6 +55,7 @@ function Brand() {
       <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
         Medha
       </span>
+      <NotificationBell className="ml-auto" />
     </div>
   );
 }
@@ -157,7 +168,8 @@ export function StudentSidebar() {
         <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
           Medha
         </span>
-        <LanguageToggle className="ml-auto" />
+        <NotificationBell className="ml-auto" />
+        <LanguageToggle />
       </div>
     </>
   );
