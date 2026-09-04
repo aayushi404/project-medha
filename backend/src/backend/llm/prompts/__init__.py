@@ -15,6 +15,12 @@ _LANGUAGE_INSTRUCTION = {
     ),
     "hi": "Reply in simple, standard Hindi. Use short, clear sentences.",
     "en": "Reply in simple English. Use short, clear sentences.",
+    "hinglish": (
+        "Reply in Hinglish -- code-mixed Hindi-English written in Latin script, "
+        "the way teachers actually text each other (e.g. 'Aaj hum photosynthesis "
+        "padhayenge'). Not pure transliterated Hindi and not pure English -- mix "
+        "naturally. Use short, clear sentences."
+    ),
 }
 
 

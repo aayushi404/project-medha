@@ -4,11 +4,13 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from backend.approvals.schemas import ApprovalResult, RejectIn
+from backend.teacher.schemas import StudentRosterItem
 
 __all__ = [
     "PrincipalStats",
     "PendingTeacher",
     "TeacherRosterItem",
+    "StudentRosterItem",
     "RejectIn",
     "ApprovalResult",
 ]

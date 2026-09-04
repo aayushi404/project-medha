@@ -12,6 +12,7 @@ type PopoverProps = {
   triggerClassName?: string;
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
+  onOpenChange?: (open: boolean) => void;
 };
 
 function Popover({
@@ -21,9 +22,10 @@ function Popover({
   triggerClassName,
   side = "bottom",
   align = "start",
+  onOpenChange,
 }: PopoverProps) {
   return (
-    <PopoverPrimitive.Root>
+    <PopoverPrimitive.Root onOpenChange={onOpenChange}>
       <PopoverPrimitive.Trigger
         data-slot="popover-trigger"
         className={cn("outline-none", triggerClassName)}

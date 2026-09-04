@@ -7,8 +7,9 @@ from pydantic import BaseModel, field_validator, model_validator
 from backend.onboarding.schemas import TeacherSubjectIn, validate_subject_selection
 
 # Direct generation branches on this in the prompts (docs/phase-1/04), so keep
-# it a closed set rather than free text.
-Language = Literal["hi-BiharBoli", "hi", "en"]
+# it a closed set rather than free text. "hinglish" is code-mixed Hindi-English
+# (Latin script) -- distinct from "hi"/"hi-BiharBoli", which are Devanagari.
+Language = Literal["hi-BiharBoli", "hi", "en", "hinglish"]
 
 
 class SchoolOut(BaseModel):

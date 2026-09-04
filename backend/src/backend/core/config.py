@@ -57,6 +57,16 @@ class Settings(BaseSettings):
     chat_rate_limit_per_min: int = 6
     chat_rate_limit_per_day: int = 200
 
+    # Google sign-in — the WEB client ID, used as the audience when verifying
+    # ID tokens (see auth/service.py). Unset disables /auth/google (503).
+    google_client_id: str = ""
+
+    # Firebase Cloud Messaging — path to a service-account JSON (Firebase
+    # console -> Project settings -> Service accounts -> Generate new private
+    # key). Unset means push notifications no-op quietly; the in-app inbox
+    # (notifications table) always works regardless.
+    firebase_credentials_path: str = ""
+
     # Sarvam AI — speech (STT/TTS) for voice input and conversational mode
     sarvam_api_key: str = ""
     sarvam_stt_model: str = "saaras:v3"

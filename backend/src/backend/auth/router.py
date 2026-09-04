@@ -3,7 +3,14 @@ from sqlalchemy.orm import Session
 
 from backend.auth import service
 from backend.auth.dependencies import get_current_teacher
-from backend.auth.schemas import LoginIn, RegisterIn, RegisterOut, TeacherOut, TokenOut
+from backend.auth.schemas import (
+    GoogleAuthIn,
+    LoginIn,
+    RegisterIn,
+    RegisterOut,
+    TeacherOut,
+    TokenOut,
+)
 from backend.core.config import REFRESH_TOKEN_EXPIRE_DAYS, settings
 from backend.db.models import Teacher
 from backend.db.session import get_db
@@ -55,6 +62,20 @@ def login(
 ) -> TokenOut:
     access_token, refresh_token, expires_in = service.login(
         db, payload.email, payload.password, request.headers.get("user-agent")
+    )
+    _set_refresh_cookie(response, refresh_token)
+    return TokenOut(access_token=access_token, expires_in=expires_in)
+
+
+@router.post("/google", response_model=TokenOut)
+def google_auth(
+    payload: GoogleAuthIn,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> TokenOut:
+    access_token, refresh_token, expires_in = service.google_login(
+        db, payload.id_token, request.headers.get("user-agent")
     )
     _set_refresh_cookie(response, refresh_token)
     return TokenOut(access_token=access_token, expires_in=expires_in)

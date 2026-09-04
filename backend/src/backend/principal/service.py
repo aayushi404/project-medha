@@ -6,8 +6,13 @@ from sqlalchemy.orm import Session
 
 from backend.approvals import service as approvals
 from backend.approvals.schemas import ApprovalResult
-from backend.db.models import Teacher
-from backend.principal.schemas import PendingTeacher, PrincipalStats, TeacherRosterItem
+from backend.db.models import Grade, Teacher
+from backend.principal.schemas import (
+    PendingTeacher,
+    PrincipalStats,
+    StudentRosterItem,
+    TeacherRosterItem,
+)
 
 
 def _school_id(principal: Teacher) -> uuid.UUID:
@@ -85,6 +90,37 @@ def list_teachers(db: Session, principal: Teacher) -> list[TeacherRosterItem]:
             approved_at=t.approved_at,
         )
         for t in rows
+    ]
+
+
+def list_students(db: Session, principal: Teacher) -> list[StudentRosterItem]:
+    """Every approved student at the principal's school, across all grades --
+    used by school-wide pickers (e.g. logging a fee payment) that a single
+    teacher's own `/teacher/students` roster can't cover."""
+    school_id = _school_id(principal)
+    rows = (
+        db.query(Teacher, Grade.label)
+        .join(Grade, Teacher.grade_id == Grade.id)
+        .filter(
+            Teacher.role == "student",
+            Teacher.school_id == school_id,
+            Teacher.approval_status == "approved",
+        )
+        .order_by(Grade.numeric_level, Teacher.roll_number, Teacher.full_name)
+        .all()
+    )
+    return [
+        StudentRosterItem(
+            id=s.id,
+            full_name=s.full_name,
+            grade_id=s.grade_id,
+            grade_label=grade_label,
+            roll_number=s.roll_number,
+            email=s.email,
+            activated=s.email is not None,
+            approved_at=s.approved_at,
+        )
+        for s, grade_label in rows
     ]
 
 

@@ -12,6 +12,7 @@ from backend.principal.schemas import (
     PendingTeacher,
     PrincipalStats,
     RejectIn,
+    StudentRosterItem,
     TeacherRosterItem,
 )
 
@@ -32,6 +33,13 @@ def teachers(
     principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
 ) -> list[TeacherRosterItem]:
     return service.list_teachers(db, principal)
+
+
+@router.get("/students", response_model=list[StudentRosterItem])
+def students(
+    principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
+) -> list[StudentRosterItem]:
+    return service.list_students(db, principal)
 
 
 @router.get("/teachers/pending", response_model=list[PendingTeacher])

@@ -6,6 +6,7 @@ _LANG = {
     "hi": "standard Hindi (Devanagari)",
     "hi-BiharBoli": "simple Hindi with a natural Bihari conversational tone",
     "en": "simple English",
+    "hinglish": "Hinglish (code-mixed Hindi-English, written in Latin script)",
 }
 
 _LEVEL = {

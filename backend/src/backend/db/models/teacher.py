@@ -45,6 +45,14 @@ class Teacher(Base):
             unique=True,
             postgresql_where=text("email IS NOT NULL"),
         ),
+        # Google sign-in identity, optional -- same "unique only when present"
+        # shape as email, since most rows won't have one.
+        Index(
+            "uq_teachers_google_sub",
+            "google_sub",
+            unique=True,
+            postgresql_where=text("google_sub IS NOT NULL"),
+        ),
         CheckConstraint(
             "role IN ('admin', 'principal', 'teacher', 'student')",
             name="chk_teachers_role",
@@ -73,6 +81,10 @@ class Teacher(Base):
     # non-NULL emails unique.
     email: Mapped[str | None]
     password_hash: Mapped[str | None]
+    # Google sign-in identity (the token's "sub" claim). Optional: most rows
+    # authenticate by password only. A row can have both, either, or neither --
+    # /auth/google links this to an existing email/password row on first use.
+    google_sub: Mapped[str | None]
     # optional profile data, no longer a credential. `phone_number` doubles as
     # the "mobile number" collected on the registration form.
     phone_number: Mapped[str | None] = mapped_column(unique=True)

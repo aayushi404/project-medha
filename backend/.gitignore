@@ -11,3 +11,6 @@ wheels/
 
 # Environment variables
 .env
+
+# Secrets that live on disk but never in git (paths referenced from .env)
+/secrets/
