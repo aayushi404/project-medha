@@ -16,6 +16,7 @@ import {
   fetchVoiceTurns,
   playSpeech,
   resolveTtsParams,
+  synthesizeSpeech,
   transcribeAudio,
 } from "@/lib/speech-api";
 import {
@@ -63,6 +64,12 @@ type VoiceChatPanelProps = VoiceChatConfig & {
 
 type VoiceState = "idle" | "listening" | "thinking" | "speaking";
 
+/**
+ * Spoken once each time the teacher opens the voice panel (converse mode only).
+ * A fixed Bihar-government welcome, always in Hindi regardless of UI language.
+ */
+const WELCOME_GREETING = "आपका स्वागत है नए शिक्षित एवं विकसित बिहार में।";
+
 function uid() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
@@ -98,6 +105,8 @@ export function VoiceChatPanel({
   // already running (which is what makes two replies talk over each other).
   const turnInFlightRef = useRef(false);
   const hydratedRef = useRef<string | null>(null);
+  // Set once we've played the welcome for the current open; cleared on close.
+  const greetedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
   const autoListenRef = useRef(autoListen);
@@ -125,6 +134,7 @@ export function VoiceChatPanel({
         restartTimerRef.current = null;
       }
       turnInFlightRef.current = false;
+      greetedRef.current = false;
       setHandsFreeActive(false);
       setState("idle");
     }
@@ -271,6 +281,42 @@ export function VoiceChatPanel({
     if (!playerRef.current) playerRef.current = new SequentialAudioPlayer();
     return playerRef.current;
   }, []);
+
+  // Speak a fixed welcome once each time the teacher opens the panel. Audio
+  // only (no transcript row) so it doesn't block history hydration.
+  useEffect(() => {
+    if (!open || !converse || greetedRef.current) return;
+    greetedRef.current = true;
+
+    let cancelled = false;
+    const player = ensurePlayer();
+    setState("speaking");
+
+    void (async () => {
+      try {
+        // Greeting is always Hindi; only borrow the Bihari accent when set.
+        const tts = resolveTtsParams(language);
+        const url = await synthesizeSpeech(
+          WELCOME_GREETING,
+          accessToken,
+          "hi-IN",
+          tts.accent,
+        );
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        player.onDrain = () => setState("idle");
+        player.enqueue(url);
+      } catch {
+        if (!cancelled) setState("idle");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, converse, ensurePlayer, language, accessToken]);
 
   const sendMessage = useCallback(
     async (content: string) => {
