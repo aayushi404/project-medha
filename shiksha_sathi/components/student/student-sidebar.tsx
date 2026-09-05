@@ -2,15 +2,19 @@
 
 import { Dialog } from "@base-ui/react/dialog";
 import {
+  BarChart3,
+  BookMarked,
   BookOpen,
   ChevronUp,
+  FileText,
+  HelpCircle,
   Languages,
   Library,
+  LogOut,
   Menu,
   MessagesSquare,
   NotebookText,
   PencilRuler,
-  LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -21,16 +25,25 @@ import { LanguageToggle } from "@/components/app/language-toggle";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy, useCurriculumT } from "@/lib/copy";
-import type { Copy } from "@/lib/copy";
 import { useStudentData } from "@/lib/student-context";
 import { cn } from "@/lib/utils";
 
-const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[] = [
-  { href: "/learn", navKey: "ask", icon: MessagesSquare },
-  { href: "/english", navKey: "english", icon: Languages },
-  { href: "/practice", navKey: "practice", icon: PencilRuler },
-  { href: "/notes", navKey: "notes", icon: NotebookText },
-  { href: "/library", navKey: "library", icon: Library },
+const NAV: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: string;
+  badgeClass?: string;
+}[] = [
+  { href: "/learn", label: "Study Material", icon: BookMarked },
+  { href: "/doubts", label: "Doubt Solve", icon: MessagesSquare, badge: "AI", badgeClass: "bg-blue-600 text-white" },
+  { href: "/practice", label: "Quiz Section", icon: PencilRuler },
+  { href: "/books", label: "Book Section", icon: BookOpen },
+  { href: "/open-test", label: "Open Test", icon: FileText, badge: "LIVE", badgeClass: "bg-red-500 text-white font-bold" },
+  { href: "/reports", label: "Reports & Progress", icon: BarChart3 },
+  { href: "/english", label: "Learn English", icon: Languages },
+  { href: "/notes", label: "Notes", icon: NotebookText },
+  { href: "/library", label: "Library", icon: Library },
 ];
 
 function initials(name: string): string {
@@ -45,16 +58,18 @@ function Brand() {
       <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
         Medha
       </span>
+      <span className="ml-auto text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+        Student
+      </span>
     </div>
   );
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
-  const copy = useCopy();
   const pathname = usePathname();
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
-      {NAV.map(({ href, navKey, icon: Icon }) => {
+      {NAV.map(({ href, label, icon: Icon, badge, badgeClass }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
@@ -62,14 +77,26 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             href={href}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
+              "flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
               active
-                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-xs"
+                : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
             )}
           >
-            <Icon className="size-4" />
-            {copy.studentNav[navKey]}
+            <span className="flex items-center gap-2.5">
+              <Icon className={cn("size-4", active ? "text-primary" : "text-slate-500")} />
+              {label}
+            </span>
+            {badge && (
+              <span
+                className={cn(
+                  "rounded-full px-1.5 py-0.2 text-[10px] font-semibold tracking-wider",
+                  badgeClass || "bg-muted text-foreground",
+                )}
+              >
+                {badge}
+              </span>
+            )}
           </Link>
         );
       })}
