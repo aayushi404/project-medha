@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.core.config import settings
@@ -272,6 +273,24 @@ def patch_generation(
         g.is_favorite = patch.is_favorite
     if patch.title is not None:
         g.title = patch.title
+    if patch.content_json is not None:
+        # Teachers may edit a finished artifact's body. Validate the incoming
+        # shape against the same Pydantic model the pipeline uses before persist.
+        from pydantic import ValidationError
+
+        from backend.generation.content import CONTENT_MODELS
+
+        if g.status != "completed":
+            raise HTTPException(status.HTTP_409_CONFLICT, "generation is not editable yet")
+        model = CONTENT_MODELS.get(g.type)
+        if model is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "type is not editable")
+        try:
+            validated = model.model_validate(patch.content_json)
+        except ValidationError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"invalid content: {exc}") from exc
+        g.content_json = validated.model_dump(mode="json")
+        g.updated_at = func.now()
     db.commit()
     return get_generation(db, teacher, generation_id)
 

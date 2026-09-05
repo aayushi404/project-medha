@@ -754,7 +754,7 @@ export const getGeneration = (token: string | null, id: string) =>
 export const patchGeneration = (
   token: string | null,
   id: string,
-  body: { is_favorite?: boolean; title?: string },
+  body: { is_favorite?: boolean; title?: string; content_json?: unknown },
 ) => json<GenerationDetail>(apiFetch(`/generations/${id}`, { method: "PATCH", token, body }));
 
 export const deleteGeneration = async (token: string | null, id: string) => {

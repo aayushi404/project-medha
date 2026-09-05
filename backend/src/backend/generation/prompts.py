@@ -37,36 +37,42 @@ def _ctx(grade_label: str, subject_name: str, topic_title: str, desc: str | None
 
 def _lesson_plan(*, grade_label, subject_name, topic_title, topic_description,
                  language, chunks, params: BaseModel) -> tuple[str, list[Message]]:
+    objective = (
+        f"Lesson objective (what the teacher wants emphasised): {params.focus}"
+        if params.focus
+        else ""
+    )
     system = f"""\
 {_PREAMBLE} Write a period-by-period lesson plan for this topic.
 
 {_ctx(grade_label, subject_name, topic_title, topic_description)}
-{f"Teacher's focus / notes: {params.focus}" if params.focus else ""}
+{objective}
 
 {language_instruction(language)}
 
 {_JSON_RULES} Shape:
 {{
-  "topic": "the lesson topic",
+  "topic": "the specific lesson topic (may be narrower than the chapter name)",
   "periods": {params.periods},
   "periods_detail": [
     {{
       "period_no": 1,
-      "concept": "what this period covers, 2-4 sentences",
-      "learning_objective": "what students will learn (bullet-style lines)",
-      "learning_outcomes": "what students will be able to do, with Bloom verbs",
-      "teacher_learning_process": "how the teacher runs the period: hook, explanation, blackboard work, activity",
-      "assessment": "oral questions / diagram labelling / short quiz for this period",
-      "resources": "blackboard, NCERT/BSEB textbook, low-cost materials"
+      "concept": "2-4 sentences: what this period covers and why it matters / where it sits in the chapter",
+      "learning_objective": "'Students will learn:' then bullet lines each starting with '- '",
+      "learning_outcomes": "'Students will be able to:' then bullet lines each starting with '- ' and ENDING with a Bloom's level in parentheses -- one of (Remembering) (Understanding) (Applying) (Analysing) (Evaluating) (Creating)",
+      "teacher_learning_process": "3-5 sentences, a runnable narrative: hook -> explanation -> blackboard work -> activity -> recap",
+      "assessment": "concrete checks for this period WITH the actual question text and its Bloom's level -- a mix of oral questions, diagram labelling, and a short quiz, as bullet lines starting with '- '",
+      "resources": "bullet lines starting with '- ': blackboard, the NCERT/BSEB textbook with chapter reference, low-cost materials, and a simple kit if relevant"
     }}
   ],
   "homework": "one short homework task, or null"
 }}
 
 Rules:
-  - Exactly {params.periods} entries in "periods_detail", period_no 1..{params.periods}.
+  - Exactly {params.periods} entries in "periods_detail", period_no 1..{params.periods}, in order.
   - Classroom-ready for 40+ first-generation learners, chalk-and-blackboard, often no electricity.
   - Draw analogies from everyday rural Bihar life (farming, cooking, the market, the river).
+  - Be specific and teacher-usable -- no placeholders, no "e.g." without a real example.
 
 {format_chunks(chunks)}
 """
@@ -241,7 +247,7 @@ Rules:
 Builder = Callable[..., tuple[str, list[Message]]]
 
 GEN_PROMPTS: dict[str, tuple[str, Builder]] = {
-    "lesson_plan": ("lesson_plan-v1", _lesson_plan),
+    "lesson_plan": ("lesson_plan-v2", _lesson_plan),
     "notes": ("notes-v1", _notes),
     "question_paper": ("question_paper-v1", _question_paper),
     "quiz": ("quiz-v2", _quiz),

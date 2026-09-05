@@ -34,6 +34,11 @@ const ART: Record<GenerationType, string> = {
   notes: "/notes-card.avif",
 };
 
+// Lesson plan has its own 2-step wizard route; the rest use the generic form.
+const HREF: Partial<Record<GenerationType, string>> = {
+  lesson_plan: "/lesson-plan",
+};
+
 /** A single illustrated Quick Action tile on the dashboard. `wide` lays it out
  *  as a row (used for the full-width Notes card); the default stacks the art
  *  above the copy with the arrow pinned bottom-right. */
@@ -48,7 +53,7 @@ export function QuickActionCard({
   const wide = layout === "wide";
   return (
     <Link
-      href={`/create/${type}`}
+      href={HREF[type] ?? `/create/${type}`}
       className={cn(
         "group relative flex rounded-3xl border border-hairline/60 transition-transform hover:-translate-y-0.5",
         TINT_BG[type],

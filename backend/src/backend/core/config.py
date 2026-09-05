@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     generation_legacy_read: bool = False
     generation_rate_limit_per_min: int = 4
     generation_rate_limit_per_day: int = 120
-    generation_max_tokens_lesson_plan: int = 2200
+    generation_max_tokens_lesson_plan: int = 4000
     generation_max_tokens_question_paper: int = 2600
     generation_max_tokens_notes: int = 1800
     generation_max_tokens_quiz: int = 1400

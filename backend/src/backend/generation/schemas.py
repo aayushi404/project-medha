@@ -85,6 +85,9 @@ class GenerationDetailOut(BaseModel):
 class GenerationPatchIn(BaseModel):
     is_favorite: bool | None = None
     title: str | None = None
+    # Teacher-edited artifact body. Validated against CONTENT_MODELS[type] in
+    # the service before it is persisted.
+    content_json: dict | None = None
 
     @field_validator("title")
     @classmethod

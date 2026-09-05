@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -27,10 +28,34 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-function LessonPlanView({ content, title }: { content: LessonPlanContent; title: string }) {
+type PeriodKey = keyof LessonPlanContent["periods_detail"][number];
+
+function blankPeriod(period_no: number): LessonPlanContent["periods_detail"][number] {
+  return {
+    period_no,
+    concept: "",
+    learning_objective: "",
+    learning_outcomes: "",
+    teacher_learning_process: "",
+    assessment: "",
+    resources: "",
+  };
+}
+
+function LessonPlanView({
+  content,
+  title,
+  editing = false,
+  onChange,
+}: {
+  content: LessonPlanContent;
+  title: string;
+  editing?: boolean;
+  onChange?: (next: LessonPlanContent) => void;
+}) {
   const copy = useCopy().generation.viewer.lessonPlan;
   const periods = content.periods_detail ?? [];
-  const cols: [string, keyof LessonPlanContent["periods_detail"][number]][] = [
+  const cols: [string, PeriodKey][] = [
     [copy.concept, "concept"],
     [copy.objective, "learning_objective"],
     [copy.outcomes, "learning_outcomes"],
@@ -38,11 +63,40 @@ function LessonPlanView({ content, title }: { content: LessonPlanContent; title:
     [copy.assessment, "assessment"],
     [copy.resources, "resources"],
   ];
+
+  function patch(next: Partial<LessonPlanContent>) {
+    onChange?.({ ...content, ...next });
+  }
+  function patchPeriod(i: number, key: PeriodKey, value: string) {
+    patch({ periods_detail: periods.map((p, idx) => (idx === i ? { ...p, [key]: value } : p)) });
+  }
+  function renumber(rows: LessonPlanContent["periods_detail"]) {
+    return rows.map((p, idx) => ({ ...p, period_no: idx + 1 }));
+  }
+  function addPeriod() {
+    const rows = renumber([...periods, blankPeriod(periods.length + 1)]);
+    patch({ periods_detail: rows, periods: rows.length });
+  }
+  function removePeriod(i: number) {
+    if (periods.length <= 1) return;
+    const rows = renumber(periods.filter((_, idx) => idx !== i));
+    patch({ periods_detail: rows, periods: rows.length });
+  }
+
   return (
     <Card>
       <div className="mb-3">
-        <p className="text-sm font-medium">{content.topic || title}</p>
-        <p className="text-xs text-muted-foreground">
+        {editing ? (
+          <input
+            value={content.topic}
+            onChange={(e) => patch({ topic: e.target.value })}
+            placeholder={copy.topic}
+            className="w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-sm font-medium outline-none focus:border-ring"
+          />
+        ) : (
+          <p className="text-sm font-medium">{content.topic || title}</p>
+        )}
+        <p className="mt-1 text-xs text-muted-foreground">
           {copy.period} 1–{content.periods || periods.length}
         </p>
       </div>
@@ -58,25 +112,73 @@ function LessonPlanView({ content, title }: { content: LessonPlanContent; title:
                   {label}
                 </th>
               ))}
+              {editing ? <th className="w-8" /> : null}
             </tr>
           </thead>
           <tbody>
-            {periods.map((p) => (
-              <tr key={p.period_no} className="border-b border-border/60 align-top">
+            {periods.map((p, i) => (
+              <tr key={i} className="border-b border-border/60 align-top">
                 <td className="sticky left-0 z-10 bg-card px-2 py-2 text-sm font-medium tabular-nums">
                   {p.period_no}
                 </td>
                 {cols.map(([label, key]) => (
-                  <td key={label} className="max-w-[220px] px-3 py-2 whitespace-pre-wrap text-muted-foreground">
-                    {String(p[key] ?? "")}
+                  <td key={label} className="max-w-[240px] px-3 py-2 align-top">
+                    {editing ? (
+                      <textarea
+                        value={String(p[key] ?? "")}
+                        onChange={(e) => patchPeriod(i, key, e.target.value)}
+                        rows={5}
+                        className="w-full min-w-[200px] resize-y rounded-md border border-border bg-background px-2 py-1.5 text-[13px] outline-none focus:border-ring"
+                      />
+                    ) : (
+                      <span className="block whitespace-pre-wrap text-muted-foreground">
+                        {String(p[key] ?? "")}
+                      </span>
+                    )}
                   </td>
                 ))}
+                {editing ? (
+                  <td className="px-1 py-2 align-top">
+                    <button
+                      type="button"
+                      onClick={() => removePeriod(i)}
+                      disabled={periods.length <= 1}
+                      aria-label={copy.removePeriod}
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive disabled:opacity-30"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {content.homework ? (
+
+      {editing ? (
+        <button
+          type="button"
+          onClick={addPeriod}
+          disabled={periods.length >= 8}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-40"
+        >
+          <Plus className="size-3.5" />
+          {copy.addPeriod}
+        </button>
+      ) : null}
+
+      {editing ? (
+        <div className="mt-3">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">{copy.homework}</p>
+          <textarea
+            value={content.homework ?? ""}
+            onChange={(e) => patch({ homework: e.target.value || null })}
+            rows={2}
+            className="w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-[13px] outline-none focus:border-ring"
+          />
+        </div>
+      ) : content.homework ? (
         <div className="mt-3 rounded-lg border border-border/70 bg-muted/40 p-2.5 text-xs">
           <span className="font-medium text-foreground">{copy.homework}. </span>
           <span className="text-muted-foreground">{content.homework}</span>
@@ -191,11 +293,16 @@ export function GenerationView({
   title,
   content,
   generationId,
+  editing,
+  onLessonPlanChange,
 }: {
   type: GenerationType;
   title: string;
   content: unknown;
   generationId: string;
+  /** lesson_plan only: render the table as an editable form */
+  editing?: boolean;
+  onLessonPlanChange?: (next: LessonPlanContent) => void;
 }) {
   if (type === "quiz") {
     return <ArtifactCard type="quiz" content={content as LegacyQuizContent} />;
@@ -211,7 +318,14 @@ export function GenerationView({
     );
   }
   if (type === "lesson_plan") {
-    return <LessonPlanView content={content as LessonPlanContent} title={title} />;
+    return (
+      <LessonPlanView
+        content={content as LessonPlanContent}
+        title={title}
+        editing={editing}
+        onChange={onLessonPlanChange}
+      />
+    );
   }
   if (type === "question_paper") {
     return <QuestionPaperView content={content as QuestionPaperContent} />;

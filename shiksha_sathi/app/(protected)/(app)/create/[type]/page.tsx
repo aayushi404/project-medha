@@ -2,7 +2,7 @@
 
 import { ChevronLeft, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { redirect, useParams, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -162,6 +162,9 @@ function CreateForm({ type }: { type: GenerationType }) {
 export default function CreateTypePage() {
   const copy = useCopy();
   const { type } = useParams<{ type: string }>();
+
+  // Lesson plan has a dedicated 2-step wizard at /lesson-plan.
+  if (type === "lesson_plan") redirect("/lesson-plan");
 
   if (!isGenerationType(type)) {
     return (
