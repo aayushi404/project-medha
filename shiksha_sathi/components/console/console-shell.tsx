@@ -12,16 +12,18 @@ import { useAuth } from "@/lib/auth-context";
  */
 export function ConsoleShell({
   title,
+  schoolName,
   children,
 }: {
   title: string;
+  schoolName?: string | null;
   children: ReactNode;
 }) {
   const { teacher, logout } = useAuth();
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
-      <header className="border-b border-border">
+      <header className="border-b border-border bg-white sticky top-0 z-30">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2.5">
             <BookOpen className="size-5 text-terracotta" />
@@ -31,7 +33,13 @@ export function ConsoleShell({
             <span className="ml-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
               {title}
             </span>
+            {schoolName && (
+              <span className="hidden sm:inline-flex items-center gap-1 ml-2 text-xs font-semibold text-slate-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                🏫 {schoolName}
+              </span>
+            )}
           </div>
+
           <div className="flex items-center gap-3">
             {teacher?.email && (
               <span className="hidden text-xs text-muted-foreground sm:inline">

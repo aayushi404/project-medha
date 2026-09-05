@@ -10,6 +10,8 @@ export type Teacher = {
   role: Role;
   approval_status: ApprovalStatus;
   school_id: string | null;
+  school_name?: string | null;
+  school_udise_code?: string | null;
   grade_id: string | null;
   roll_number: string | null;
   onboarded_at: string | null;
@@ -406,7 +408,11 @@ export type RegisterInput = {
   password: string;
   mobile_number: string;
   school_id: string;
+  school_code?: string | null;
+  joining_date?: string | null;
   employee_code?: string | null;
+  teaching_subject?: string | null;
+  teaching_classes?: string | null;
   years_of_experience?: number | null;
   qualification?: string | null;
 };
