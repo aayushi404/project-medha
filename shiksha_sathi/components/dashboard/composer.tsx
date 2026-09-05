@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Mic, MicOff, SendHorizontal } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { VoiceWaveform } from "@/components/voice/voice-waveform";
@@ -22,6 +22,9 @@ type ComposerProps = {
   enableVoice?: boolean;
   accessToken?: string | null;
   language?: string | null;
+  /** Seeds the textarea once on mount (e.g. a query handed off from the
+   * Ask Medha search bar). Not re-applied if it changes later. */
+  initialValue?: string;
 };
 
 export function Composer({
@@ -31,9 +34,10 @@ export function Composer({
   enableVoice = true,
   accessToken,
   language,
+  initialValue,
 }: ComposerProps) {
   const copy = useCopy();
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue ?? "");
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -45,6 +49,11 @@ export function Composer({
     ta.style.height = "auto";
     ta.style.height = `${Math.min(ta.scrollHeight, 128)}px`;
   }
+
+  useEffect(() => {
+    // Size the textarea once if it mounted pre-filled (e.g. from initialValue).
+    if (taRef.current?.value) resize();
+  }, []);
 
   function submit() {
     const text = value.trim();
@@ -119,13 +128,13 @@ export function Composer({
   return (
     <div className="border-t border-border p-3">
       {recording ? (
-        <div className="mx-auto mb-2 flex max-w-3xl items-center justify-center gap-3 rounded-lg bg-accent/60 px-4 py-2">
+        <div className="mx-auto mb-2 flex max-w-3xl items-center justify-center gap-3 rounded-lg bg-violet-muted/60 px-4 py-2">
           <VoiceWaveform active bars={7} />
-          <span className="text-xs font-medium text-terracotta">{copy.voice.listening}</span>
+          <span className="text-xs font-medium text-violet">{copy.voice.listening}</span>
           <VoiceWaveform active bars={7} />
         </div>
       ) : null}
-      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-xl border border-border bg-card px-3 py-2 focus-within:border-ring">
+      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-3xl border border-violet/20 bg-violet-muted/40 px-4 py-2 focus-within:border-violet/40">
         {showVoice ? (
           <button
             type="button"
@@ -165,7 +174,7 @@ export function Composer({
           onClick={submit}
           disabled={disabled || value.trim().length === 0}
           aria-label={copy.send}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
+          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-violet text-violet-foreground transition-opacity disabled:opacity-40"
         >
           {disabled ? (
             <Loader2 className="size-4 animate-spin" />

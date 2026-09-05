@@ -24,6 +24,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     else if (!teacher.onboarded_at) router.replace("/onboarding");
   }, [teacher, router]);
 
+  // Base UI portals (Select popups, dialogs, the ProfileMenu popover) mount
+  // onto <body>, outside this subtree -- CSS custom properties inherit down
+  // the DOM tree, so a class on the wrapper div alone wouldn't reach them.
+  // Toggling the same class on <body> while this shell is mounted covers both.
+  useEffect(() => {
+    document.body.classList.add("app-shell");
+    return () => document.body.classList.remove("app-shell");
+  }, []);
+
   if (!teacher || teacher.role !== "teacher" || !teacher.onboarded_at) return null;
 
   return (
@@ -31,7 +40,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <LessonProvider>
         {/* Shell is pinned to the viewport; the sidebar stays put and each
             screen scrolls inside its own overflow-y-auto region. */}
-        <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
+        <div className="app-shell flex h-dvh flex-col overflow-hidden md:flex-row">
           <AppSidebar />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {children}

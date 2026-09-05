@@ -12,10 +12,11 @@ import {
   type QuizContent,
 } from "@/lib/api";
 import { MARKDOWN_CLASS } from "@/lib/artifact";
+import { cn } from "@/lib/utils";
 
 /** Read-only render of one saved artifact. Reuses the dashboard's polished
- *  quiz / activity / slides cards; the explanation is plain prose in a card (the
- *  module page already puts a labelled section heading above it).
+ *  quiz / activity / slides cards; an explanation is plain, borderless prose
+ *  (no card chrome -- it reads like a chat reply, not a document).
  *
  *  `moduleId` is needed to build the .pptx download URL for a `ppt` artifact. */
 export function ArtifactView({
@@ -30,10 +31,8 @@ export function ArtifactView({
 
   if (artifact.artifact_type === "explanation") {
     return (
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <div className={MARKDOWN_CLASS}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.text ?? ""}</ReactMarkdown>
-        </div>
+      <div className={cn(MARKDOWN_CLASS, "text-base")}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.text ?? ""}</ReactMarkdown>
       </div>
     );
   }

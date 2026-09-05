@@ -7,13 +7,14 @@ import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useProfile } from "@/lib/profile-context";
+import { cn } from "@/lib/utils";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return (((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase()) || "?";
 }
 
-export function ProfileMenu() {
+export function ProfileMenu({ collapsed }: { collapsed?: boolean }) {
   const copy = useCopy();
   const t = useCurriculumT();
   const { logout } = useAuth();
@@ -26,11 +27,22 @@ export function ProfileMenu() {
     ? `${t.subject(primary.subject_name)} · ${t.grade(primary.grade_label)}`
     : "";
 
-  const chip = (
-    <span className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-card px-2 py-2 text-left transition-colors hover:bg-muted">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-foreground">
-        {initials(name || "?")}
-      </span>
+  const avatar = (
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-foreground">
+      {initials(name || "?")}
+    </span>
+  );
+
+  const chip = collapsed ? (
+    <span
+      title={name || undefined}
+      className="flex items-center justify-center rounded-xl p-1 transition-colors hover:bg-sidebar-accent/50"
+    >
+      {avatar}
+    </span>
+  ) : (
+    <span className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-card px-2 py-2 text-left transition-colors hover:bg-muted">
+      {avatar}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px]">{name || "—"}</span>
         <span className="block truncate text-[11px] text-muted-foreground">{subtitle}</span>
@@ -40,7 +52,12 @@ export function ProfileMenu() {
   );
 
   return (
-    <Popover trigger={chip} triggerClassName="w-full" side="top" align="center">
+    <Popover
+      trigger={chip}
+      triggerClassName={cn(!collapsed && "w-full")}
+      side="top"
+      align="center"
+    >
       <PopoverItem onClick={() => router.push("/profile")}>
         <Settings className="size-4" />
         {copy.profileMenu.edit}

@@ -12,6 +12,10 @@ export type StreamDone = {
   reply_style?: "normal" | "short" | "detail";
   tts_failed?: boolean;
   fallback?: "type_instead" | "browser_tts" | "retry";
+  // set by POST /generate/{type} and .../regenerate
+  generation_id?: string;
+  type?: string;
+  cached?: boolean;
 };
 
 /** A chunk of synthesised speech (base64) from /speech/converse. */
@@ -21,11 +25,21 @@ export type StreamAudio = {
   mime: string;
 };
 
+/** Structural progress from /generate/{type} for types that stream a single
+ * JSON blob rather than readable prose (e.g. presentation) -- there's nothing
+ * useful to show token-by-token, so the pipeline sends this instead. */
+export type StreamProgress = {
+  stage: string;
+  done: number;
+  total: number;
+};
+
 type StreamHandlers = {
   onToken: (text: string) => void;
   onDone: (payload: StreamDone) => void;
   onError: (message: string, fallback?: StreamDone["fallback"]) => void;
   onAudio?: (audio: StreamAudio) => void;
+  onProgress?: (progress: StreamProgress) => void;
 };
 
 /**
@@ -109,6 +123,7 @@ function dispatchFrame(frame: string, handlers: StreamHandlers): void {
 
   if (event === "token") handlers.onToken((data as { text: string }).text);
   else if (event === "audio") handlers.onAudio?.(data as StreamAudio);
+  else if (event === "progress") handlers.onProgress?.(data as StreamProgress);
   else if (event === "done") handlers.onDone(data as StreamDone);
   else if (event === "error") {
     const e = data as { message: string; fallback?: StreamDone["fallback"] };

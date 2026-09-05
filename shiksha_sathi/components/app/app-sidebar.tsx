@@ -4,16 +4,19 @@ import { Dialog } from "@base-ui/react/dialog";
 import {
   BookOpen,
   ClipboardCheck,
-  FolderOpen,
+  Clock,
   GraduationCap,
   Home,
   Menu,
+  MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { ProfileMenu } from "@/components/app/profile-menu";
@@ -23,44 +26,66 @@ import { cn } from "@/lib/utils";
 
 const NAV: { href: string; navKey: keyof Copy["nav"]; icon: LucideIcon }[] = [
   { href: "/dashboard", navKey: "home", icon: Home },
-  { href: "/modules", navKey: "modules", icon: FolderOpen },
+  { href: "/ask", navKey: "askMedha", icon: MessageCircle },
+  { href: "/history", navKey: "history", icon: Clock },
   { href: "/students", navKey: "students", icon: GraduationCap },
   { href: "/tools", navKey: "tools", icon: Wrench },
   { href: "/attendance", navKey: "attendance", icon: ClipboardCheck },
 ];
 
-function Brand() {
+const COLLAPSE_KEY = "medha.sidebarCollapsed";
+
+function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
-      <BookOpen className="size-5 text-terracotta" />
-      <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
-        Medha
-      </span>
+    <div
+      className={cn(
+        "flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4",
+        collapsed && "justify-center px-2",
+      )}
+    >
+      <BookOpen className="size-5 shrink-0 text-terracotta" />
+      {collapsed ? null : (
+        <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
+          Medha
+        </span>
+      )}
     </div>
   );
 }
 
-function NavList({ onNavigate }: { onNavigate?: () => void }) {
+function NavList({
+  onNavigate,
+  collapsed,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+}) {
   const copy = useCopy();
   const pathname = usePathname();
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
+      {collapsed ? null : (
+        <span className="eyebrow px-3 pt-2 pb-1 text-muted-foreground">{copy.navMain}</span>
+      )}
       {NAV.map(({ href, navKey, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
+        const label = copy.nav[navKey];
         return (
           <Link
             key={href}
             href={href}
             onClick={onNavigate}
+            title={collapsed ? label : undefined}
             className={cn(
-              "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
+              "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors",
+              collapsed && "justify-center px-0",
               active
                 ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
             )}
           >
-            <Icon className="size-4" />
-            {copy.nav[navKey]}
+            <Icon className="size-4 shrink-0" />
+            {collapsed ? null : label}
           </Link>
         );
       })}
@@ -68,11 +93,16 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function SidebarFooter() {
+function SidebarFooter({ collapsed }: { collapsed?: boolean }) {
   return (
-    <div className="flex flex-col gap-2 border-t border-sidebar-border p-2">
-      <LanguageToggle className="self-start" />
-      <ProfileMenu />
+    <div
+      className={cn(
+        "flex flex-col gap-2 border-t border-sidebar-border p-2",
+        collapsed && "items-center",
+      )}
+    >
+      {collapsed ? null : <LanguageToggle className="self-start" />}
+      <ProfileMenu collapsed={collapsed} />
     </div>
   );
 }
@@ -80,20 +110,60 @@ function SidebarFooter() {
 export function AppSidebar() {
   // drawer closes via onNavigate (link click) and Base UI's own backdrop/esc
   const [open, setOpen] = useState(false);
+  // Lazy-init from localStorage: safe because this component only ever
+  // mounts client-side, after auth resolves (see lib/lesson-context.tsx's
+  // readInitial() for the same established pattern) -- no SSR mismatch.
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem(COLLAPSE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [collapsed]);
 
   return (
     <>
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-        <Brand />
-        <NavList />
-        <SidebarFooter />
+      <aside
+        className={cn(
+          "hidden shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex",
+          collapsed ? "w-16" : "w-56",
+        )}
+      >
+        <Brand collapsed={collapsed} />
+        <NavList collapsed={collapsed} />
+        <SidebarFooter collapsed={collapsed} />
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={cn(
+            "m-2 flex items-center justify-center gap-1.5 rounded-xl border border-sidebar-border py-1.5 text-xs text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+          )}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-3.5" />
+          ) : (
+            <>
+              <PanelLeftClose className="size-3.5" /> Collapse
+            </>
+          )}
+        </button>
       </aside>
 
       <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2.5 text-sidebar-foreground md:hidden">
         <Dialog.Root open={open} onOpenChange={setOpen}>
           <Dialog.Trigger
             aria-label="Menu"
-            className="flex size-9 items-center justify-center rounded-lg outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="flex size-9 items-center justify-center rounded-xl outline-none hover:bg-sidebar-accent focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <Menu className="size-5" />
           </Dialog.Trigger>

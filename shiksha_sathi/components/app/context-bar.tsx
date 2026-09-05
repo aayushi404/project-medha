@@ -4,8 +4,9 @@ import { Select, type SelectOption } from "@/components/ui/select";
 import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useLessonContext } from "@/lib/lesson-context";
 
-export function ContextBar() {
-  const copy = useCopy();
+/** Grade/subject/chapter option-building shared between ContextBar and the
+ * /ask empty-state hero cards (components/app/context-hero-cards.tsx). */
+export function useContextOptions() {
   const t = useCurriculumT();
   const { gradeId, subjectId, chapterId, options, setGradeSubject, setChapter } =
     useLessonContext();
@@ -44,6 +45,35 @@ export function ContextBar() {
   function pickSubject(nextSubject: string) {
     if (gradeId) setGradeSubject(gradeId, nextSubject);
   }
+
+  return {
+    gradeId,
+    subjectId,
+    chapterId,
+    gradeOptions,
+    subjectOptions,
+    chapterOptions,
+    pickGrade,
+    pickSubject,
+    setChapter,
+    pairs,
+    chapters,
+  };
+}
+
+export function ContextBar() {
+  const copy = useCopy();
+  const {
+    gradeId,
+    subjectId,
+    chapterId,
+    gradeOptions,
+    subjectOptions,
+    chapterOptions,
+    pickGrade,
+    pickSubject,
+    setChapter,
+  } = useContextOptions();
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">

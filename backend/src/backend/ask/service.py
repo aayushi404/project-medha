@@ -8,7 +8,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.chat.schemas import SessionCreateIn
+from backend.ask.schemas import SessionCreateIn
+from backend.core.config import settings
 from backend.core.ownership import assert_owned
 from backend.db.models import (
     ChatMessage,
@@ -30,7 +31,7 @@ from backend.llm.prompts import title as title_prompt
 from backend.ppt.schema import DeckParseError, parse_deck
 from backend.retrieval.retriever import Retriever
 
-logger = logging.getLogger("backend.chat")
+logger = logging.getLogger("backend.ask")
 
 _ERR_GENERATION = "Could not generate a response. Please try again in a moment."
 _ERR_EMPTY = "Got an empty response. Please try again."
@@ -304,32 +305,39 @@ async def stream_message(
     if session.title is None:
         session.title = await _derive_title(client, teacher.preferred_language, content)
 
-    module = _upsert_module(db, teacher, session)
-    if module.title in (None, "Untitled") and session.title:
-        module.title = session.title
-    artifact = _replace_explanation_artifact(db, module, full_text)
+    # Legacy: a plain chat turn also derives a Module + explanation artifact.
+    # In v2 Ask Medha is conversation only -- generation lives in
+    # `backend.generation`. Gated so this can be turned off once the frontend
+    # has moved (see docs/medha-v2-backend.md §5).
+    done: dict[str, str] = {"message_id": str(assistant_msg.id)}
+    if settings.ask_writes_modules:
+        module = _upsert_module(db, teacher, session)
+        if module.title in (None, "Untitled") and session.title:
+            module.title = session.title
+        artifact = _replace_explanation_artifact(db, module, full_text)
+        db.commit()
+        db.refresh(assistant_msg)
+        db.refresh(module)
+        db.refresh(artifact)
+        done["module_id"] = str(module.id)
+        done["artifact_id"] = str(artifact.id)
+    else:
+        db.commit()
+        db.refresh(assistant_msg)
 
-    db.commit()
-    db.refresh(assistant_msg)
-    db.refresh(module)
-    db.refresh(artifact)
-
-    yield _sse(
-        "done",
-        {
-            "module_id": str(module.id),
-            "artifact_id": str(artifact.id),
-            "message_id": str(assistant_msg.id),
-        },
-    )
+    yield _sse("done", done)
 
 
 async def run_generator(
     db: Session, teacher: Teacher, session: ChatSession, artifact_type: str
 ) -> AsyncIterator[dict]:
-    """Quick-action generation (quiz | activity). Skips planning, streams raw
-    model output, parses the final JSON, and stores it as a module artifact.
-    Creates the session's Module if a quick action was hit before any message."""
+    """Quick-action generation (quiz | activity | ppt). Skips planning, streams
+    raw model output, parses the final JSON, and stores it as a module artifact.
+
+    LEGACY: superseded by `backend.generation` (`POST /generate/{type}`). Left
+    in place while the frontend still calls `/chat/sessions/{id}/generate`;
+    removed wholesale in Phase E along with the /chat alias. Not gated by
+    `ask_writes_modules` -- that flag governs only the plain-chat path above."""
     builder = _GEN_BUILDERS[artifact_type]
     grade = db.get(Grade, session.grade_id)
     subject = db.get(Subject, session.subject_id)

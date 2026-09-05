@@ -1,3 +1,5 @@
+import type { GenerationType, ParamsFor } from "@/lib/generation-types";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type Role = "admin" | "principal" | "teacher" | "student";
@@ -665,4 +667,116 @@ export type TranslateResult = {
 
 export const translateText = (token: string | null, body: TranslatePayload) =>
   json<TranslateResult>(apiFetch("/tools/translate", { method: "POST", token, body }));
+
+// ---------------------------------------------------------------------------
+// Content generation (Medha v2 -- docs/medha-v2-backend.md). Streaming
+// creation (`POST /generate/{type}`) goes through `lib/sse.ts`'s
+// `streamGeneration`, not here -- these are the plain-fetch CRUD calls.
+// ---------------------------------------------------------------------------
+
+export type GenerationScope = {
+  grade_id: string;
+  subject_id: string;
+  chapter_id?: string | null;
+  topic_id?: string | null;
+};
+
+export type GenerationListItem = {
+  id: string;
+  type: GenerationType;
+  title: string;
+  status: "queued" | "running" | "completed" | "failed";
+  source: string;
+  is_favorite: boolean;
+  grade_label: string | null;
+  subject_name: string | null;
+  chapter_title: string | null;
+  created_at: string;
+  legacy: boolean;
+  module_id: string | null;
+};
+
+export type GenerationExportInfo = { format: string; status: string; ready: boolean };
+
+export type GenerationDetail = {
+  id: string;
+  type: GenerationType;
+  title: string;
+  description: string | null;
+  language: string;
+  status: "queued" | "running" | "completed" | "failed";
+  source: string;
+  is_favorite: boolean;
+  grade_id: string | null;
+  subject_id: string | null;
+  chapter_id: string | null;
+  topic_id: string | null;
+  grade_label: string | null;
+  subject_name: string | null;
+  chapter_title: string | null;
+  input_params: Record<string, unknown> | null;
+  content_json: unknown;
+  error_message: string | null;
+  session_id: string | null;
+  parent_generation_id: string | null;
+  prompt_version: string | null;
+  created_at: string;
+  updated_at: string;
+  feedback: Feedback | null;
+  exports: GenerationExportInfo[];
+};
+
+export const listGenerations = (
+  token: string | null,
+  filter: {
+    type?: GenerationType;
+    favorite?: boolean;
+    q?: string;
+    cursor?: string;
+    limit?: number;
+    sort?: "date" | "title";
+  } = {},
+) => {
+  const qs = new URLSearchParams();
+  if (filter.type) qs.set("type", filter.type);
+  if (filter.favorite) qs.set("favorite", "true");
+  if (filter.q) qs.set("q", filter.q);
+  if (filter.cursor) qs.set("cursor", filter.cursor);
+  if (filter.limit) qs.set("limit", String(filter.limit));
+  if (filter.sort) qs.set("sort", filter.sort);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return json<GenerationListItem[]>(apiFetch(`/generations${suffix}`, { token }));
+};
+
+export const getGeneration = (token: string | null, id: string) =>
+  json<GenerationDetail>(apiFetch(`/generations/${id}`, { token }));
+
+export const patchGeneration = (
+  token: string | null,
+  id: string,
+  body: { is_favorite?: boolean; title?: string },
+) => json<GenerationDetail>(apiFetch(`/generations/${id}`, { method: "PATCH", token, body }));
+
+export const deleteGeneration = async (token: string | null, id: string) => {
+  const res = await apiFetch(`/generations/${id}`, { method: "DELETE", token });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+};
+
+export const sendGenerationFeedback = (
+  token: string | null,
+  id: string,
+  body: { rating: 1 | -1; comment?: string | null },
+) => json<Feedback>(apiFetch(`/generations/${id}/feedback`, { method: "POST", token, body }));
+
+/** Authenticated export URL -- fetch via `downloadFile` (see lib/download.ts). */
+export const generationExportUrl = (id: string, format: string) =>
+  `${API_BASE_URL}/generations/${id}/export/${format}`;
+
+/** The body for `POST /generate/{type}` and `.../regenerate`, streamed via
+ * `streamGeneration` in lib/sse.ts. */
+export type GenerateBody<T extends GenerationType = GenerationType> = {
+  scope: GenerationScope;
+  params: Partial<ParamsFor<T>>;
+  language?: string | null;
+};
 

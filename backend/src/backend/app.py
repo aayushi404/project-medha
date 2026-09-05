@@ -4,14 +4,15 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.admin.router import router as admin_router
+from backend.ask.router import router as ask_router
 from backend.auth.router import router as auth_router
 from backend.core.config import settings
 from backend.core.context import request_id_ctx
 from backend.core.errors import install_error_handlers
 from backend.core.logging import configure_logging
-from backend.chat.router import router as chat_router
 from backend.curriculum.router import router as curriculum_router
 from backend.english.router import router as english_router
+from backend.generation.router import router as generation_router
 from backend.library.router import router as library_router
 from backend.modules.router import router as modules_router
 from backend.onboarding.router import router as onboarding_router
@@ -69,13 +70,16 @@ app.include_router(reference_router)
 app.include_router(onboarding_router)
 app.include_router(curriculum_router)
 app.include_router(profile_router)
-app.include_router(chat_router)
+app.include_router(ask_router, prefix="/ask")
+# Deprecated alias: the frontend still calls /chat/*. Drop once it uses /ask/*.
+app.include_router(ask_router, prefix="/chat")
 app.include_router(tutor_router)
 app.include_router(english_router)
 app.include_router(speech_router)
 app.include_router(tools_router)
 app.include_router(modules_router)
 app.include_router(library_router)
+app.include_router(generation_router)
 
 
 @app.get("/health")

@@ -256,6 +256,7 @@ function HistoryModule({
                   <ContentActions
                     speechId={a.id}
                     speechText={speakableArtifact(a)}
+                    copyText={speakableArtifact(a)}
                     onQuiz={onQuiz}
                     onActivity={onActivity}
                     onPpt={onPpt}

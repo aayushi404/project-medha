@@ -4,10 +4,9 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
-from backend.auth.dependencies import get_current_teacher
-from backend.chat import service
-from backend.chat.rate_limit import chat_rate_limit
-from backend.chat.schemas import (
+from backend.ask import service
+from backend.ask.rate_limit import chat_rate_limit
+from backend.ask.schemas import (
     GenerateIn,
     MessageCreateIn,
     MessageOut,
@@ -16,10 +15,13 @@ from backend.chat.schemas import (
     SessionListItem,
     SessionOut,
 )
+from backend.auth.dependencies import get_current_teacher
 from backend.db.models import Teacher
 from backend.db.session import get_db
 
-router = APIRouter(prefix="/chat", tags=["chat"])
+# Mounted at both /ask (canonical) and /chat (deprecated alias, kept until the
+# frontend cuts over) by app.py -- so no prefix is baked in here.
+router = APIRouter(tags=["ask"])
 
 _SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 

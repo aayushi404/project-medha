@@ -207,6 +207,7 @@ create table chat_messages (
     content             text not null,
     retrieved_chunk_ids uuid[],                 -- provenance: what grounded this answer
     token_count         int,                    -- output tokens, for cost tracking
+    generation_id       uuid,                   -- 0010: artifact this turn rendered inline (FK added after `generations` below)
     created_at          timestamptz not null default now()
 );
 
@@ -251,3 +252,101 @@ create table module_feedback (
     created_at      timestamptz not null default now(),
     unique (module_id, teacher_id)
 );
+
+-- ============================================================
+-- 0010: Content Generation domain (docs/medha-v2-schema.md)
+-- One polymorphic table for every AI-generated teaching artifact -- teacher-
+-- owned or curated library content. Ask Medha (chat/voice) writes nothing here.
+-- ============================================================
+
+create table generations (
+    id                    uuid primary key default uuid_generate_v4(),
+    -- ownership & visibility -- teacher_id null only for curated library rows
+    teacher_id            uuid references teachers(id) on delete cascade,
+    visibility            text not null default 'private',   -- private | school | library
+    published             boolean not null default true,
+    slug                  text unique,                       -- stable key for curated seeds; null for user content
+    -- what it is
+    type                  text not null,                     -- lesson_plan | presentation | question_paper | notes | quiz | worksheet | notice
+    title                 text not null,
+    description           text,
+    language              text not null default 'hi',        -- hi | hi-BiharBoli | en
+    -- curriculum scope (same shape as chat_sessions)
+    grade_id              uuid references grades(id),
+    subject_id            uuid references subjects(id),
+    chapter_id            uuid references curriculum_chapters(id),
+    topic_id              uuid references curriculum_topics(id),
+    tags                  jsonb,
+    -- provenance
+    source                text not null default 'quick_action',  -- quick_action | chat | curated | regenerate | cache
+    session_id            uuid references chat_sessions(id) on delete set null,
+    parent_generation_id  uuid references generations(id) on delete set null,  -- regen / cache lineage
+    module_id             uuid references modules(id) on delete set null,      -- optional grouping
+    -- content
+    input_params          jsonb,                             -- form inputs, reused verbatim on regenerate
+    content_json          jsonb,                             -- generated body; shape varies by type, validated in Pydantic
+    -- lifecycle
+    status                text not null default 'queued',    -- queued | running | completed | failed
+    error_message         text,
+    completed_at          timestamptz,
+    -- observability & grounding
+    retrieved_chunk_ids   uuid[],
+    model                 text,
+    prompt_version        text,
+    tokens_in             int,
+    tokens_out            int,
+    generation_ms         int,
+    cache_key             text,                              -- sha256(type|chapter|norm(input_params)|language|prompt_version)
+    -- user state
+    is_favorite           boolean not null default false,
+    created_at            timestamptz not null default now(),
+    updated_at            timestamptz not null default now(),
+    constraint chk_gen_type       check (type in ('lesson_plan','presentation','question_paper','notes','quiz','worksheet','notice')),
+    constraint chk_gen_status     check (status in ('queued','running','completed','failed')),
+    constraint chk_gen_visibility check (visibility in ('private','school','library')),
+    constraint chk_gen_owner      check (visibility = 'library' or teacher_id is not null)
+);
+
+create index idx_gen_teacher_recent on generations(teacher_id, created_at desc);
+create index idx_gen_teacher_type   on generations(teacher_id, type, created_at desc);
+create index idx_gen_curriculum     on generations(grade_id, subject_id, chapter_id);
+create index idx_gen_cache_key      on generations(cache_key);
+create index idx_gen_library        on generations(type, grade_id, subject_id) where visibility = 'library' and published;
+create index idx_gen_favorites      on generations(teacher_id, created_at desc) where is_favorite;
+
+-- deferred FK: chat_messages is declared before `generations` above
+alter table chat_messages
+    add constraint fk_chat_messages_generation
+    foreign key (generation_id) references generations(id) on delete set null;
+
+-- A rendered file for a generation. One artifact can have several formats.
+-- file_key is an object-storage key, never a signed URL -- sign on read.
+create table generation_exports (
+    id              uuid primary key default uuid_generate_v4(),
+    generation_id   uuid not null references generations(id) on delete cascade,
+    format          text not null,                     -- pdf | pptx | docx
+    file_key        text,
+    file_size_bytes int,
+    status          text not null default 'queued',    -- queued | running | completed | failed
+    error_message   text,
+    created_at      timestamptz not null default now(),
+    completed_at    timestamptz,
+    unique (generation_id, format),
+    constraint chk_export_format check (format in ('pdf','pptx','docx')),
+    constraint chk_export_status check (status in ('queued','running','completed','failed'))
+);
+
+create index idx_exports_generation on generation_exports(generation_id);
+
+-- Feedback on one artifact (replaces module_feedback)
+create table generation_feedback (
+    id              uuid primary key default uuid_generate_v4(),
+    generation_id   uuid not null references generations(id) on delete cascade,
+    teacher_id      uuid not null references teachers(id) on delete cascade,
+    rating          smallint,                          -- 1 = up, -1 = down
+    comment         text,
+    created_at      timestamptz not null default now(),
+    unique (generation_id, teacher_id)
+);
+
+create index idx_gen_feedback_generation on generation_feedback(generation_id);

@@ -57,6 +57,26 @@ class Settings(BaseSettings):
     chat_rate_limit_per_min: int = 6
     chat_rate_limit_per_day: int = 200
 
+    # --- Content generation (Medha v2 -- docs/medha-v2-backend.md) ---
+    generation_enabled: bool = True  # kill switch for /generate/*
+    generation_cache_enabled: bool = True  # serve repeat requests from an existing row
+    # Transitional: fold pre-v2 module_artifacts into GET /generations. Off by
+    # default now that migration 0011 has backfilled quiz/ppt rows for real;
+    # kept as a flag (not deleted) in case a prod rollout needs it briefly
+    # before its own 0011 runs. Remove the adapter entirely at 0012.
+    generation_legacy_read: bool = False
+    generation_rate_limit_per_min: int = 4
+    generation_rate_limit_per_day: int = 120
+    generation_max_tokens_lesson_plan: int = 2200
+    generation_max_tokens_question_paper: int = 2600
+    generation_max_tokens_notes: int = 1800
+    generation_max_tokens_quiz: int = 1400
+    generation_max_tokens_presentation: int = 2400
+    # Legacy: Ask Medha still derives a Module + ModuleArtifact per turn. Flip
+    # off once the frontend uses /generate/* and /generations. See
+    # docs/medha-v2-backend.md §5.
+    ask_writes_modules: bool = True
+
     # --- PPT object storage (Tier 2, unused today) ---
     # Generated slide decks are rendered from a stored spec on demand
     # (backend.ppt), so no object storage is needed while decks are text-only.

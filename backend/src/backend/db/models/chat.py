@@ -90,4 +90,9 @@ class ChatMessage(Base):
     # provenance: which textbook_content_chunks grounded an assistant answer
     retrieved_chunk_ids: Mapped[list[uuid.UUID] | None] = mapped_column(ARRAY(UUID(as_uuid=True)))
     token_count: Mapped[int | None]  # output tokens, for cost tracking
+    # Set when this assistant turn produced an artifact, so the chat UI can
+    # render the document card inline (see docs/medha-v2-schema.md §3.1).
+    generation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("generations.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))

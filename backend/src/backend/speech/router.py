@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
+from backend.ask.service import load_owned_session
 from backend.auth.dependencies import get_current_teacher, get_current_user
-from backend.chat.service import load_owned_session
 from backend.db.models import Teacher
 from backend.db.session import get_db
 from backend.speech import client, service

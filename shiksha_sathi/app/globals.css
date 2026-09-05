@@ -87,19 +87,41 @@
   --chart-4: var(--sage);
   --chart-5: var(--ink);
   --radius: 0.25rem;
-  --sidebar: var(--parchment);
+  /* Sidebar chrome reads as violet — the app's "AI / navigation" identity
+     colour (see --violet below), distinct from the warm ivory content area
+     and from --terracotta (which stays every CTA button's colour). */
+  --sidebar: oklch(0.975 0.014 300);
   --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--ink);
-  --sidebar-primary-foreground: var(--ivory);
-  --sidebar-accent: oklch(0.925 0.035 82);
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--hairline);
-  --sidebar-ring: var(--gold);
+  --sidebar-primary: var(--violet);
+  --sidebar-primary-foreground: var(--violet-foreground);
+  --sidebar-accent: oklch(0.91 0.05 300);
+  --sidebar-accent-foreground: var(--violet);
+  --sidebar-border: oklch(0.93 0.02 300);
+  --sidebar-ring: var(--violet);
 
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-heading: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Content-generation category tints (Quick Action cards, type badges) --
+     low-chroma, high-lightness so any of them sits quietly behind text.
+     "notice"/"worksheet" are reserved for types not built yet. */
+  --tint-lesson-plan: oklch(0.955 0.028 25);
+  --tint-worksheet: oklch(0.95 0.033 265);
+  --tint-presentation: oklch(0.952 0.035 305);
+  --tint-question-paper: oklch(0.96 0.04 95);
+  --tint-quiz: oklch(0.953 0.03 40);
+  --tint-notes: oklch(0.955 0.033 155);
+  --tint-notice: oklch(0.952 0.03 230);
+  --tint-foreground: var(--ink);
+
+  /* The "AI / Ask Medha" accent -- distinct from --terracotta (which stays
+     every CTA button's colour); used for the chat mark, generation-in-progress
+     state, and Ask Medha's own surfaces. */
+  --violet: oklch(0.545 0.17 295);
+  --violet-foreground: oklch(0.985 0.005 300);
+  --violet-muted: oklch(0.95 0.03 300);
 }
 
 .dark {
@@ -126,14 +148,36 @@
   --chart-3: var(--earth);
   --chart-4: var(--sage);
   --chart-5: oklch(0.955 0.012 85);
-  --sidebar: oklch(0.235 0.014 58);
+  --sidebar: oklch(0.24 0.025 300);
   --sidebar-foreground: oklch(0.955 0.012 85);
-  --sidebar-primary: oklch(0.955 0.012 85);
-  --sidebar-primary-foreground: oklch(0.19 0.012 58);
-  --sidebar-accent: oklch(0.32 0.028 66);
-  --sidebar-accent-foreground: oklch(0.975 0.011 85);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: var(--gold);
+  --sidebar-primary: oklch(0.68 0.15 295);
+  --sidebar-primary-foreground: oklch(0.18 0.02 300);
+  --sidebar-accent: oklch(0.34 0.05 300);
+  --sidebar-accent-foreground: oklch(0.85 0.08 300);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.68 0.15 295);
+
+  /* tints: drop lightness, keep hue, so badges/panels read on the dark ground */
+  --tint-lesson-plan: oklch(0.33 0.045 25);
+  --tint-worksheet: oklch(0.33 0.05 265);
+  --tint-presentation: oklch(0.335 0.055 305);
+  --tint-question-paper: oklch(0.345 0.05 95);
+  --tint-quiz: oklch(0.335 0.048 40);
+  --tint-notes: oklch(0.335 0.05 155);
+  --tint-notice: oklch(0.335 0.045 230);
+  --tint-foreground: oklch(0.955 0.012 85);
+
+  --violet: oklch(0.68 0.15 295);
+  --violet-foreground: oklch(0.18 0.02 300);
+  --violet-muted: oklch(0.32 0.045 300);
+}
+
+/* The signed-in app (teacher/student shell) reads softer and more rounded
+   than the marketing landing page's sharp editorial corners — scoped to
+   .app-shell (wraps the sidebar + content in app/(protected)/(app)/layout.tsx)
+   so the landing page's `--radius-*` derived tokens are untouched. */
+.app-shell {
+  --radius: 0.85rem;
 }
 
 @layer base {
@@ -186,6 +230,18 @@
   --color-earth: var(--earth);
   --color-sage: var(--sage);
   --color-hairline: var(--hairline);
+
+  --color-tint-lesson-plan: var(--tint-lesson-plan);
+  --color-tint-worksheet: var(--tint-worksheet);
+  --color-tint-presentation: var(--tint-presentation);
+  --color-tint-question-paper: var(--tint-question-paper);
+  --color-tint-quiz: var(--tint-quiz);
+  --color-tint-notes: var(--tint-notes);
+  --color-tint-notice: var(--tint-notice);
+  --color-tint-foreground: var(--tint-foreground);
+  --color-violet: var(--violet);
+  --color-violet-foreground: var(--violet-foreground);
+  --color-violet-muted: var(--violet-muted);
 }
 
 /* The marketing page opts out of dark mode — re-pin the light palette
