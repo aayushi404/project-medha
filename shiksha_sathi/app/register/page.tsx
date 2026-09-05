@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { ArrowLeft, ArrowRight, GraduationCap, School, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth-context";
@@ -14,21 +15,42 @@ import {
   type RegisterRole,
   type SchoolSearchResult,
 } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { SchoolTypeahead } from "@/components/auth/school-typeahead";
 import { PendingScreen } from "@/components/auth/pending-screen";
-import { cn } from "@/lib/utils";
 
 type FormRole = RegisterRole | "student";
 
-const ROLES: { value: FormRole; label: string }[] = [
-  { value: "principal", label: "Principal" },
-  { value: "teacher", label: "Teacher" },
-  { value: "student", label: "Student" },
+const ROLE_CARDS: {
+  value: FormRole;
+  label: string;
+  icon: React.ElementType;
+  emoji: string;
+  desc: string;
+}[] = [
+  {
+    value: "student",
+    label: "Student",
+    icon: GraduationCap,
+    emoji: "🎓",
+    desc: "Access textbooks, e-content and practice tests for your class.",
+  },
+  {
+    value: "teacher",
+    label: "Teacher",
+    icon: Users,
+    emoji: "📚",
+    desc: "Build lessons, generate quizzes and track your classes.",
+  },
+  {
+    value: "principal",
+    label: "Principal",
+    icon: School,
+    emoji: "🏫",
+    desc: "Oversee teacher approvals and school records.",
+  },
 ];
 
 function RegisterForm() {
@@ -37,10 +59,13 @@ function RegisterForm() {
   const { status, register } = useAuth();
 
   const roleParam = params.get("role");
-  const initialRole: FormRole =
-    roleParam === "principal" || roleParam === "student" ? roleParam : "teacher";
+  const initialRole: FormRole | null =
+    roleParam === "principal" || roleParam === "teacher" || roleParam === "student"
+      ? roleParam
+      : null;
 
-  const [role, setRole] = useState<FormRole>(initialRole);
+  const [step, setStep] = useState<1 | 2>(initialRole ? 2 : 1);
+  const [role, setRole] = useState<FormRole | null>(initialRole);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,11 +94,18 @@ function RegisterForm() {
       .catch(() => {});
   }, [role, grades.length]);
 
+  function handleRoleSelect(value: FormRole) {
+    setRole(value);
+    setStep(2);
+  }
+
   const mobileDigits = mobile.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
   const isTeacher = role === "teacher";
   const isStudent = role === "student";
+  const selectedCard = ROLE_CARDS.find((c) => c.value === role);
 
   const error = useMemo(() => {
+    if (!role) return "Select a role.";
     if (fullName.trim().length < 2) return "Enter your full name.";
     if (!school) return "Pick your school.";
     if (isStudent) {
@@ -91,6 +123,7 @@ function RegisterForm() {
       return "Years of experience must be between 0 and 50.";
     return null;
   }, [
+    role,
     fullName,
     email,
     password,
@@ -107,7 +140,7 @@ function RegisterForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (error || !school) {
+    if (error || !school || !role) {
       if (error) toast.error(error);
       return;
     }
@@ -141,256 +174,270 @@ function RegisterForm() {
   }
 
   return (
-    <main className="sun-wash flex flex-1 flex-col items-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="mb-8 flex flex-col items-center gap-1 text-center"
-        >
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Create your account
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isStudent
-              ? "A teacher at your school approves student accounts."
-              : isTeacher
-                ? "Your principal approves teacher accounts."
-                : "An administrator approves principal accounts."}
-          </p>
-        </motion.div>
+    <div className="mreg-root">
+      <main className="mreg-content">
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div
+              key="role-selection"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="mreg-step1-wrap"
+            >
+              <div className="mreg-top-badge">
+                <span>Medha</span>
+              </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-        >
-          <Card className="shadow-sm">
-            <CardContent className="px-6 py-5">
+              <h1 className="mreg-main-title">Create your account</h1>
+              <p className="mreg-main-subtitle">Choose how you&apos;ll use Medha</p>
+
+              <div className="mreg-cards-container">
+                {ROLE_CARDS.map((card) => (
+                  <button
+                    key={card.value}
+                    type="button"
+                    onClick={() => handleRoleSelect(card.value)}
+                    className="mreg-card"
+                  >
+                    <div className="mreg-card-emoji-wrap">
+                      <span className="mreg-card-emoji">{card.emoji}</span>
+                    </div>
+                    <div className="mreg-card-body">
+                      <h2 className="mreg-card-title">{card.label}</h2>
+                      <p className="mreg-card-desc">{card.desc}</p>
+                    </div>
+                    <div className="mreg-card-cta">
+                      <span>Get started</span>
+                      <ArrowRight size={15} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <p className="mreg-bottom-signin">
+                Already have an account?{" "}
+                <Link href="/login" className="mreg-link-highlight">
+                  Sign in
+                </Link>
+              </p>
+            </motion.div>
+          )}
+
+          {step === 2 && role && (
+            <motion.div
+              key="registration-form"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="mreg-step2-card"
+            >
+              <div className="mreg-form-nav">
+                <button type="button" onClick={() => setStep(1)} className="mreg-back-button">
+                  <ArrowLeft size={16} /> Change role
+                </button>
+                <div className="mreg-selected-chip">
+                  <span>{selectedCard?.emoji}</span>
+                  <strong>{selectedCard?.label}</strong>
+                </div>
+              </div>
+
+              <div className="mreg-form-header">
+                <h2>Create your {selectedCard?.label} account</h2>
+                <p>
+                  {isStudent
+                    ? "A teacher at your school approves student accounts."
+                    : isTeacher
+                      ? "Your principal approves teacher accounts."
+                      : "An administrator approves principal accounts."}
+                </p>
+              </div>
+
               {done && isStudent ? (
                 <div className="flex flex-col items-center gap-4 text-center">
                   <PendingScreen message="Your registration was received. A teacher at your school will approve it. Once approved, activate your account to log in." />
-                  <Link
-                    href="/student/activate"
-                    className="text-sm text-primary underline-offset-2 hover:underline"
-                  >
+                  <Link href="/student/activate" className="mreg-link-highlight">
                     Activate my account
                   </Link>
                 </div>
               ) : done ? (
-                <PendingScreen
-                  approver={isTeacher ? "your principal" : "an administrator"}
-                />
+                <PendingScreen approver={isTeacher ? "your principal" : "an administrator"} />
               ) : (
-                <>
-                  <div className="mb-5 grid grid-cols-3 rounded-lg border border-border p-0.5 text-sm">
-                    {ROLES.map((r) => (
-                      <button
-                        key={r.value}
-                        type="button"
-                        onClick={() => setRole(r.value)}
-                        className={cn(
-                          "rounded-md py-1.5 font-medium tracking-wide transition-colors",
-                          role === r.value
-                            ? "bg-foreground text-background"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
-                  </div>
+                <form onSubmit={handleSubmit} className="mreg-actual-form">
+                  <Field label="Full name" htmlFor="full-name">
+                    <Input
+                      id="full-name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Anita Kumari"
+                      className="h-11 text-base"
+                      autoFocus
+                    />
+                  </Field>
 
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <Field label="Full name" htmlFor="full-name">
-                      <Input
-                        id="full-name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g. Anita Kumari"
-                        className="h-11 text-base"
-                        autoFocus
-                      />
-                    </Field>
+                  {!isStudent && (
+                    <>
+                      <Field label="Email" htmlFor="email">
+                        <Input
+                          id="email"
+                          type="email"
+                          autoComplete="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          className="h-11 text-base"
+                        />
+                      </Field>
 
-                    {!isStudent && (
-                      <>
-                        <Field label="Email" htmlFor="email">
-                          <Input
-                            id="email"
-                            type="email"
-                            autoComplete="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="you@example.com"
-                            className="h-11 text-base"
-                          />
-                        </Field>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <Field label="Password" htmlFor="password">
-                            <Input
-                              id="password"
-                              type="password"
-                              autoComplete="new-password"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              placeholder="8+ characters"
-                              className="h-11 text-base"
-                            />
-                          </Field>
-                          <Field label="Confirm" htmlFor="confirm">
-                            <Input
-                              id="confirm"
-                              type="password"
-                              autoComplete="new-password"
-                              value={confirm}
-                              onChange={(e) => setConfirm(e.target.value)}
-                              placeholder="Repeat password"
-                              className="h-11 text-base"
-                            />
-                          </Field>
-                        </div>
-
-                        <Field label="Mobile number" htmlFor="mobile">
-                          <Input
-                            id="mobile"
-                            type="tel"
-                            inputMode="numeric"
-                            autoComplete="tel"
-                            value={mobile}
-                            onChange={(e) => setMobile(e.target.value)}
-                            placeholder="10-digit number"
-                            className="h-11 text-base"
-                          />
-                        </Field>
-                      </>
-                    )}
-
-                    <Field label="School" htmlFor="school">
-                      <SchoolTypeahead id="school" value={school} onChange={setSchool} />
-                    </Field>
-
-                    {isStudent && (
                       <div className="grid grid-cols-2 gap-3">
-                        <Field label="Class" htmlFor="grade">
-                          <Select
-                            ariaLabel="Class"
-                            placeholder="Select"
-                            value={gradeId}
-                            options={grades.map((g) => ({ value: g.id, label: g.label }))}
-                            onValueChange={setGradeId}
-                            className="h-11 w-full"
+                        <Field label="Password" htmlFor="password">
+                          <Input
+                            id="password"
+                            type="password"
+                            autoComplete="new-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="8+ characters"
+                            className="h-11 text-base"
                           />
                         </Field>
-                        <Field label="Roll number" htmlFor="roll">
+                        <Field label="Confirm" htmlFor="confirm">
                           <Input
-                            id="roll"
-                            value={rollNumber}
-                            onChange={(e) => setRollNumber(e.target.value)}
-                            placeholder="e.g. 23"
+                            id="confirm"
+                            type="password"
+                            autoComplete="new-password"
+                            value={confirm}
+                            onChange={(e) => setConfirm(e.target.value)}
+                            placeholder="Repeat password"
                             className="h-11 text-base"
                           />
                         </Field>
                       </div>
-                    )}
 
-                    {isTeacher && (
-                      <>
-                        <Field
-                          label="Employee code (government teacher ID)"
-                          htmlFor="employee-code"
-                        >
-                          <Input
-                            id="employee-code"
-                            value={employeeCode}
-                            onChange={(e) => setEmployeeCode(e.target.value)}
-                            placeholder="As on your service record"
-                            className="h-11 text-base"
-                          />
-                        </Field>
-                        <div className="grid grid-cols-2 gap-3">
-                          <Field label="Years of experience" htmlFor="experience">
-                            <Input
-                              id="experience"
-                              type="number"
-                              min={0}
-                              max={50}
-                              value={experience}
-                              onChange={(e) => setExperience(e.target.value)}
-                              placeholder="e.g. 7"
-                              className="h-11 text-base"
-                            />
-                          </Field>
-                          <Field label="Qualification" htmlFor="qualification">
-                            <Input
-                              id="qualification"
-                              value={qualification}
-                              onChange={(e) => setQualification(e.target.value)}
-                              placeholder="e.g. B.Ed"
-                              className="h-11 text-base"
-                            />
-                          </Field>
-                        </div>
-                      </>
-                    )}
-
-                    {!isTeacher && !isStudent && (
-                      <Field label="Qualification (optional)" htmlFor="qualification">
+                      <Field label="Mobile number" htmlFor="mobile">
                         <Input
-                          id="qualification"
-                          value={qualification}
-                          onChange={(e) => setQualification(e.target.value)}
-                          placeholder="e.g. M.Ed"
+                          id="mobile"
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="tel"
+                          value={mobile}
+                          onChange={(e) => setMobile(e.target.value)}
+                          placeholder="10-digit number"
                           className="h-11 text-base"
                         />
                       </Field>
-                    )}
+                    </>
+                  )}
 
-                    <Button
-                      type="submit"
-                      disabled={submitting}
-                      className="mt-1 h-11 w-full text-base"
-                    >
-                      {submitting
-                        ? "Submitting…"
-                        : isStudent
-                          ? "Register"
-                          : "Create account"}
-                    </Button>
-                  </form>
+                  <Field label="School" htmlFor="school">
+                    <SchoolTypeahead id="school" value={school} onChange={setSchool} />
+                  </Field>
 
-                  <p className="mt-4 text-center text-xs text-muted-foreground">
-                    {isStudent ? (
-                      <>
-                        Already approved?{" "}
-                        <Link
-                          href="/student/activate"
-                          className="text-primary underline-offset-2 hover:underline"
-                        >
-                          Activate your account
-                        </Link>
-                      </>
-                    ) : (
-                      <>
-                        Already have an account?{" "}
-                        <Link
-                          href="/login"
-                          className="text-primary underline-offset-2 hover:underline"
-                        >
-                          Log in
-                        </Link>
-                      </>
-                    )}
-                  </p>
-                </>
+                  {isStudent && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Class" htmlFor="grade">
+                        <Select
+                          ariaLabel="Class"
+                          placeholder="Select"
+                          value={gradeId}
+                          options={grades.map((g) => ({ value: g.id, label: g.label }))}
+                          onValueChange={setGradeId}
+                          className="h-11 w-full"
+                        />
+                      </Field>
+                      <Field label="Roll number" htmlFor="roll">
+                        <Input
+                          id="roll"
+                          value={rollNumber}
+                          onChange={(e) => setRollNumber(e.target.value)}
+                          placeholder="e.g. 23"
+                          className="h-11 text-base"
+                        />
+                      </Field>
+                    </div>
+                  )}
+
+                  {isTeacher && (
+                    <>
+                      <Field label="Employee code (government teacher ID)" htmlFor="employee-code">
+                        <Input
+                          id="employee-code"
+                          value={employeeCode}
+                          onChange={(e) => setEmployeeCode(e.target.value)}
+                          placeholder="As on your service record"
+                          className="h-11 text-base"
+                        />
+                      </Field>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="Years of experience" htmlFor="experience">
+                          <Input
+                            id="experience"
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={experience}
+                            onChange={(e) => setExperience(e.target.value)}
+                            placeholder="e.g. 7"
+                            className="h-11 text-base"
+                          />
+                        </Field>
+                        <Field label="Qualification" htmlFor="qualification">
+                          <Input
+                            id="qualification"
+                            value={qualification}
+                            onChange={(e) => setQualification(e.target.value)}
+                            placeholder="e.g. B.Ed"
+                            className="h-11 text-base"
+                          />
+                        </Field>
+                      </div>
+                    </>
+                  )}
+
+                  {!isTeacher && !isStudent && (
+                    <Field label="Qualification (optional)" htmlFor="qualification">
+                      <Input
+                        id="qualification"
+                        value={qualification}
+                        onChange={(e) => setQualification(e.target.value)}
+                        placeholder="e.g. M.Ed"
+                        className="h-11 text-base"
+                      />
+                    </Field>
+                  )}
+
+                  <button type="submit" disabled={submitting} className="mreg-submit-btn">
+                    {submitting ? "Submitting…" : isStudent ? "Register" : "Create account"}
+                  </button>
+                </form>
               )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    </main>
+
+              {!done && (
+                <p className="mreg-form-bottom-hint">
+                  {isStudent ? (
+                    <>
+                      Already approved?{" "}
+                      <Link href="/student/activate" className="mreg-link-highlight">
+                        Activate your account
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      Already have an account?{" "}
+                      <Link href="/login" className="mreg-link-highlight">
+                        Log in
+                      </Link>
+                    </>
+                  )}
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
   );
 }
 

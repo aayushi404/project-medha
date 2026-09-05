@@ -1,24 +1,6 @@
 import type { Metadata } from "next";
 
-import { Navbar } from "@/components/landing/navbar";
-import { Hero } from "@/components/landing/hero";
-import { HeritageSection } from "@/components/landing/heritage-section";
-import { NalandaSection } from "@/components/landing/nalanda-section";
-import { BuddhaSection } from "@/components/landing/buddha-section";
-import { SunSection } from "@/components/landing/sun-section";
-import { ProblemSection } from "@/components/landing/problem-section";
-import { MedhaIntroduction } from "@/components/landing/medha-introduction";
-import { TwoSidedSection } from "@/components/landing/two-sided-section";
-import { TeacherSection } from "@/components/landing/teacher-section";
-import { StudentSection } from "@/components/landing/student-section";
-import { WorkflowSection } from "@/components/landing/workflow-section";
-import { CapabilitiesSection } from "@/components/landing/capabilities-section";
-import { VoiceSection } from "@/components/landing/voice-section";
-import { PersonalizationSection } from "@/components/landing/personalization-section";
-import { ImpactSection } from "@/components/landing/impact-section";
-import { GovernmentSection } from "@/components/landing/government-section";
-import { AuthSection } from "@/components/landing/auth-section";
-import { Footer } from "@/components/landing/footer";
+import { GovLanding } from "@/components/landing/gov-landing";
 
 const title = "Medha — AI for better teaching and learning in Bihar";
 const description =
@@ -32,29 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function LandingPage() {
-  return (
-    <div className="medha-landing min-h-screen">
-      <Navbar />
-      <main>
-        <Hero />
-        <HeritageSection />
-        <NalandaSection />
-        <BuddhaSection />
-        <SunSection />
-        <ProblemSection />
-        <MedhaIntroduction />
-        <TwoSidedSection />
-        <TeacherSection />
-        <StudentSection />
-        <WorkflowSection />
-        <CapabilitiesSection />
-        <VoiceSection />
-        <PersonalizationSection />
-        <ImpactSection />
-        <GovernmentSection />
-        <AuthSection />
-      </main>
-      <Footer />
-    </div>
-  );
+  return <GovLanding />;
 }
