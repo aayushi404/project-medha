@@ -24,8 +24,19 @@ export const en = {
   },
   profileMenu: { edit: "Edit profile", logout: "Log out" },
   language: "Language",
-  askMedhaBarPlaceholder: "Ask Medha AI",
+  askMedhaBarPlaceholder: "Ask Medha AI anything…",
   askMedhaBarMic: "Ask by voice",
+
+  sidebar: {
+    quote: "शिक्षा से समृद्ध बिहार, समृद्ध भारत",
+    nalanda: "Nalanda University",
+  },
+  dashboard: {
+    heroTagline: "बड़े सपने शिक्षा के साथ",
+    quote: "हर बच्चे में सीखने की अनंत संभावना है।",
+    quoteAttrib: "– मेधा",
+    notifications: "Notifications",
+  },
 
   // dashboard
   greeting: (name: string) => (name ? `Hello, ${name}` : "Hello"),
@@ -301,6 +312,13 @@ export const en = {
         question_paper: "Create Question Paper",
         quiz: "Create Quiz",
         notes: "Create Notes",
+      } as Record<string, string>,
+      createDesc: {
+        lesson_plan: "Step-by-step teaching plan for your class",
+        presentation: "Engaging slides for your class",
+        question_paper: "Generate questions with answers",
+        quiz: "Interactive quiz for students",
+        notes: "Simple and clear notes",
       } as Record<string, string>,
       recentTitle: "Recent",
       viewAll: "View all",

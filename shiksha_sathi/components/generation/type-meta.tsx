@@ -32,12 +32,22 @@ const TYPE_BG: Record<GenerationType, string> = {
   notes: "bg-tint-notes",
 };
 
-/** Icon + localized label/short for a generation type, plus its tint class. */
+const TYPE_FG: Record<GenerationType, string> = {
+  lesson_plan: "text-fill-lesson-plan",
+  presentation: "text-fill-presentation",
+  question_paper: "text-fill-question-paper",
+  quiz: "text-fill-quiz",
+  notes: "text-fill-notes",
+};
+
+/** Icon + localized label/short for a generation type, plus its tint (pale
+ *  background) and fill (saturated icon/accent) classes. */
 export function useTypeMeta(type: GenerationType) {
   const copy = useCopy();
   return {
     Icon: TYPE_ICON[type],
     bgClass: TYPE_BG[type],
+    fgClass: TYPE_FG[type],
     ...copy.generation.types[type],
   };
 }

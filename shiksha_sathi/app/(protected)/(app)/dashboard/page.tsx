@@ -1,37 +1,35 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Bell, ChevronRight, Lightbulb, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AskMedhaBar } from "@/components/app/ask-medha-bar";
 import { GenerationRow } from "@/components/generation/generation-row";
-import { useTypeMeta } from "@/components/generation/type-meta";
+import { QuickActionCard } from "@/components/generation/quick-action-card";
 import { listGenerations, type GenerationListItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
-import { SUPPORTED_TYPES, type GenerationType } from "@/lib/generation-types";
 import { useProfile } from "@/lib/profile-context";
-import { cn } from "@/lib/utils";
 
-function QuickActionCard({ type }: { type: GenerationType }) {
-  const copy = useCopy();
-  const { Icon, bgClass } = useTypeMeta(type);
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+
+/** Saffron / white / green rule under the hero and sidebar taglines. */
+function TricolourRule({ className }: { className?: string }) {
   return (
-    <Link
-      href={`/create/${type}`}
-      className={cn(
-        "group flex flex-col justify-between gap-8 rounded-3xl p-6 transition-transform hover:-translate-y-0.5",
-        bgClass,
-      )}
-    >
-      <span className="flex size-11 items-center justify-center rounded-2xl bg-card/70 text-foreground">
-        <Icon className="size-5" />
-      </span>
-      <span className="inline-flex w-fit items-center gap-1.5 rounded-xl bg-terracotta px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors group-hover:opacity-90">
-        {copy.generation.home.createLabel[type]}
-      </span>
-    </Link>
+    <span
+      aria-hidden
+      className={className}
+      style={{
+        display: "block",
+        height: 3,
+        borderRadius: 999,
+        background: "linear-gradient(90deg, #FF9933 0%, #FFFFFF 50%, #138808 100%)",
+      }}
+    />
   );
 }
 
@@ -39,7 +37,8 @@ export default function DashboardHomePage() {
   const copy = useCopy();
   const { accessToken } = useAuth();
   const { profile } = useProfile();
-  const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? "";
+  const name = profile?.full_name?.trim() ?? "";
+  const firstName = name.split(/\s+/)[0] ?? "";
 
   const [recent, setRecent] = useState<GenerationListItem[] | null>(null);
 
@@ -54,40 +53,100 @@ export default function DashboardHomePage() {
   }, [accessToken]);
 
   return (
-    <main className="flex flex-1 flex-col overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl">{copy.greeting(firstName)}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{copy.generation.home.subtitle}</p>
-          </div>
-          <AskMedhaBar className="w-full sm:w-72" />
-        </div>
+    <main className="relative flex flex-1 flex-col overflow-hidden">
+      {/* Nalanda watercolour -- the page's full background, held still while the
+          content scrolls over it. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/dashboard-background.png"
+          alt=""
+          className="size-full object-cover object-[50%_42%]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-ivory/72 via-ivory/45 to-ivory/62" />
+      </div>
 
-        <h2 className="mt-8 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+      <div className="relative z-10 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
+          {/* Hero header */}
+          <section className="flex min-h-[168px] flex-col pb-1">
+            <div className="flex items-start justify-end gap-2">
+              <button
+                type="button"
+                aria-label={copy.dashboard.notifications}
+                className="flex size-9 items-center justify-center rounded-full bg-card/70 text-foreground/70 backdrop-blur transition-colors hover:bg-card"
+              >
+                <Bell className="size-4" />
+              </button>
+              <span className="flex size-9 items-center justify-center rounded-full bg-terracotta/15 text-sm font-medium text-terracotta">
+                {initials(name)}
+              </span>
+            </div>
+
+            <div className="mt-3">
+              <h1 className="font-serif text-[26px] tracking-tight">
+                {copy.greeting(firstName)} <span className="align-middle">👋</span>
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {copy.generation.home.subtitle}
+              </p>
+            </div>
+
+            <div className="mt-auto pt-4">
+              <span className="text-[11px] font-medium tracking-wide text-earth">
+                {copy.dashboard.heroTagline}
+              </span>
+              <TricolourRule className="mt-1 w-16" />
+            </div>
+          </section>
+
+          <AskMedhaBar size="lg" className="mt-3 w-full" />
+
+        {/* Quick actions */}
+        <h2 className="eyebrow mt-8 text-muted-foreground">
           {copy.generation.home.quickActionsTitle}
         </h2>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {SUPPORTED_TYPES.map((type) => (
-            <QuickActionCard key={type} type={type} />
-          ))}
+          <QuickActionCard type="lesson_plan" />
+          <QuickActionCard type="presentation" />
+          <QuickActionCard type="question_paper" />
+          <QuickActionCard type="quiz" />
+          <QuickActionCard type="notes" layout="wide" />
         </div>
 
-        <h2 className="mt-8 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-          {copy.generation.home.recentTitle}
-        </h2>
-        <div className="mt-3 flex flex-col gap-2 pb-8">
+        {/* Recent */}
+        <div className="mt-8 flex items-center justify-between">
+          <h2 className="eyebrow text-muted-foreground">{copy.generation.home.recentTitle}</h2>
+          <Link
+            href="/history"
+            className="flex items-center gap-0.5 text-xs font-medium text-terracotta hover:underline"
+          >
+            {copy.generation.home.viewAll}
+            <ChevronRight className="size-3.5" />
+          </Link>
+        </div>
+        <div className="mt-3 flex flex-col gap-2">
           {recent === null ? (
             <div className="flex justify-center py-6">
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : recent.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
+            <p className="rounded-2xl border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
               {copy.generation.home.recentEmpty}
             </p>
           ) : (
             recent.map((item) => <GenerationRow key={item.id} item={item} from="dashboard" />)
           )}
+        </div>
+
+          {/* Quote */}
+          <div className="mt-8 mb-4 flex items-start gap-3 rounded-2xl border border-hairline bg-tint-notes/85 px-4 py-3.5 backdrop-blur-sm">
+            <Lightbulb className="mt-0.5 size-5 shrink-0 text-gold" />
+            <p className="text-sm">
+              <span className="italic">{copy.dashboard.quote}</span>{" "}
+              <span className="text-muted-foreground">{copy.dashboard.quoteAttrib}</span>
+            </p>
+          </div>
         </div>
       </div>
     </main>

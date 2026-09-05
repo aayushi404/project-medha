@@ -2,7 +2,6 @@
 
 import { Dialog } from "@base-ui/react/dialog";
 import {
-  BookOpen,
   ClipboardCheck,
   Clock,
   GraduationCap,
@@ -39,16 +38,16 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4",
-        collapsed && "justify-center px-2",
+        "flex items-center justify-center px-4 pt-4 pb-3",
+        collapsed && "px-2",
       )}
     >
-      <BookOpen className="size-5 shrink-0 text-terracotta" />
-      {collapsed ? null : (
-        <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
-          Medha
-        </span>
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/Logo.jpeg"
+        alt="Medha"
+        className={cn("object-contain", collapsed ? "size-9 rounded-full" : "h-28 w-auto")}
+      />
     </div>
   );
 }
@@ -63,9 +62,9 @@ function NavList({
   const copy = useCopy();
   const pathname = usePathname();
   return (
-    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
+    <nav className="flex min-h-0 flex-col gap-1 overflow-y-auto p-2">
       {collapsed ? null : (
-        <span className="eyebrow px-3 pt-2 pb-1 text-muted-foreground">{copy.navMain}</span>
+        <span className="eyebrow px-3 pt-1 pb-1 text-muted-foreground">{copy.navMain}</span>
       )}
       {NAV.map(({ href, navKey, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -90,6 +89,38 @@ function NavList({
         );
       })}
     </nav>
+  );
+}
+
+function SidebarQuote() {
+  const copy = useCopy();
+  return (
+    <div className="mx-2 rounded-2xl border border-sidebar-border bg-card/60 p-3.5">
+      <span className="block font-serif text-2xl leading-none text-terracotta/50">&ldquo;</span>
+      <p className="mt-1 text-[13px] leading-snug text-sidebar-foreground/85">
+        {copy.sidebar.quote}
+      </p>
+      <span
+        aria-hidden
+        className="mt-2.5 block h-[3px] w-16 rounded-full"
+        style={{ background: "linear-gradient(90deg, #FF9933, #FFFFFF, #138808)" }}
+      />
+    </div>
+  );
+}
+
+function SidebarArt() {
+  return (
+    <div
+      className="relative mt-3 h-32 overflow-hidden bg-no-repeat"
+      style={{
+        backgroundImage: "url(/dashboard-background.png)",
+        backgroundSize: "360%",
+        backgroundPosition: "8% 82%",
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-t from-sidebar/70 via-transparent to-transparent" />
+    </div>
   );
 }
 
@@ -135,11 +166,18 @@ export function AppSidebar() {
       <aside
         className={cn(
           "hidden shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex",
-          collapsed ? "w-16" : "w-56",
+          collapsed ? "w-16" : "w-60",
         )}
       >
         <Brand collapsed={collapsed} />
         <NavList collapsed={collapsed} />
+        {collapsed ? null : (
+          <div className="mt-3 flex min-h-0 flex-1 flex-col justify-end gap-0">
+            <SidebarQuote />
+            <SidebarArt />
+          </div>
+        )}
+        {collapsed ? <div className="flex-1" /> : null}
         <SidebarFooter collapsed={collapsed} />
         <button
           type="button"
@@ -159,7 +197,7 @@ export function AppSidebar() {
         </button>
       </aside>
 
-      <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2.5 text-sidebar-foreground md:hidden">
+      <div className="flex items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-2 text-sidebar-foreground md:hidden">
         <Dialog.Root open={open} onOpenChange={setOpen}>
           <Dialog.Trigger
             aria-label="Menu"
@@ -172,14 +210,13 @@ export function AppSidebar() {
             <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 data-[ending-style]:-translate-x-full data-[starting-style]:-translate-x-full">
               <Brand />
               <NavList onNavigate={() => setOpen(false)} />
+              <div className="flex-1" />
               <SidebarFooter />
             </Dialog.Popup>
           </Dialog.Portal>
         </Dialog.Root>
-        <BookOpen className="size-5 text-terracotta" />
-        <span className="font-serif text-base font-medium tracking-[0.28em] uppercase">
-          Medha
-        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Logo.jpeg" alt="Medha" className="h-8 w-auto object-contain" />
         <LanguageToggle className="ml-auto" />
       </div>
     </>

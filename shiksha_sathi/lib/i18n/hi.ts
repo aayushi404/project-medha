@@ -22,8 +22,19 @@ export const hi: Copy = {
   },
   profileMenu: { edit: "प्रोफ़ाइल संपादित करें", logout: "लॉग आउट" },
   language: "भाषा",
-  askMedhaBarPlaceholder: "मेधा एआई से पूछें",
+  askMedhaBarPlaceholder: "मेधा एआई से कुछ भी पूछें…",
   askMedhaBarMic: "आवाज़ से पूछें",
+
+  sidebar: {
+    quote: "शिक्षा से समृद्ध बिहार, समृद्ध भारत",
+    nalanda: "नालंदा विश्वविद्यालय",
+  },
+  dashboard: {
+    heroTagline: "बड़े सपने शिक्षा के साथ",
+    quote: "हर बच्चे में सीखने की अनंत संभावना है।",
+    quoteAttrib: "– मेधा",
+    notifications: "सूचनाएँ",
+  },
 
   greeting: (name: string) => (name ? `नमस्ते, ${name}` : "नमस्ते"),
   greetingSub: "आज आप क्या पढ़ा रहे हैं?",
@@ -296,6 +307,13 @@ export const hi: Copy = {
         question_paper: "प्रश्न पत्र बनाएँ",
         quiz: "क्विज़ बनाएँ",
         notes: "नोट्स बनाएँ",
+      },
+      createDesc: {
+        lesson_plan: "आपकी कक्षा के लिए चरण-दर-चरण शिक्षण योजना",
+        presentation: "आपकी कक्षा के लिए आकर्षक स्लाइड्स",
+        question_paper: "उत्तर सहित प्रश्न तैयार करें",
+        quiz: "विद्यार्थियों के लिए इंटरैक्टिव क्विज़",
+        notes: "सरल और स्पष्ट नोट्स",
       },
       recentTitle: "हाल ही में बनाए गए",
       viewAll: "सभी देखें",
