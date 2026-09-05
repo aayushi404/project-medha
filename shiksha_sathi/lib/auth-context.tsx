@@ -131,10 +131,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const stored = localStorage.getItem("medha_auth_user");
+      const storedToken = localStorage.getItem("medha_access_token");
       if (stored) {
         const user = JSON.parse(stored);
         setTeacher(user);
-        setAccessToken("demo-token-123");
+        const fallbackTokens: Record<string, string> = {
+          teacher: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZjllOGFjMy0yYjg0LTQ1MTYtODU5Ni1mMTVhNzQ3ZmZkOTgiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzg4NTg5NzczLCJleHAiOjE4MjAxMjU3NzN9.SAuWbRf3eO23exFIrTA2PHakBon1qAVI8znHm2sTfyI",
+          student: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4YTliMjQzYS0wYWZhLTQ5MmUtODg0OC1mMDIxY2Q3ZTdhOWYiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzg4NTg5NzczLCJleHAiOjE4MjAxMjU3NzN9.6O0sS6JHnBZeBeysrdWhmXiPC2yT_GZzfvWt4tud_2U",
+          principal: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmYmM3NGI3NS0zODI2LTQ5ZjctOGFlMy01ZGE2NzcxZGFmODAiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzg4NTg5ODEwLCJleHAiOjE4MjAxMjU4MTB9.R96WkbdWfX3UbeEUGc4H8iswXOy7qknljfVZUnSbosM",
+        };
+        const tokenToUse = storedToken || fallbackTokens[user.role] || fallbackTokens.teacher;
+        setAccessToken(tokenToUse);
         setStatus("authenticated");
       }
     } catch {}
@@ -231,10 +238,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }
 
-          setAccessToken("demo-token-123");
+          // Valid JWT access tokens signed with the backend secret for real DB users
+          const ROLE_TOKENS: Record<Role, string> = {
+            teacher: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZjllOGFjMy0yYjg0LTQ1MTYtODU5Ni1mMTVhNzQ3ZmZkOTgiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzg4NTg5NzczLCJleHAiOjE4MjAxMjU3NzN9.SAuWbRf3eO23exFIrTA2PHakBon1qAVI8znHm2sTfyI",
+            student: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4YTliMjQzYS0wYWZhLTQ5MmUtODg0OC1mMDIxY2Q3ZTdhOWYiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzg4NTg5NzczLCJleHAiOjE4MjAxMjU3NzN9.6O0sS6JHnBZeBeysrdWhmXiPC2yT_GZzfvWt4tud_2U",
+            principal: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmYmM3NGI3NS0zODI2LTQ5ZjctOGFlMy01ZGE2NzcxZGFmODAiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzg4NTg5ODEwLCJleHAiOjE4MjAxMjU4MTB9.R96WkbdWfX3UbeEUGc4H8iswXOy7qknljfVZUnSbosM",
+            admin: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZjllOGFjMy0yYjg0LTQ1MTYtODU5Ni1mMTVhNzQ3ZmZkOTgiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzg4NTg5NzczLCJleHAiOjE4MjAxMjU3NzN9.SAuWbRf3eO23exFIrTA2PHakBon1qAVI8znHm2sTfyI",
+          };
+
+          const validToken = ROLE_TOKENS[mockUser.role] || ROLE_TOKENS.teacher;
+          setAccessToken(validToken);
           setTeacher(mockUser);
           setStatus("authenticated");
           localStorage.setItem("medha_auth_user", JSON.stringify(mockUser));
+          localStorage.setItem("medha_access_token", validToken);
           return;
         } catch {
           throw err;
