@@ -120,54 +120,25 @@ export function GovLanding() {
     <main className="medha-landing">
 
       {/* =====================================================
-          GOVERNMENT TOP BAR
-      ===================================================== */}
-      <div className="gov-topbar">
-        <div className="site-container gov-topbar-inner">
-          <div>भारत सरकार&nbsp;&nbsp; | &nbsp;&nbsp;Government of India</div>
-
-          <div className="gov-tools">
-            <span>Skip to Main Content</span>
-            <span>|</span>
-            <span>Accessibility</span>
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================
-          GOVERNMENT HEADER
+          HEADER
       ===================================================== */}
       <header className="main-header">
         <div className="site-container header-inner">
 
           <div className="department-brand">
             <img
-              src="/landing/india-emblem.jpg"
-              alt="Government emblem"
-              className="india-emblem"
+              src="/Logo.jpeg"
+              alt="MEDHA"
+              className="header-medha-logo"
             />
 
             <div className="department-divider" />
 
             <div className="department-copy">
-              <strong>Department of Education</strong>
-              <span>Government of Bihar</span>
-              <small>शिक्षा विभाग, बिहार सरकार</small>
+              <strong>MEDHA</strong>
+              <span>AI companion for Bihar&apos;s classrooms</span>
+              <small>शिक्षकों और छात्रों के लिए एक डिजिटल सहायक</small>
             </div>
-          </div>
-
-          <div className="bihar-wordmark">
-            <strong>BIHAR</strong>
-            <span />
-            <small>GOVERNMENT OF BIHAR</small>
-          </div>
-
-          {/* ONLY ONE MEDHA LOGO ON THE WHOLE LANDING PAGE */}
-          <div className="header-medha">
-            <img
-              src="/Logo.jpeg"
-              alt="MEDHA"
-            />
           </div>
 
         </div>
@@ -248,10 +219,8 @@ export function GovLanding() {
 
             <div className="hero-kicker">
               <span />
-              DIGITAL EDUCATION INITIATIVE OF BIHAR
+              DIGITAL EDUCATION INITIATIVE FOR BIHAR
             </div>
-
-            {/* NO SECOND MEDHA LOGO HERE */}
 
             <h1>
               Reimagining the way
@@ -294,20 +263,6 @@ export function GovLanding() {
 
           </div>
 
-          {/* OFFICIAL REPRESENTATIVE VISUAL */}
-          <div className="hero-visual">
-
-            <div className="hero-orb orb-one" />
-            <div className="hero-orb orb-two" />
-
-            <div className="hero-person">
-              <img
-                src="/landing/samrat-choudhary.jpg"
-                alt="Official representative"
-              />
-            </div>
-
-          </div>
         </div>
       </section>
 
@@ -1299,7 +1254,7 @@ export function GovLanding() {
                 </div>
 
                 <div className="student-resource-footer">
-                  <small>✓ Free access for all Bihar Government school students</small>
+                  <small>✓ Free access for every learner in Bihar</small>
                 </div>
               </div>
             )}
