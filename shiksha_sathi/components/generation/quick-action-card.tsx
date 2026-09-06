@@ -34,9 +34,11 @@ const ART: Record<GenerationType, string> = {
   notes: "/notes-card.avif",
 };
 
-// Lesson plan has its own 2-step wizard route; the rest use the generic form.
+// These types have their own 2-step wizard route; the rest use the generic form.
 const HREF: Partial<Record<GenerationType, string>> = {
   lesson_plan: "/lesson-plan",
+  quiz: "/quiz",
+  question_paper: "/question-paper",
 };
 
 /** A single illustrated Quick Action tile on the dashboard. `wide` lays it out

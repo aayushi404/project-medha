@@ -1,28 +1,54 @@
 "use client";
 
-import { ChevronLeft, Download, Loader2, Pencil } from "lucide-react";
+import { ChevronLeft, Download, KeyRound, Loader2, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { GenerationToolbar } from "@/components/generation/generation-toolbar";
 import { GenerationView } from "@/components/generation/generation-view";
 import { Popover, PopoverItem } from "@/components/ui/popover";
-import { getGeneration, patchGeneration, type GenerationDetail } from "@/lib/api";
+import {
+  generateAnswerKey,
+  getGeneration,
+  patchGeneration,
+  type GenerationDetail,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy, useCurriculumT } from "@/lib/copy";
 import { formatRelativeTime } from "@/lib/format";
-import { TYPE_SLUG, type GenerationType, type LessonPlanContent } from "@/lib/generation-types";
+import {
+  TYPE_SLUG,
+  type AnswerKey,
+  type GenerationType,
+  type LessonPlanContent,
+  type QuestionPaperContent,
+  type QuizContent,
+} from "@/lib/generation-types";
 import { exportLessonPlanDocx, exportLessonPlanPdf } from "@/lib/lesson-plan-export";
+import {
+  exportAnswerKeyDocx,
+  exportAnswerKeyPdf,
+  exportQuestionPaperDocx,
+  exportQuestionPaperPdf,
+} from "@/lib/question-paper-export";
+import { exportQuizDocx, exportQuizPdf } from "@/lib/quiz-export";
 import { useProfile } from "@/lib/profile-context";
 import { streamGeneration } from "@/lib/sse";
 
 type LoadState = { generation: GenerationDetail } | { missing: true } | null;
 
+const EDITABLE: ReadonlySet<GenerationType> = new Set<GenerationType>([
+  "lesson_plan",
+  "quiz",
+  "question_paper",
+]);
+
 /** The saved-generation viewer body, shared by every /{type-slug}/edit route
- * (see app/(protected)/(app)/{lesson-plan,presentation,...}/edit/page.tsx).
- * For lesson_plan it also supports inline table editing + PDF/Word download. */
+ * (see app/(protected)/(app)/{lesson-plan,quiz,question-paper,...}/edit/page.tsx).
+ * For lesson_plan / quiz / question_paper it also supports inline editing +
+ * PDF/Word download. */
 export function GenerationEditView({
   type,
   id,
@@ -33,7 +59,6 @@ export function GenerationEditView({
   from?: string | null;
 }) {
   const copy = useCopy();
-  const lp = copy.generation.viewer.lessonPlan;
   const t = useCurriculumT();
   const router = useRouter();
   const { accessToken } = useAuth();
@@ -42,8 +67,12 @@ export function GenerationEditView({
   const [state, setState] = useState<LoadState>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<LessonPlanContent | null>(null);
+  const [draft, setDraft] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
+  const [keyBusy, setKeyBusy] = useState(false);
+  // Cache the generated key by a hash of the paper it was built from, so
+  // "Answer key → PDF" then "→ Word" doesn't hit the LLM twice.
+  const keyCacheRef = useRef<{ hash: string; key: AnswerKey } | null>(null);
 
   const backHref = from === "history" ? "/history" : "/dashboard";
 
@@ -77,24 +106,57 @@ export function GenerationEditView({
   }
 
   const g = state.generation;
-  const isLessonPlan = g.type === "lesson_plan";
   const completed = g.status === "completed";
-  const lpContent = isLessonPlan ? (g.content_json as LessonPlanContent) : null;
-  const shown = editing && draft ? draft : lpContent;
+  const editable = EDITABLE.has(g.type) && completed;
+  const wide = g.type === "lesson_plan" ? "max-w-5xl" : g.type === "question_paper" ? "max-w-4xl" : "max-w-2xl";
+
+  const lp = copy.generation.viewer.lessonPlan;
+  const qz = copy.generation.viewer.quiz;
+  const qp = copy.generation.viewer.questionPaper;
+  const editCopy =
+    g.type === "quiz" ? qz : g.type === "question_paper" ? qp : lp;
 
   const sub = [t.grade(g.grade_label ?? ""), t.subject(g.subject_name ?? ""), t.chapter(g.chapter_title ?? "")]
     .filter(Boolean)
     .join(" · ");
 
-  const meta = {
-    teacher: profile?.full_name ?? undefined,
-    topic: lpContent?.topic || undefined,
-    periods: lpContent?.periods || undefined,
-  };
+  const shownContent = editing && draft != null ? draft : g.content_json;
+
+  function metaLine(): string | null {
+    const params = (g.input_params ?? {}) as Record<string, unknown>;
+    if (g.type === "lesson_plan") {
+      const c = g.content_json as LessonPlanContent | null;
+      return [
+        `${lp.teacher}: ${profile?.full_name ?? "—"}`,
+        `${lp.topic}: ${c?.topic || g.title}`,
+        `${lp.periods}: ${c?.periods ?? c?.periods_detail?.length ?? "—"}`,
+      ].join("    ");
+    }
+    if (g.type === "quiz") {
+      const c = g.content_json as QuizContent | null;
+      const mins = Number(params.time_limit_min) || undefined;
+      return [
+        `${qz.teacher}: ${profile?.full_name ?? "—"}`,
+        mins ? qz.minutesMeta(mins) : "",
+        qz.questionsMeta(c?.questions?.length ?? 0),
+      ]
+        .filter(Boolean)
+        .join("    ");
+    }
+    if (g.type === "question_paper") {
+      const c = g.content_json as QuestionPaperContent | null;
+      return [
+        `${qp.teacher}: ${profile?.full_name ?? "—"}`,
+        qp.totalMarks(c?.total_marks ?? 0),
+        qp.duration(c?.duration_min ?? 0),
+      ].join("    ");
+    }
+    return null;
+  }
 
   function startEdit() {
-    if (!lpContent) return;
-    setDraft(JSON.parse(JSON.stringify(lpContent)) as LessonPlanContent);
+    if (g.content_json == null) return;
+    setDraft(JSON.parse(JSON.stringify(g.content_json)));
     setEditing(true);
   }
 
@@ -104,18 +166,103 @@ export function GenerationEditView({
   }
 
   async function save() {
-    if (!draft) return;
+    if (draft == null) return;
     setSaving(true);
     try {
       const updated = await patchGeneration(accessToken, id, { content_json: draft });
       setState({ generation: updated });
       setEditing(false);
       setDraft(null);
-      toast.success(lp.saved);
+      toast.success(editCopy.saved);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : lp.saveFailed);
+      toast.error(err instanceof Error ? err.message : editCopy.saveFailed);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function downloadPdf() {
+    const c = shownContent;
+    if (g.type === "lesson_plan") {
+      void exportLessonPlanPdf(c as LessonPlanContent, g.title, {
+        teacher: profile?.full_name ?? undefined,
+        topic: (c as LessonPlanContent)?.topic || undefined,
+        periods: (c as LessonPlanContent)?.periods || undefined,
+      });
+    } else if (g.type === "quiz") {
+      const params = (g.input_params ?? {}) as Record<string, unknown>;
+      void exportQuizPdf(c as QuizContent, g.title, {
+        grade: t.grade(g.grade_label ?? "") || undefined,
+        subject: t.subject(g.subject_name ?? "") || undefined,
+        teacher: profile?.full_name ?? undefined,
+        chapter: t.chapter(g.chapter_title ?? "") || undefined,
+        timeLimit: Number(params.time_limit_min) || undefined,
+        level: (params.difficulty as string) || undefined,
+      });
+    } else if (g.type === "question_paper") {
+      void exportQuestionPaperPdf(c as QuestionPaperContent, g.title, {
+        subject: t.subject(g.subject_name ?? "") || undefined,
+        grade: t.grade(g.grade_label ?? "") || undefined,
+        teacher: profile?.full_name ?? undefined,
+        topic: t.chapter(g.chapter_title ?? "") || undefined,
+      });
+    }
+  }
+
+  function downloadDocx() {
+    const c = shownContent;
+    if (g.type === "lesson_plan") {
+      void exportLessonPlanDocx(c as LessonPlanContent, g.title, {
+        teacher: profile?.full_name ?? undefined,
+        topic: (c as LessonPlanContent)?.topic || undefined,
+        periods: (c as LessonPlanContent)?.periods || undefined,
+      });
+    } else if (g.type === "quiz") {
+      const params = (g.input_params ?? {}) as Record<string, unknown>;
+      void exportQuizDocx(c as QuizContent, g.title, {
+        grade: t.grade(g.grade_label ?? "") || undefined,
+        subject: t.subject(g.subject_name ?? "") || undefined,
+        teacher: profile?.full_name ?? undefined,
+        chapter: t.chapter(g.chapter_title ?? "") || undefined,
+        timeLimit: Number(params.time_limit_min) || undefined,
+        level: (params.difficulty as string) || undefined,
+      });
+    } else if (g.type === "question_paper") {
+      void exportQuestionPaperDocx(c as QuestionPaperContent, g.title, {
+        subject: t.subject(g.subject_name ?? "") || undefined,
+        grade: t.grade(g.grade_label ?? "") || undefined,
+        teacher: profile?.full_name ?? undefined,
+        topic: t.chapter(g.chapter_title ?? "") || undefined,
+      });
+    }
+  }
+
+  function paperMeta() {
+    return {
+      subject: t.subject(g.subject_name ?? "") || undefined,
+      grade: t.grade(g.grade_label ?? "") || undefined,
+      teacher: profile?.full_name ?? undefined,
+      topic: t.chapter(g.chapter_title ?? "") || undefined,
+    };
+  }
+
+  async function downloadAnswerKey(fmt: "pdf" | "docx") {
+    if (g.type !== "question_paper") return;
+    const paper = shownContent as QuestionPaperContent;
+    const hash = JSON.stringify(paper);
+    setKeyBusy(true);
+    try {
+      let key = keyCacheRef.current?.hash === hash ? keyCacheRef.current.key : null;
+      if (!key) {
+        key = await generateAnswerKey(accessToken, id, paper);
+        keyCacheRef.current = { hash, key };
+      }
+      if (fmt === "pdf") await exportAnswerKeyPdf(key, g.title, paperMeta());
+      else await exportAnswerKeyDocx(key, g.title, paperMeta());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : qp.answerKeyFailed);
+    } finally {
+      setKeyBusy(false);
     }
   }
 
@@ -143,6 +290,8 @@ export function GenerationEditView({
     );
   }
 
+  const line = editable ? metaLine() : null;
+
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-start gap-3 border-b border-border px-5 py-4">
@@ -161,7 +310,7 @@ export function GenerationEditView({
           </div>
         </div>
 
-        {isLessonPlan && completed ? (
+        {editable ? (
           <div className="flex shrink-0 items-center gap-2">
             {editing ? (
               <>
@@ -171,7 +320,7 @@ export function GenerationEditView({
                   disabled={saving}
                   className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
                 >
-                  {lp.cancel}
+                  {editCopy.cancel}
                 </button>
                 <button
                   type="button"
@@ -180,7 +329,7 @@ export function GenerationEditView({
                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
                 >
                   {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                  {saving ? lp.saving : lp.save}
+                  {saving ? editCopy.saving : editCopy.save}
                 </button>
               </>
             ) : (
@@ -191,32 +340,43 @@ export function GenerationEditView({
                   trigger={
                     <span className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
                       <Download className="size-3.5" />
-                      {lp.download}
+                      {editCopy.download}
                     </span>
                   }
                 >
-                  <PopoverItem
-                    onClick={() =>
-                      shown && void exportLessonPlanPdf(shown, g.title, meta)
-                    }
-                  >
-                    {lp.downloadPdf}
-                  </PopoverItem>
-                  <PopoverItem
-                    onClick={() =>
-                      shown && void exportLessonPlanDocx(shown, g.title, meta)
-                    }
-                  >
-                    {lp.downloadWord}
-                  </PopoverItem>
+                  <PopoverItem onClick={downloadPdf}>{editCopy.downloadPdf}</PopoverItem>
+                  <PopoverItem onClick={downloadDocx}>{editCopy.downloadWord}</PopoverItem>
                 </Popover>
+                {g.type === "question_paper" ? (
+                  <Popover
+                    side="bottom"
+                    align="end"
+                    trigger={
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
+                        {keyBusy ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <KeyRound className="size-3.5" />
+                        )}
+                        {keyBusy ? qp.answerKeyBuilding : qp.answerKey}
+                      </span>
+                    }
+                  >
+                    <PopoverItem onClick={() => void downloadAnswerKey("pdf")}>
+                      {qp.answerKeyPdf}
+                    </PopoverItem>
+                    <PopoverItem onClick={() => void downloadAnswerKey("docx")}>
+                      {qp.answerKeyWord}
+                    </PopoverItem>
+                  </Popover>
+                ) : null}
                 <button
                   type="button"
                   onClick={startEdit}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted"
                 >
                   <Pencil className="size-3.5" />
-                  {lp.edit}
+                  {editCopy.edit}
                 </button>
               </>
             )}
@@ -225,18 +385,12 @@ export function GenerationEditView({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        <div className={`mx-auto flex flex-col gap-4 ${isLessonPlan ? "max-w-5xl" : "max-w-2xl"}`}>
-          {isLessonPlan && completed ? (
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{lp.teacher}:</span>{" "}
-              {profile?.full_name ?? "—"}
-              {"   "}
-              <span className="font-medium text-foreground">{lp.topic}:</span>{" "}
-              {lpContent?.topic || g.title}
-              {"   "}
-              <span className="font-medium text-foreground">{lp.periods}:</span>{" "}
-              {lpContent?.periods ?? lpContent?.periods_detail?.length ?? "—"}
-            </p>
+        <div className={`print-region mx-auto flex flex-col gap-4 ${wide}`}>
+          {/* Only shows when printing — the on-screen title lives in the header
+              bar, which print CSS hides. */}
+          <h2 className="hidden text-lg font-semibold print:block">{g.title}</h2>
+          {line ? (
+            <p className="text-xs whitespace-pre-wrap text-muted-foreground">{line}</p>
           ) : null}
 
           {g.status === "failed" ? (
@@ -255,22 +409,24 @@ export function GenerationEditView({
             <GenerationView
               type={g.type}
               title={g.title}
-              content={editing && draft ? draft : g.content_json}
+              content={shownContent}
               generationId={g.id}
               editing={editing}
-              onLessonPlanChange={(next) => setDraft(next)}
+              onContentChange={(next) => setDraft(next)}
             />
           )}
 
           {!editing ? (
-            <GenerationToolbar
-              id={g.id}
-              isFavorite={g.is_favorite}
-              feedback={g.feedback}
-              regenerating={regenerating}
-              onRegenerate={() => void onRegenerate()}
-              onDeleted={() => router.push(backHref)}
-            />
+            <div className="print:hidden">
+              <GenerationToolbar
+                id={g.id}
+                isFavorite={g.is_favorite}
+                feedback={g.feedback}
+                regenerating={regenerating}
+                onRegenerate={() => void onRegenerate()}
+                onDeleted={() => router.push(backHref)}
+              />
+            </div>
           ) : null}
         </div>
       </div>

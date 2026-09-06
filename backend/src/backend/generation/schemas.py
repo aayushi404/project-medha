@@ -25,6 +25,11 @@ class RegenerateIn(BaseModel):
     language: str | None = None
 
 
+class AnswerKeyIn(BaseModel):
+    # the current (possibly teacher-edited) paper; falls back to the stored row
+    content_json: dict | None = None
+
+
 class GenerationListItem(BaseModel):
     id: str  # uuid for real rows; "legacy:<artifact_id>" for pre-v2 module rows
     type: str

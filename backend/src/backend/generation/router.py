@@ -6,14 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
+from pydantic import ValidationError
+
 from backend.auth.dependencies import get_current_teacher
 from backend.core.ownership import assert_owned
 from backend.db.models import Generation, Teacher
 from backend.db.session import get_db
+from backend.generation import answer_key as answer_key_svc
 from backend.generation import pipeline, render, service
 from backend.generation.content import SUPPORTED_TYPES
 from backend.generation.rate_limit import generation_rate_limit
 from backend.generation.schemas import (
+    AnswerKeyIn,
     FeedbackIn,
     FeedbackOut,
     GenerateIn,
@@ -23,6 +27,7 @@ from backend.generation.schemas import (
     RegenerateIn,
     ScopeIn,
 )
+from backend.llm import LLMError
 
 router = APIRouter(tags=["generation"])
 
@@ -93,6 +98,42 @@ async def regenerate(
         parent_generation_id=parent.id,
     )
     return EventSourceResponse(generator, headers=_SSE_HEADERS)
+
+
+@router.post(
+    "/generations/{generation_id}/answer-key",
+    dependencies=[Depends(generation_rate_limit)],
+)
+async def answer_key(
+    generation_id: uuid.UUID,
+    payload: AnswerKeyIn,
+    current_teacher: Teacher = Depends(get_current_teacher),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Generate (never persist) an answer key for a question paper. Pass the
+    current `content_json` in the body so an unsaved/edited paper still gets a
+    matching key; omit it to key the stored row."""
+    g = db.get(Generation, generation_id)
+    assert_owned(current_teacher.id, g)
+    if g.type != "question_paper":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Answer keys are only available for question papers."
+        )
+    if g.status != "completed":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This question paper isn't ready yet.")
+
+    paper = payload.content_json or g.content_json or {}
+    try:
+        return await answer_key_svc.build(paper, g.language)
+    except LLMError as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Medha couldn't build the answer key just now. Try again in a moment.",
+        ) from exc
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, f"Could not read this paper: {exc}"
+        ) from exc
 
 
 @router.get("/generations", response_model=list[GenerationListItem])

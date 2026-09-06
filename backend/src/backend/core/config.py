@@ -68,9 +68,9 @@ class Settings(BaseSettings):
     generation_rate_limit_per_min: int = 4
     generation_rate_limit_per_day: int = 120
     generation_max_tokens_lesson_plan: int = 4000
-    generation_max_tokens_question_paper: int = 2600
+    generation_max_tokens_question_paper: int = 4000
     generation_max_tokens_notes: int = 1800
-    generation_max_tokens_quiz: int = 1400
+    generation_max_tokens_quiz: int = 2000
     generation_max_tokens_presentation: int = 2400
     # Legacy: Ask Medha still derives a Module + ModuleArtifact per turn. Flip
     # off once the frontend uses /generate/* and /generations. See

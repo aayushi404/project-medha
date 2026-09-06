@@ -11,7 +11,7 @@ generation `failed`. Every shape change must bump the type's prompt VERSION.
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.ppt.schema import DeckSpec  # presentation content == the slide spec
 
@@ -34,8 +34,11 @@ def _clip(value: object, limit: int) -> str:
 class QuizParams(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    question_count: int = Field(default=6, ge=3, le=20)
-    difficulty: Literal["easy", "medium", "hard", "mixed"] = "mixed"
+    question_count: int = Field(default=10, ge=3, le=50)
+    # UI labels the "medium" option "Standard"; "mixed" kept for the legacy path.
+    difficulty: Literal["easy", "medium", "hard", "mixed"] = "medium"
+    time_limit_min: int = Field(default=20, ge=5, le=180)
+    focus: str = Field(default="", max_length=2000)
     types: list[Literal["mcq", "short", "truefalse"]] = Field(
         default_factory=lambda: ["mcq", "short", "truefalse"]
     )
@@ -60,22 +63,71 @@ class LessonPlanParams(BaseModel):
     focus: str = Field(default="", max_length=500)
 
 
+# Question-paper types, in the fixed order they appear on the wizard and in the
+# generated paper (first active type -> Section A, next -> Section B, ...).
+PAPER_TYPES: tuple[str, ...] = (
+    "mcq",
+    "very_short",
+    "short",
+    "long",
+    "case_study",
+)
+PAPER_TYPE_LABEL: dict[str, str] = {
+    "mcq": "Multiple Choice",
+    "very_short": "Very Short Answer",
+    "short": "Short Answer",
+    "long": "Long Answer",
+    "case_study": "Case Study",
+}
+
+
 class QuestionPaperParams(BaseModel):
+    """Per-type question/marks grid (see the wizard's 'Marks & questions' card).
+
+    A type with `count == 0` is omitted from the paper. `total_marks` /
+    `total_questions` are derived, not supplied; `duration_min` is left to the
+    model to estimate from the total.
+    """
+
     model_config = ConfigDict(extra="ignore")
 
-    total_marks: int = Field(default=20, ge=5, le=100)
-    duration_min: int = Field(default=40, ge=10, le=180)
-    mcq_count: int = Field(default=5, ge=0, le=40)
-    short_count: int = Field(default=3, ge=0, le=30)
-    long_count: int = Field(default=2, ge=0, le=15)
+    difficulty: Literal["easy", "medium", "hard", "mixed"] = "mixed"
+    focus: str = Field(default="", max_length=2000)
 
-    @field_validator("long_count")
-    @classmethod
-    def _at_least_one_question(cls, v: int, info) -> int:
-        counts = info.data.get("mcq_count", 0) + info.data.get("short_count", 0) + v
-        if counts == 0:
-            raise ValueError("at least one of mcq_count / short_count / long_count must be > 0")
-        return v
+    mcq_count: int = Field(default=0, ge=0, le=50)
+    mcq_marks: int = Field(default=1, ge=1, le=20)
+    very_short_count: int = Field(default=0, ge=0, le=50)
+    very_short_marks: int = Field(default=2, ge=1, le=20)
+    short_count: int = Field(default=0, ge=0, le=50)
+    short_marks: int = Field(default=3, ge=1, le=20)
+    long_count: int = Field(default=0, ge=0, le=50)
+    long_marks: int = Field(default=5, ge=1, le=20)
+    case_study_count: int = Field(default=0, ge=0, le=20)
+    case_study_marks: int = Field(default=4, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def _at_least_one_question(self) -> "QuestionPaperParams":
+        if self.total_questions == 0:
+            raise ValueError("add at least one question type with a non-zero count")
+        return self
+
+    def count_of(self, kind: str) -> int:
+        return int(getattr(self, f"{kind}_count", 0))
+
+    def marks_of(self, kind: str) -> int:
+        return int(getattr(self, f"{kind}_marks", 0))
+
+    @property
+    def active_types(self) -> list[str]:
+        return [k for k in PAPER_TYPES if self.count_of(k) > 0]
+
+    @property
+    def total_questions(self) -> int:
+        return sum(self.count_of(k) for k in PAPER_TYPES)
+
+    @property
+    def total_marks(self) -> int:
+        return sum(self.count_of(k) * self.marks_of(k) for k in PAPER_TYPES)
 
 
 class PresentationParams(BaseModel):
@@ -135,7 +187,7 @@ class QuizContent(BaseModel):
     @field_validator("questions", mode="before")
     @classmethod
     def _cap(cls, v: object) -> object:
-        return v[:25] if isinstance(v, list) else v
+        return v[:50] if isinstance(v, list) else v
 
 
 class NotesSection(BaseModel):
@@ -254,11 +306,22 @@ class PaperQuestion(BaseModel):
     text: str = ""
     marks: int = 1
     type: Literal["mcq", "short", "long"] = "short"
+    # For "mcq": the four answer choices as plain strings (no "(A)" prefix).
+    # Empty for every other type, and for legacy rows where the choices are
+    # still embedded in `text`.
+    options: list[str] = Field(default_factory=list)
 
     @field_validator("text", mode="before")
     @classmethod
     def _s(cls, v: object) -> str:
         return _clip(v, 1200)
+
+    @field_validator("options", mode="before")
+    @classmethod
+    def _opts(cls, v: object) -> list[str]:
+        if not isinstance(v, list):
+            return []
+        return [s for s in (_clip(i, 300) for i in v) if s][:6]
 
 
 class PaperSection(BaseModel):

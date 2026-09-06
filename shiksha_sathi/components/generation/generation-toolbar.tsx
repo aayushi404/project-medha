@@ -63,6 +63,20 @@ export function GenerationToolbar({
     }
   }
 
+  function onPrint() {
+    // `.printing` on <body> is the hook for the @media print rules in
+    // globals.css that isolate `.print-region` from the app shell.
+    document.body.classList.add("printing");
+    const cleanup = () => {
+      document.body.classList.remove("printing");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+    // Safari/Firefox sometimes skip `afterprint`; clear on the next tick too.
+    setTimeout(cleanup, 1000);
+  }
+
   async function onDelete() {
     setBusy(true);
     try {
@@ -114,7 +128,7 @@ export function GenerationToolbar({
 
       <button
         type="button"
-        onClick={() => window.print()}
+        onClick={onPrint}
         className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted pointer-coarse:px-3 pointer-coarse:py-2"
       >
         <Printer className="size-3.5" />

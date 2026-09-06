@@ -1,4 +1,4 @@
-import type { GenerationType, ParamsFor } from "@/lib/generation-types";
+import type { AnswerKey, GenerationType, ParamsFor } from "@/lib/generation-types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -761,6 +761,21 @@ export const deleteGeneration = async (token: string | null, id: string) => {
   const res = await apiFetch(`/generations/${id}`, { method: "DELETE", token });
   if (!res.ok) throw new Error(await extractErrorMessage(res));
 };
+
+/** Fresh LLM-built marking key for a question paper. Pass the current
+ * (possibly edited) `content_json` so the key matches what's on screen. */
+export const generateAnswerKey = (
+  token: string | null,
+  id: string,
+  content_json?: unknown,
+) =>
+  json<AnswerKey>(
+    apiFetch(`/generations/${id}/answer-key`, {
+      method: "POST",
+      token,
+      body: { content_json: content_json ?? null },
+    }),
+  );
 
 export const sendGenerationFeedback = (
   token: string | null,

@@ -40,7 +40,10 @@ export const TYPE_SLUG: Record<GenerationType, string> = {
 
 export type QuizParams = {
   question_count: number;
+  /** UI labels the "medium" option "Standard". */
   difficulty: "easy" | "medium" | "hard" | "mixed";
+  time_limit_min: number;
+  focus: string;
   types: ("mcq" | "short" | "truefalse")[];
 };
 
@@ -54,12 +57,31 @@ export type LessonPlanParams = {
   focus: string;
 };
 
+/** The five question types on the Question Paper wizard, in display order. */
+export const PAPER_TYPES = [
+  "mcq",
+  "very_short",
+  "short",
+  "long",
+  "case_study",
+] as const;
+export type PaperType = (typeof PAPER_TYPES)[number];
+
+/** Per-type `{kind}_count` + `{kind}_marks`; a type with count 0 is omitted.
+ * `total_marks` / `total_questions` are derived, not sent. */
 export type QuestionPaperParams = {
-  total_marks: number;
-  duration_min: number;
+  difficulty: "easy" | "medium" | "hard" | "mixed";
+  focus: string;
   mcq_count: number;
+  mcq_marks: number;
+  very_short_count: number;
+  very_short_marks: number;
   short_count: number;
+  short_marks: number;
   long_count: number;
+  long_marks: number;
+  case_study_count: number;
+  case_study_marks: number;
 };
 
 export type PresentationParams = {
@@ -79,10 +101,29 @@ export type ParamsFor<T extends GenerationType> = T extends "quiz"
         : PresentationParams;
 
 export const DEFAULT_PARAMS: { [T in GenerationType]: ParamsFor<T> } = {
-  quiz: { question_count: 6, difficulty: "mixed", types: ["mcq", "short", "truefalse"] },
+  quiz: {
+    question_count: 10,
+    difficulty: "medium",
+    time_limit_min: 20,
+    focus: "",
+    types: ["mcq"],
+  },
   notes: { depth: "standard", include_key_terms: true },
   lesson_plan: { periods: 3, focus: "" },
-  question_paper: { total_marks: 20, duration_min: 40, mcq_count: 5, short_count: 3, long_count: 2 },
+  question_paper: {
+    difficulty: "mixed",
+    focus: "",
+    mcq_count: 5,
+    mcq_marks: 1,
+    very_short_count: 0,
+    very_short_marks: 2,
+    short_count: 3,
+    short_marks: 3,
+    long_count: 2,
+    long_marks: 5,
+    case_study_count: 0,
+    case_study_marks: 4,
+  },
   presentation: { slide_count: 8, detail: "simple", include_notes: true },
 };
 
@@ -127,7 +168,21 @@ export type QuestionPaperContent = {
   sections: {
     name: string;
     instructions: string;
-    questions: { text: string; marks: number; type: "mcq" | "short" | "long" }[];
+    questions: {
+      text: string;
+      marks: number;
+      type: "mcq" | "short" | "long";
+      /** MCQ choices as plain strings; [] for other types and legacy rows. */
+      options: string[];
+    }[];
+  }[];
+};
+
+/** On-demand marking key for a question paper (never persisted). */
+export type AnswerKey = {
+  sections: {
+    name: string;
+    answers: { number: number; answer: string; solution: string }[];
   }[];
 };
 

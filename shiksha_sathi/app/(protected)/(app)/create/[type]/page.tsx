@@ -163,8 +163,10 @@ export default function CreateTypePage() {
   const copy = useCopy();
   const { type } = useParams<{ type: string }>();
 
-  // Lesson plan has a dedicated 2-step wizard at /lesson-plan.
+  // These types have a dedicated 2-step wizard route.
   if (type === "lesson_plan") redirect("/lesson-plan");
+  if (type === "quiz") redirect("/quiz");
+  if (type === "question_paper") redirect("/question-paper");
 
   if (!isGenerationType(type)) {
     return (

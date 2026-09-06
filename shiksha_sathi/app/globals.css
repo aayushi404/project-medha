@@ -3480,3 +3480,69 @@
     padding: 24px 20px 28px;
   }
 }
+/* ------------------------------------------------------------------ */
+/* Print: isolate a document (.print-region) from the app shell.      */
+/* The Print button (generation-toolbar.tsx) adds `.printing` to      */
+/* <body>; @media print then blanks everything and re-shows just the  */
+/* region, pulled out of the shell's fixed-height scroll containers.  */
+/* ------------------------------------------------------------------ */
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  body.printing {
+    overflow: visible !important;
+    height: auto !important;
+    background: #fff;
+  }
+
+  body.printing * {
+    visibility: hidden !important;
+  }
+
+  body.printing .print-region,
+  body.printing .print-region * {
+    visibility: visible !important;
+  }
+
+  /* The desktop sidebar keeps its width even when hidden -- drop it. */
+  body.printing aside {
+    display: none !important;
+  }
+
+  /* Let every wrapper between <body> and the region grow so the whole
+     document prints, not just the first screen. */
+  body.printing .app-shell,
+  body.printing .app-shell > div,
+  body.printing main,
+  body.printing main > div {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+
+  body.printing .print-region {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Flatten the card chrome so the page reads as a document. */
+  body.printing .print-region > div {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.printing .print\:hidden {
+    display: none !important;
+  }
+}

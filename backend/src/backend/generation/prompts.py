@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 from pydantic import BaseModel
 
+from backend.generation.content import PAPER_TYPE_LABEL
 from backend.llm.client import Message
 from backend.llm.prompts import format_chunks, language_instruction
 
@@ -126,38 +127,77 @@ Rules:
 # --------------------------------------------------------------- question_paper
 
 
+_PAPER_CONTENT_TYPE = {
+    "mcq": "mcq",
+    "very_short": "short",
+    "short": "short",
+    "long": "long",
+    "case_study": "long",
+}
+
+
 def _question_paper(*, grade_label, subject_name, topic_title, topic_description,
                     language, chunks, params: BaseModel) -> tuple[str, list[Message]]:
+    letters = "ABCDEFGH"
+    total = params.total_marks
+    breakdown_lines = []
+    for i, kind in enumerate(params.active_types):
+        n, m = params.count_of(kind), params.marks_of(kind)
+        breakdown_lines.append(
+            f'  - Section {letters[i]} -- {PAPER_TYPE_LABEL[kind]}: '
+            f'{n} question(s) x {m} mark(s) = {n * m}  '
+            f'(use "type": "{_PAPER_CONTENT_TYPE[kind]}")'
+        )
+    breakdown = "\n".join(breakdown_lines)
+    diff = (
+        "rising in difficulty across the paper"
+        if params.difficulty == "mixed"
+        else f"all pitched at {params.difficulty} difficulty"
+    )
+    focus = (
+        f"How the teacher wants this paper to feel: {params.focus}"
+        if params.focus
+        else ""
+    )
     system = f"""\
-{_PREAMBLE} Set a written examination paper on this topic.
+{_PREAMBLE} Set one written examination paper on this topic.
 
 {_ctx(grade_label, subject_name, topic_title, topic_description)}
+{focus}
 
 {language_instruction(language)}
 
 {_JSON_RULES} Shape:
 {{
-  "total_marks": {params.total_marks},
-  "duration_min": {params.duration_min},
+  "total_marks": {total},
+  "duration_min": <estimate: about 1.5 min per mark, rounded to the nearest 5, minimum 30>,
   "general_instructions": ["instruction line", "..."],
   "sections": [
     {{
-      "name": "Section A -- Objective",
-      "instructions": "e.g. All questions compulsory. 1 mark each.",
-      "questions": [{{"text": "question text", "marks": 1, "type": "mcq" | "short" | "long"}}]
+      "name": "Section A -- Multiple Choice",
+      "instructions": "the 'N x M = subtotal' tally plus how to answer this section",
+      "questions": [
+        {{"text": "the question stem only", "marks": <int>, "type": "mcq", "options": ["choice 1", "choice 2", "choice 3", "choice 4"]}}
+      ]
     }}
   ]
 }}
 
+Sections, in this exact order (one section per line below):
+{breakdown}
+
 Rules:
-  - About {params.mcq_count} mcq, {params.short_count} short, {params.long_count} long questions, grouped into sections by type.
-  - Marks across all questions should sum to roughly {params.total_marks}.
-  - Questions answerable from a {grade_label} understanding of this topic; increasing difficulty within each section.
-  - For "mcq", put the four choices inside the "text" as (A)/(B)/(C)/(D).
+  - Produce exactly these sections with exactly these question counts and per-question marks. Section subtotals and the grand total must equal {total}.
+  - Questions {diff}, answerable from a {grade_label} understanding of this topic; order each section easy -> hard.
+  - For a Multiple Choice section: "text" is the question STEM ONLY. Put the four choices in "options" as four plain strings -- no "(A)" / "A." prefixes, and do NOT repeat them in "text". Exactly one is correct.
+  - For every non-MCQ question, omit "options" (or use []).
+  - For a Case Study section, open "text" with a 3-5 sentence real-world passage (rural Bihar context), then 2-3 numbered sub-parts in the same "text".
+  - "general_instructions": 4-6 lines -- the list of sections, "all questions are compulsory", which section is objective, the case-study section if present, and "draw neat, labelled diagrams where needed".
+  - No answers, no marking scheme, no solutions anywhere in the output.
 
 {format_chunks(chunks)}
 """
-    ask = f"Question paper on {topic_title} for {grade_label}, {params.total_marks} marks."
+    ask = f"Question paper on {topic_title} for {grade_label}, {total} marks."
     return system, [Message(role="user", content=ask)]
 
 
@@ -166,15 +206,30 @@ Rules:
 
 def _quiz(*, grade_label, subject_name, topic_title, topic_description,
           language, chunks, params: BaseModel) -> tuple[str, list[Message]]:
+    mcq_only = list(params.types) == ["mcq"]
     diff = (
-        "ordered easy -> hard"
+        "spread easy -> hard across the set"
         if params.difficulty == "mixed"
-        else f"all at {params.difficulty} difficulty"
+        else f"all at {params.difficulty} level"
+    )
+    type_rule = (
+        'Every question is "type": "mcq" with exactly four entries in "options".'
+        if mcq_only
+        else (
+            f'Use only these types: {", ".join(params.types)}. '
+            'Omit "options" for "short"; for "truefalse" put the two options in the teacher\'s language.'
+        )
+    )
+    focus = (
+        f"What the teacher wants this quiz to test: {params.focus}"
+        if params.focus
+        else ""
     )
     system = f"""\
 {_PREAMBLE} Generate a short classroom quiz on this topic.
 
 {_ctx(grade_label, subject_name, topic_title, topic_description)}
+{focus}
 
 {language_instruction(language)}
 
@@ -187,16 +242,17 @@ def _quiz(*, grade_label, subject_name, topic_title, topic_description,
       "options": ["A", "B", "C", "D"],
       "answer": "the correct option text, or true/false as a string",
       "difficulty": "easy" | "medium" | "hard",
-      "explanation": "one line on why, optional"
+      "explanation": "one crisp line on why the answer is correct"
     }}
   ]
 }}
 
 Rules:
   - Exactly {params.question_count} questions, {diff}.
-  - Use only these question types: {", ".join(params.types)}. Omit "options" for "short";
-    for "truefalse" use the teacher's language for the two options.
-  - Answerable from a {grade_label} understanding of this topic.
+  - {type_rule}
+  - Every option is plausible and mutually exclusive; exactly one is unambiguously correct. No "All of the above" / "None of the above".
+  - Spread the questions across the different subtopics of this chapter -- do not cluster them on one definition.
+  - Grade-appropriate reading level for {grade_label}; the class has ~{params.time_limit_min} min for all {params.question_count}, so keep each quickly answerable.
 
 {format_chunks(chunks)}
 """
@@ -249,7 +305,7 @@ Builder = Callable[..., tuple[str, list[Message]]]
 GEN_PROMPTS: dict[str, tuple[str, Builder]] = {
     "lesson_plan": ("lesson_plan-v2", _lesson_plan),
     "notes": ("notes-v1", _notes),
-    "question_paper": ("question_paper-v1", _question_paper),
-    "quiz": ("quiz-v2", _quiz),
+    "question_paper": ("question_paper-v3", _question_paper),
+    "quiz": ("quiz-v3", _quiz),
     "presentation": ("presentation-v2", _presentation),
 }
