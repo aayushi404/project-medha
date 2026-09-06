@@ -50,6 +50,19 @@ export type VoiceChatConfig = {
    */
   converse?: boolean;
   messagePath?: (sessionId: string) => string;
+  /**
+   * Where the converse SSE lives. Defaults to the teacher's `/speech/converse`
+   * (session id in the body); the student surfaces pass a path-scoped route
+   * such as `/tutor/sessions/{id}/converse`.
+   */
+  conversePath?: (sessionId: string) => string;
+  /**
+   * Endpoint for replaying prior spoken turns. Defaults to
+   * `/speech/sessions/{id}/turns`.
+   */
+  voiceTurnsPath?: (sessionId: string) => string;
+  /** Play the fixed welcome clip on open. Defaults to following `converse`. */
+  greeting?: boolean;
   /** Read the caller's current session id without creating one (for history). */
   peekSession?: () => string | null;
   title?: string;
@@ -88,6 +101,9 @@ export function VoiceChatPanel({
   ensureSession,
   converse = false,
   messagePath,
+  conversePath,
+  voiceTurnsPath,
+  greeting,
   peekSession,
   title,
   subtitle,
@@ -156,7 +172,12 @@ export function VoiceChatPanel({
     let cancelled = false;
     void (async () => {
       try {
-        const turns = await fetchVoiceTurns(sid, accessToken);
+        const turns = await fetchVoiceTurns(
+          sid,
+          accessToken,
+          20,
+          voiceTurnsPath?.(sid),
+        );
         if (cancelled) return;
         setMessages((prev) => {
           if (prev.length > 0) return prev; // don't clobber a live conversation
@@ -177,7 +198,7 @@ export function VoiceChatPanel({
     return () => {
       cancelled = true;
     };
-  }, [open, converse, peekSession, sessionId, accessToken]);
+  }, [open, converse, peekSession, sessionId, accessToken, voiceTurnsPath]);
 
   useEffect(() => {
     if (!autoListen && handsFreeActive) {
@@ -291,7 +312,10 @@ export function VoiceChatPanel({
   // the clip. Audio only (no transcript row) so it doesn't block history
   // hydration. On a load error the player drains and we fall back to idle.
   useEffect(() => {
-    if (!open || !converse || greetedRef.current) return;
+    // Defaults to following `converse`; a surface can opt out (e.g. the English
+    // tutor, where a Hindi welcome would be the wrong language context).
+    const wantGreeting = greeting ?? converse;
+    if (!open || !wantGreeting || greetedRef.current) return;
     greetedRef.current = true;
 
     const player = ensurePlayer();
@@ -302,7 +326,7 @@ export function VoiceChatPanel({
     player.enqueue(
       accent === "bihari" ? GREETING_AUDIO.bihari : GREETING_AUDIO.default,
     );
-  }, [open, converse, ensurePlayer, language]);
+  }, [open, converse, greeting, ensurePlayer, language]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -373,7 +397,7 @@ export function VoiceChatPanel({
         player.onDrain = finishTurn;
 
         await streamGeneration(
-          "/speech/converse",
+          conversePath ? conversePath(sid) : "/speech/converse",
           { session_id: sid, transcript: content, language: language ?? undefined },
           accessToken,
           {
@@ -451,6 +475,7 @@ export function VoiceChatPanel({
       sessionId,
       ensureSession,
       converse,
+      conversePath,
       ensurePlayer,
       messagePath,
       accessToken,

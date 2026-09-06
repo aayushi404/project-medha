@@ -34,6 +34,8 @@ from backend.db.models import (
 from backend.llm import LLMError, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.client import Message
 from backend.llm.prompts import voice as voice_prompt
+from backend.llm.prompts import voice_doubt as voice_doubt_prompt
+from backend.llm.prompts import voice_english as voice_english_prompt
 from backend.retrieval.retriever import Retriever
 from backend.speech import client as speech_client
 
@@ -137,15 +139,21 @@ def list_recent_turns(
 
 async def stream_converse(
     db: Session,
-    teacher: Teacher,
+    user: Teacher,
     session: ChatSession,
     transcript: str,
     language: str | None,
     style: str | None,
+    *,
+    kind: str = "teacher",
 ) -> AsyncIterator[dict]:
     """SSE generator: `token`* then one `audio` (base64 WAV) then `done`, or a
-    single `error`. The teacher's turn is persisted before generation so a
-    dropped connection still records what was asked."""
+    single `error`. The speaker's turn is persisted before generation so a
+    dropped connection still records what was asked.
+
+    `kind` picks the spoken-register prompt: "teacher" (Ask Medha), "doubt" (a
+    student's doubt chat) or "english" (the English tutor). All three sit on the
+    same `chat_sessions` / `voice_turns` tables."""
     if not settings.voice_enabled:
         yield _sse("error", {"message": "Voice is turned off right now.", "fallback": "type_instead"})
         return
@@ -164,7 +172,7 @@ async def stream_converse(
     if language:
         session.voice_language = language
     reply_style = (style if style in _VALID_STYLES else session.voice_reply_style) or "normal"
-    reply_language = language or session.voice_language or teacher.preferred_language
+    reply_language = language or session.voice_language or user.preferred_language
 
     stub = VoiceTurn(
         session_id=session.id,
@@ -186,22 +194,51 @@ async def stream_converse(
         except Exception as exc:  # noqa: BLE001 -- retrieval must never break a turn
             logger.warning("voice retrieval failed, proceeding ungrounded: %s", exc)
 
-    topic_title = topic.title if topic else (chapter.title if chapter else "this topic")
-    system, messages = voice_prompt.build(
-        grade_label=grade.label,
-        subject_name=subject.name,
-        topic_title=topic_title,
-        topic_description=topic.description if topic else None,
-        language=reply_language,
-        chunks=chunks,
-        history=history,
-        teacher_query=transcript,
-        reply_style=reply_style,
-        summary=session.voice_summary,
-    )
+    grade_label = grade.label if grade else "your class"
+    subject_name = subject.name if subject else "your subject"
+
+    if kind == "doubt":
+        system, messages = voice_doubt_prompt.build(
+            grade_label=grade_label,
+            subject_name=subject_name,
+            chapter_title=chapter.title if chapter else "this chapter",
+            topic_title=topic.title if topic else None,
+            topic_description=topic.description if topic else None,
+            language=reply_language,
+            chunks=chunks,
+            history=history,
+            student_query=transcript,
+        )
+    elif kind == "english":
+        system, messages = voice_english_prompt.build(
+            grade_label=grade_label,
+            lesson_topic=session.title,
+            language=user.preferred_language,
+            chunks=chunks,
+            history=history,
+            student_query=transcript,
+        )
+        # The English tutor always speaks English; the student's Hindi tag only
+        # governs the odd aside, so synthesise the whole reply as English.
+        reply_language = "en"
+    else:
+        topic_title = topic.title if topic else (chapter.title if chapter else "this topic")
+        system, messages = voice_prompt.build(
+            grade_label=grade_label,
+            subject_name=subject_name,
+            topic_title=topic_title,
+            topic_description=topic.description if topic else None,
+            language=reply_language,
+            chunks=chunks,
+            history=history,
+            teacher_query=transcript,
+            reply_style=reply_style,
+            summary=session.voice_summary,
+        )
+
     max_tokens = (
         settings.voice_detail_reply_tokens
-        if reply_style == "detail"
+        if kind == "teacher" and reply_style == "detail"
         else settings.voice_max_reply_tokens
     )
 

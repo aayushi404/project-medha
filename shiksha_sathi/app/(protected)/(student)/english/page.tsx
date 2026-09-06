@@ -382,7 +382,11 @@ export default function EnglishPage() {
           title: copy.english.title,
           subtitle: copy.voice.subtitle,
           ensureSession: () => ensureSession(lessonTopic),
-          messagePath: (id) => `/english/sessions/${id}/messages`,
+          converse: true,
+          greeting: false,
+          peekSession: () => sessionId,
+          conversePath: (id) => `/english/sessions/${id}/converse`,
+          voiceTurnsPath: (id) => `/english/sessions/${id}/voice-turns`,
         }}
       />
     </main>

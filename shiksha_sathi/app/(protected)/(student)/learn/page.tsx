@@ -200,7 +200,10 @@ export default function LearnPage() {
           accessToken,
           language: "hi-BiharBoli",
           ensureSession,
-          messagePath: (id) => `/tutor/sessions/${id}/messages`,
+          converse: true,
+          peekSession: () => sessionId,
+          conversePath: (id) => `/tutor/sessions/${id}/converse`,
+          voiceTurnsPath: (id) => `/tutor/sessions/${id}/voice-turns`,
         }}
       />
     </main>

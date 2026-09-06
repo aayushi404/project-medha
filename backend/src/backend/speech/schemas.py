@@ -42,6 +42,22 @@ class ConverseIn(BaseModel):
         return v
 
 
+class SpokenTurnIn(BaseModel):
+    """One spoken turn on a path-scoped converse route (the session id is in the
+    URL, not the body). STT has already run on the client."""
+
+    transcript: str = Field(min_length=1, max_length=2000)
+    language: str | None = None
+
+    @field_validator("transcript")
+    @classmethod
+    def _strip(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("transcript is required")
+        return v
+
+
 class VoiceTurnOut(BaseModel):
     """A completed spoken exchange, for repopulating the panel when it reopens."""
 

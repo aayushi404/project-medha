@@ -26,15 +26,21 @@ export type VoiceTurn = {
   created_at: string;
 };
 
-/** Past spoken turns for a session, oldest first — repopulates the voice panel. */
+/**
+ * Past spoken turns for a session, oldest first — repopulates the voice panel.
+ * `path` overrides the endpoint for the student surfaces (`/tutor/...`,
+ * `/english/...`); it defaults to the teacher's `/speech/sessions/{id}/turns`.
+ */
 export async function fetchVoiceTurns(
   sessionId: string,
   token: string | null,
   limit = 20,
+  path?: string,
 ): Promise<VoiceTurn[]> {
-  const res = await apiFetch(`/speech/sessions/${sessionId}/turns?limit=${limit}`, {
-    token,
-  });
+  const res = await apiFetch(
+    `${path ?? `/speech/sessions/${sessionId}/turns`}?limit=${limit}`,
+    { token },
+  );
   if (!res.ok) {
     throw new Error(await extractErrorMessage(res));
   }

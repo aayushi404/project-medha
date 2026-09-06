@@ -1,6 +1,15 @@
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -17,6 +26,9 @@ from backend.english.schemas import (
     EnglishSessionOut,
 )
 from backend.speech import client as speech_client
+from backend.speech import service as speech_service
+from backend.speech.rate_limit import voice_rate_limit_student
+from backend.speech.schemas import SpokenTurnIn, VoiceTurnOut
 from backend.tutor.rate_limit import tutor_rate_limit
 
 router = APIRouter(
@@ -82,6 +94,42 @@ async def post_message(
     session = service.load_owned_session(db, student, session_id)
     generator = service.stream_message(db, student, session, payload.content)
     return EventSourceResponse(generator, headers=_SSE_HEADERS)
+
+
+@router.post(
+    "/sessions/{session_id}/converse",
+    dependencies=[Depends(voice_rate_limit_student)],
+)
+async def converse(
+    session_id: uuid.UUID,
+    payload: SpokenTurnIn,
+    student: Teacher = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> EventSourceResponse:
+    """One spoken English-tutor turn. SSE: `token`* -> `audio` (base64 WAV) ->
+    `done`, or a single `error`. Same pipeline as /speech/converse, with the
+    spoken English-tutor prompt; the reply is always synthesised as English."""
+    session = service.load_owned_session(db, student, session_id)
+    generator = speech_service.stream_converse(
+        db, student, session, payload.transcript, payload.language, None, kind="english"
+    )
+    return EventSourceResponse(generator, headers=_SSE_HEADERS)
+
+
+@router.get(
+    "/sessions/{session_id}/voice-turns", response_model=list[VoiceTurnOut]
+)
+def list_voice_turns(
+    session_id: uuid.UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    student: Teacher = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> list[VoiceTurnOut]:
+    """Recent completed spoken turns for a session, oldest first -- replayed when
+    the voice panel reopens."""
+    service.load_owned_session(db, student, session_id)
+    turns = speech_service.list_recent_turns(db, session_id, limit)
+    return [VoiceTurnOut.model_validate(t) for t in turns]
 
 
 @router.post("/pronunciation-check", response_model=PronunciationOut)
