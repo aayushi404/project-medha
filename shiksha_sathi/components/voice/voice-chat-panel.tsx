@@ -16,7 +16,6 @@ import {
   fetchVoiceTurns,
   playSpeech,
   resolveTtsParams,
-  synthesizeSpeech,
   transcribeAudio,
 } from "@/lib/speech-api";
 import {
@@ -65,10 +64,15 @@ type VoiceChatPanelProps = VoiceChatConfig & {
 type VoiceState = "idle" | "listening" | "thinking" | "speaking";
 
 /**
- * Spoken once each time the teacher opens the voice panel (converse mode only).
- * A fixed Bihar-government welcome, always in Hindi regardless of UI language.
+ * Spoken once each time the teacher opens the voice panel (converse mode only):
+ * "आपका स्वागत है नए शिक्षित एवं विकसित बिहार में।" — a fixed Hindi welcome. The
+ * text never changes, so it's a pre-rendered static asset (bulbul:v3, generated
+ * once) rather than a per-open TTS call. Regenerate: backend/gen_greeting.py.
  */
-const WELCOME_GREETING = "आपका स्वागत है नए शिक्षित एवं विकसित बिहार में।";
+const GREETING_AUDIO = {
+  default: "/audio/greeting-hi.mp3",
+  bihari: "/audio/greeting-hi-bihari.mp3",
+} as const;
 
 function uid() {
   return typeof crypto !== "undefined" && crypto.randomUUID
@@ -282,41 +286,23 @@ export function VoiceChatPanel({
     return playerRef.current;
   }, []);
 
-  // Speak a fixed welcome once each time the teacher opens the panel. Audio
-  // only (no transcript row) so it doesn't block history hydration.
+  // Play the fixed welcome once each time the teacher opens the panel. It's a
+  // pre-rendered static asset (see GREETING_AUDIO), so no TTS call — just enqueue
+  // the clip. Audio only (no transcript row) so it doesn't block history
+  // hydration. On a load error the player drains and we fall back to idle.
   useEffect(() => {
     if (!open || !converse || greetedRef.current) return;
     greetedRef.current = true;
 
-    let cancelled = false;
     const player = ensurePlayer();
     setState("speaking");
-
-    void (async () => {
-      try {
-        // Greeting is always Hindi; only borrow the Bihari accent when set.
-        const tts = resolveTtsParams(language);
-        const url = await synthesizeSpeech(
-          WELCOME_GREETING,
-          accessToken,
-          "hi-IN",
-          tts.accent,
-        );
-        if (cancelled) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        player.onDrain = () => setState("idle");
-        player.enqueue(url);
-      } catch {
-        if (!cancelled) setState("idle");
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, converse, ensurePlayer, language, accessToken]);
+    player.onDrain = () => setState("idle");
+    // Greeting is always Hindi; only swap in the Bihari-accented take when set.
+    const accent = resolveTtsParams(language).accent;
+    player.enqueue(
+      accent === "bihari" ? GREETING_AUDIO.bihari : GREETING_AUDIO.default,
+    );
+  }, [open, converse, ensurePlayer, language]);
 
   const sendMessage = useCallback(
     async (content: string) => {
