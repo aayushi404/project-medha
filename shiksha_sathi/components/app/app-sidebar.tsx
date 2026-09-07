@@ -68,14 +68,23 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
 function NavList({
   onNavigate,
   collapsed,
+  scroll = true,
 }: {
   onNavigate?: () => void;
   collapsed?: boolean;
+  /** When true (mobile drawer) the nav is itself the scroll region. On desktop
+   *  it shares one scroll container with the quote/art, so pass false. */
+  scroll?: boolean;
 }) {
   const copy = useCopy();
   const pathname = usePathname();
   return (
-    <nav className="flex min-h-0 flex-col gap-1 overflow-y-auto p-2">
+    <nav
+      className={cn(
+        "flex flex-col gap-1 p-2",
+        scroll ? "min-h-0 flex-1 overflow-y-auto" : "shrink-0",
+      )}
+    >
       {collapsed ? null : (
         <span className="eyebrow px-3 pt-1 pb-1 text-muted-foreground">{copy.navMain}</span>
       )}
@@ -183,26 +192,27 @@ export function AppSidebar() {
     <>
       <aside
         className={cn(
-          "hidden shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex",
+          "hidden h-dvh shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex",
           collapsed ? "w-16" : "w-60",
         )}
       >
         <Brand collapsed={collapsed} />
-        <NavList collapsed={collapsed} />
-        {collapsed ? null : (
-          <div className="mt-3 flex min-h-0 flex-1 flex-col justify-end gap-0">
-            <SidebarQuote />
-            <SidebarArt />
-          </div>
-        )}
-        {collapsed ? <div className="flex-1" /> : null}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <NavList collapsed={collapsed} scroll={false} />
+          {collapsed ? null : (
+            <div className="mt-3 flex shrink-0 flex-col gap-0">
+              <SidebarQuote />
+              <SidebarArt />
+            </div>
+          )}
+        </div>
         <SidebarFooter collapsed={collapsed} />
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
-            "m-2 flex items-center justify-center gap-1.5 rounded-xl border border-sidebar-border py-1.5 text-xs text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+            "m-2 flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-sidebar-border py-1.5 text-xs text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
           )}
         >
           {collapsed ? (
@@ -225,10 +235,9 @@ export function AppSidebar() {
           </Dialog.Trigger>
           <Dialog.Portal>
             <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-            <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 data-[ending-style]:-translate-x-full data-[starting-style]:-translate-x-full">
+            <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 data-[ending-style]:-translate-x-full data-[starting-style]:-translate-x-full">
               <Brand />
               <NavList onNavigate={() => setOpen(false)} />
-              <div className="flex-1" />
               <SidebarFooter />
             </Dialog.Popup>
           </Dialog.Portal>
