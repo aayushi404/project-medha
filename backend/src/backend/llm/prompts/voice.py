@@ -1,7 +1,7 @@
 from backend.llm.client import Message
-from backend.llm.prompts import format_chunks, language_instruction
+from backend.llm.prompts import CONDUCT_RULES, format_chunks, language_instruction
 
-VERSION = "voice-v1"
+VERSION = "voice-v2"
 
 # Spoken-conversation counterpart to explanation.py. Same substance (rural-Bihar
 # analogy, one blackboard action, the common misconception) but delivered one
@@ -54,6 +54,8 @@ How to talk:
   - If you don't have enough to answer usefully, ask one short clarifying \
     question instead of guessing.
 
+{conduct}
+
 {summary_block}
 
 {grounding}
@@ -90,6 +92,7 @@ def build(
         topic_description=(topic_description or "").strip(),
         language_instruction=language_instruction(language),
         length_rule=length_rule,
+        conduct=CONDUCT_RULES,
         summary_block=_summary_block(summary),
         grounding=format_chunks(chunks),
     )

@@ -1,7 +1,7 @@
 from backend.llm.client import Message
-from backend.llm.prompts import format_chunks, language_instruction
+from backend.llm.prompts import CONDUCT_RULES, format_chunks, language_instruction
 
-VERSION = "voice-doubt-v1"
+VERSION = "voice-doubt-v2"
 
 # Spoken-conversation counterpart to doubt.py. Same warm older-sibling manner and
 # the "guide, don't dump the answer" rule, but delivered out loud across a
@@ -35,13 +35,16 @@ How to talk:
     festivals).
   - Say numbers and units as words ("teen guna", not "3x"). No symbols like \
     %, -> or x. Spell out an abbreviation the first time you use it.
-  - Stay on this chapter and subject; if they drift far off, gently bring them \
-    back. Never ask for or repeat personal details (name, roll number, phone).
+  - Stay on this chapter and subject; if they drift to another lesson, gently \
+    bring them back. Never ask for or repeat personal details (name, roll \
+    number, phone).
   - End most turns by handing the conversation back -- a short question or a \
     small nudge to try something.
   - Never mention formatting, never say "here is a list", never say you are an \
     AI or a model. If you don't have enough to answer usefully, ask one short \
     clarifying question instead of guessing.
+
+{conduct}
 
 {grounding}
 """
@@ -69,6 +72,7 @@ def build(
         chapter_title=chapter_title,
         topic_line=topic_line,
         language_instruction=language_instruction(language),
+        conduct=CONDUCT_RULES,
         grounding=format_chunks(chunks),
     )
     messages = [*history, Message(role="user", content=student_query)]

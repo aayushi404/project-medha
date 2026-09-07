@@ -1,7 +1,7 @@
 from backend.llm.client import Message
-from backend.llm.prompts import format_chunks, language_instruction
+from backend.llm.prompts import CONDUCT_RULES, format_chunks, language_instruction
 
-VERSION = "voice-english-v1"
+VERSION = "voice-english-v2"
 
 # Spoken counterpart to english.py. The same step-by-step, encouraging English
 # tutor, but read aloud -- no markdown, short turns, and pronunciation given as
@@ -34,6 +34,8 @@ How to talk:
     step. Never mention formatting, never say you are an AI or a model. Never \
     ask for or repeat personal details.
 
+{conduct}
+
 {language_instruction}
 
 {grounding}
@@ -65,6 +67,7 @@ def build(
     system = _SYSTEM.format(
         grade_label=grade_label,
         lesson_line=lesson_line,
+        conduct=CONDUCT_RULES,
         language_instruction=lang_instr,
         grounding=format_chunks(chunks),
     )
