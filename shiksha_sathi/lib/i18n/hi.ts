@@ -271,6 +271,7 @@ export const hi: Copy = {
     practicePickToStart: "अभ्यास सेट देखने के लिए विषय और अध्याय चुनें।",
     practiceSampleNote:
       "इस अध्याय के लिए पूरे प्रश्न-बैंक अभी तैयार किए जा रहे हैं — फ़िलहाल आपको एक छोटा नमूना सेट दिखेगा।",
+    practiceEmpty: "इस अध्याय के लिए अभी कोई अभ्यास प्रश्न नहीं हैं।",
     questionsCount: (n: number) => `${n} प्रश्न`,
     startBtn: "शुरू करें",
 
