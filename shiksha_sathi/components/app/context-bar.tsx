@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkUpdateButton } from "@/components/dashboard/work-update-modal";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useLessonContext } from "@/lib/lesson-context";
@@ -46,29 +47,35 @@ export function ContextBar() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-      <Select
-        ariaLabel={copy.selectClass}
-        placeholder={copy.selectClass}
-        value={gradeId}
-        options={gradeOptions}
-        onValueChange={pickGrade}
-      />
-      <Select
-        ariaLabel={copy.selectSubject}
-        placeholder={copy.selectSubject}
-        value={subjectId}
-        options={subjectOptions}
-        onValueChange={pickSubject}
-      />
-      <Select
-        ariaLabel={copy.selectChapter}
-        placeholder={copy.selectChapter}
-        value={chapterId}
-        options={chapterOptions}
-        onValueChange={(c) => setChapter(c)}
-        className="max-w-[16rem]"
-      />
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          ariaLabel={copy.selectClass}
+          placeholder={copy.selectClass}
+          value={gradeId}
+          options={gradeOptions}
+          onValueChange={pickGrade}
+        />
+        <Select
+          ariaLabel={copy.selectSubject}
+          placeholder={copy.selectSubject}
+          value={subjectId}
+          options={subjectOptions}
+          onValueChange={pickSubject}
+        />
+        <Select
+          ariaLabel={copy.selectChapter}
+          placeholder={copy.selectChapter}
+          value={chapterId}
+          options={chapterOptions}
+          onValueChange={(c) => setChapter(c)}
+          className="max-w-[16rem]"
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <WorkUpdateButton />
+      </div>
     </div>
   );
 }

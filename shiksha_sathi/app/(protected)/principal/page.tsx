@@ -19,6 +19,7 @@ import { RoleGate } from "@/components/auth/role-gate";
 import { ConsoleShell } from "@/components/console/console-shell";
 import { StatGrid } from "@/components/console/stat-grid";
 import { PendingTeachers } from "@/components/principal/pending-teachers";
+import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
 import { TeacherRoster } from "@/components/principal/teacher-roster";
 
 function PrincipalDashboard() {
@@ -87,6 +88,13 @@ function PrincipalDashboard() {
               ]}
             />
           )}
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
+              Teacher Daily Work Updates & AI Feedback
+            </h2>
+            <PrincipalWorkUpdatesFeed />
+          </section>
 
           <section>
             <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
