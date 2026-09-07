@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 
 import { ContextBar } from "@/components/app/context-bar";
+import { SchoolNoticeBanner } from "@/components/app/school-notice-banner";
 import { ChapterHistory } from "@/components/dashboard/chapter-history";
 import { Composer } from "@/components/dashboard/composer";
 import { LibrarySuggestions } from "@/components/dashboard/library-suggestions";
@@ -190,6 +191,7 @@ export default function DashboardPage() {
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <ContextBar />
+      <SchoolNoticeBanner audience="teachers" />
 
       {empty ? (
         <motion.div

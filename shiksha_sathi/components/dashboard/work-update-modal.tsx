@@ -11,6 +11,7 @@ import { useLessonContext } from "@/lib/lesson-context";
 import { useProfile } from "@/lib/profile-context";
 import {
   AI_USEFULNESS_OPTIONS,
+  PRINCIPAL_BADGES,
   QUICK_ACTIVITIES,
   useWorkUpdates,
   type AiHelpfulnessRating,
@@ -262,6 +263,8 @@ export function WorkUpdateButton() {
   const isHi = locale === "hi";
 
   const todayUpdate = getTodayUpdateForTeacher(teacher?.id);
+  const principalFeedback = todayUpdate?.principal_feedback;
+  const badgeInfo = principalFeedback?.badge ? PRINCIPAL_BADGES[principalFeedback.badge] : null;
 
   return (
     <>
@@ -274,11 +277,17 @@ export function WorkUpdateButton() {
         <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
         <ClipboardPenLine className="size-3.5 text-terracotta transition-transform group-hover:scale-110" />
         <span>{isHi ? "कार्य अपडेट" : "Work Update"}</span>
-        {todayUpdate && (
+
+        {badgeInfo ? (
+          <span className={`ml-1 inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.2 text-[10px] font-semibold ${badgeInfo.color}`}>
+            <span>{badgeInfo.emoji}</span>
+            <span>{isHi ? badgeInfo.labelHi.split(" (")[0] : badgeInfo.label.split(" (")[0]}</span>
+          </span>
+        ) : todayUpdate ? (
           <span className="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
             ✓ Done
           </span>
-        )}
+        ) : null}
       </button>
 
       <WorkUpdateModal open={modalOpen} onClose={() => setModalOpen(false)} />

@@ -19,6 +19,8 @@ import { RoleGate } from "@/components/auth/role-gate";
 import { ConsoleShell } from "@/components/console/console-shell";
 import { StatGrid } from "@/components/console/stat-grid";
 import { PendingTeachers } from "@/components/principal/pending-teachers";
+import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytics";
+import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
 import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
 import { TeacherRoster } from "@/components/principal/teacher-roster";
 
@@ -88,6 +90,17 @@ function PrincipalDashboard() {
               ]}
             />
           )}
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
+              School Attendance & Syllabus Analytics
+            </h2>
+            <PrincipalAnalyticsHub />
+          </section>
+
+          <section>
+            <PrincipalNoticeBoard />
+          </section>
 
           <section>
             <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">

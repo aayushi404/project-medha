@@ -34,6 +34,7 @@ import {
 
 import { useAuth } from "@/lib/auth-context";
 import { useStudentData } from "@/lib/student-context";
+import { SchoolNoticeBanner } from "@/components/app/school-notice-banner";
 
 // Bihar Board Subject definitions
 export type SubjectCategory = {
@@ -522,6 +523,9 @@ export default function StudentDashboardPage() {
 
   return (
     <main className="flex flex-1 flex-col overflow-y-auto bg-slate-50/60 pb-16">
+      {/* ─── Principal Notice Banner ─── */}
+      <SchoolNoticeBanner audience="students" />
+
       {/* ─── Top Notification & Welcome Bar ─── */}
       <div className="border-b border-slate-200 bg-white px-4 py-3 sm:px-8">
         <div className="mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between max-w-7xl">
