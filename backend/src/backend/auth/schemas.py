@@ -52,6 +52,12 @@ class RegisterIn(BaseModel):
     employee_code: str | None = Field(default=None, max_length=60)
     years_of_experience: int | None = Field(default=None, ge=0, le=50)
     qualification: str | None = Field(default=None, max_length=120)
+    # Set when registration was reached via "Continue with Google" on a brand
+    # new identity -- links the resulting pending row so a later /auth/google
+    # login finds it without a separate link step. Google only authenticates
+    # *identity* here; approval (employee_code + principal sign-off) still
+    # applies exactly as it does for a plain email/password registration.
+    google_sub: str | None = Field(default=None, max_length=255)
 
     @field_validator("email")
     @classmethod
@@ -84,6 +90,10 @@ class RegisterOut(BaseModel):
 class TokenOut(BaseModel):
     access_token: str
     expires_in: int
+
+
+class GoogleAuthIn(BaseModel):
+    id_token: str = Field(min_length=10)
 
 
 class TeacherOut(BaseModel):

@@ -11,6 +11,7 @@ from backend.llm.client import (
     Completion,
     LLMClient,
     LLMError,
+    LLMRateLimitError,
     Message,
     StreamEnd,
     StreamEvent,
@@ -21,6 +22,7 @@ from backend.llm.client import (
 __all__ = [
     "LLMClient",
     "LLMError",
+    "LLMRateLimitError",
     "Message",
     "Usage",
     "TokenDelta",

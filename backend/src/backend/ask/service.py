@@ -22,7 +22,7 @@ from backend.db.models import (
     Subject,
     Teacher,
 )
-from backend.llm import LLMError, Message, StreamEnd, TokenDelta, get_llm_client
+from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.prompts import activity as activity_prompt
 from backend.llm.prompts import explanation
 from backend.llm.prompts import ppt as ppt_prompt
@@ -36,6 +36,7 @@ logger = logging.getLogger("backend.ask")
 _ERR_GENERATION = "Could not generate a response. Please try again in a moment."
 _ERR_EMPTY = "Got an empty response. Please try again."
 _ERR_PARSE = "The response wasn't formatted correctly. Please try again."
+_ERR_RATE_LIMIT = "AI service limit has been reached. Please contact the app developer."
 
 _GEN_BUILDERS = {"quiz": quiz_prompt, "activity": activity_prompt, "ppt": ppt_prompt}
 
@@ -283,6 +284,10 @@ async def stream_message(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, StreamEnd):
                 output_tokens = event.usage.output_tokens
+    except LLMRateLimitError as exc:
+        logger.warning("generation rate-limited: %s", exc)
+        yield _sse("error", {"message": _ERR_RATE_LIMIT})
+        return
     except LLMError as exc:
         logger.warning("generation failed: %s", exc)
         yield _sse("error", {"message": _ERR_GENERATION})
@@ -387,6 +392,10 @@ async def run_generator(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, StreamEnd):
                 output_tokens = event.usage.output_tokens
+    except LLMRateLimitError as exc:
+        logger.warning("generation rate-limited: %s", exc)
+        yield _sse("error", {"message": _ERR_RATE_LIMIT})
+        return
     except LLMError as exc:
         logger.warning("generation failed: %s", exc)
         yield _sse("error", {"message": _ERR_GENERATION})

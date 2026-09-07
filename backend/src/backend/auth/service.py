@@ -82,6 +82,15 @@ def register(db: Session, payload: RegisterIn) -> Teacher:
         teacher = Teacher(email=payload.email)
         db.add(teacher)
 
+    if payload.google_sub is not None:
+        conflict = db.query(Teacher).filter(Teacher.google_sub == payload.google_sub).first()
+        if conflict is not None and conflict is not teacher:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "This Google account is already linked to another Medha account.",
+            )
+        teacher.google_sub = payload.google_sub
+
     teacher.full_name = payload.full_name
     teacher.password_hash = hash_password(payload.password)
     teacher.role = payload.role
@@ -98,6 +107,88 @@ def register(db: Session, payload: RegisterIn) -> Teacher:
     db.commit()
     db.refresh(teacher)
     return teacher
+
+
+def _verify_google_id_token(raw_id_token: str) -> dict:
+    """Verify a Google ID token's signature/audience/expiry and return its
+    claims. The audience is the WEB client id (see .env.example) -- a native
+    Android/iOS sign-in flow passes that as `serverClientId` precisely so the
+    token it produces is audienced for this backend, not just the device."""
+    from google.auth.transport import requests as google_requests
+    from google.oauth2 import id_token as google_id_token
+
+    from backend.core.config import settings
+
+    if not settings.google_client_id:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "Google sign-in is not configured."
+        )
+    try:
+        claims = google_id_token.verify_oauth2_token(
+            raw_id_token, google_requests.Request(), settings.google_client_id
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Invalid or expired Google sign-in token."
+        ) from exc
+    if not claims.get("email_verified", False):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Google account email is not verified."
+        )
+    return claims
+
+
+def google_login(
+    db: Session, raw_id_token: str, device_info: str | None
+) -> tuple[str, str, int]:
+    """Same three outcomes as `login()` (issued tokens / PENDING_APPROVAL /
+    REGISTRATION_REJECTED), plus a fourth: no account is linked to this Google
+    identity yet, so the client should route to Register (prefilled) rather
+    than treating this as a login failure."""
+    claims = _verify_google_id_token(raw_id_token)
+    google_sub = claims["sub"]
+    email = (claims.get("email") or "").strip().lower()
+    full_name = claims.get("name") or (email.split("@")[0] if email else "")
+
+    teacher = db.query(Teacher).filter(Teacher.google_sub == google_sub).first()
+
+    if teacher is None and email:
+        # owns this email (verified by Google) but hasn't linked Google yet --
+        # link it now rather than making them set a password just to prove it.
+        candidate = db.query(Teacher).filter(Teacher.email == email).first()
+        if candidate is not None and candidate.google_sub is None:
+            candidate.google_sub = google_sub
+            db.commit()
+            db.refresh(candidate)
+            teacher = candidate
+
+    if teacher is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "NOT_REGISTERED",
+                "google_sub": google_sub,
+                "email": email,
+                "full_name": full_name,
+            },
+        )
+
+    if not teacher.is_active:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This account is not active.")
+    if teacher.approval_status == "pending":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, detail={"code": "PENDING_APPROVAL"}
+        )
+    if teacher.approval_status == "rejected":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "REGISTRATION_REJECTED",
+                "reason": teacher.rejection_reason,
+            },
+        )
+
+    return _issue_tokens(db, teacher, device_info)
 
 
 def login(

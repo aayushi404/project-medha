@@ -2,12 +2,18 @@
 
 import { Dialog } from "@base-ui/react/dialog";
 import {
+  CalendarDays,
   ClipboardCheck,
+  ClipboardList,
   Clock,
   GraduationCap,
   Home,
+  Library,
+  ListChecks,
   Menu,
   MessageCircle,
+  NotebookPen,
+  NotebookText,
   PanelLeftClose,
   PanelLeftOpen,
   Wrench,
@@ -19,6 +25,7 @@ import { useEffect, useState } from "react";
 
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { ProfileMenu } from "@/components/app/profile-menu";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useCopy } from "@/lib/copy";
 import type { Copy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
@@ -30,6 +37,12 @@ const NAV: { href: string; navKey: keyof Copy["nav"]; icon: LucideIcon }[] = [
   { href: "/students", navKey: "students", icon: GraduationCap },
   { href: "/tools", navKey: "tools", icon: Wrench },
   { href: "/attendance", navKey: "attendance", icon: ClipboardCheck },
+  { href: "/homework", navKey: "homework", icon: NotebookPen },
+  { href: "/timetable", navKey: "timetable", icon: CalendarDays },
+  { href: "/report-card", navKey: "reportCard", icon: ClipboardList },
+  { href: "/resources", navKey: "resources", icon: Library },
+  { href: "/notes", navKey: "notes", icon: NotebookText },
+  { href: "/practice", navKey: "practice", icon: ListChecks },
 ];
 
 const COLLAPSE_KEY = "medha.sidebarCollapsed";
@@ -132,7 +145,12 @@ function SidebarFooter({ collapsed }: { collapsed?: boolean }) {
         collapsed && "items-center",
       )}
     >
-      {collapsed ? null : <LanguageToggle className="self-start" />}
+      {collapsed ? null : (
+        <div className="flex items-center gap-1 self-stretch px-1">
+          <LanguageToggle className="self-start" />
+          <NotificationBell className="ml-auto" />
+        </div>
+      )}
       <ProfileMenu collapsed={collapsed} />
     </div>
   );
@@ -217,7 +235,8 @@ export function AppSidebar() {
         </Dialog.Root>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/Logo.jpeg" alt="Medha" className="h-8 w-auto object-contain" />
-        <LanguageToggle className="ml-auto" />
+        <NotificationBell className="ml-auto" />
+        <LanguageToggle />
       </div>
     </>
   );

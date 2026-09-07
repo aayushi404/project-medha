@@ -72,7 +72,7 @@ export type OnboardingCompleteInput = {
 };
 
 type ApiFetchOptions = {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   token?: string | null;
   signal?: AbortSignal;
@@ -471,7 +471,12 @@ export const rejectPrincipal = (token: string | null, id: string, reason: string
 
 // --- principal ---
 
-export type PrincipalStats = { teachers: number; pending_teachers: number };
+export type PrincipalStats = {
+  teachers: number;
+  pending_teachers: number;
+  students: number;
+  pending_students: number;
+};
 
 export type PendingTeacher = {
   id: string;
@@ -669,6 +674,7 @@ export const translateText = (token: string | null, body: TranslatePayload) =>
   json<TranslateResult>(apiFetch("/tools/translate", { method: "POST", token, body }));
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Content generation (Medha v2 -- docs/medha-v2-backend.md). Streaming
 // creation (`POST /generate/{type}`) goes through `lib/sse.ts`'s
 // `streamGeneration`, not here -- these are the plain-fetch CRUD calls.
@@ -793,5 +799,309 @@ export type GenerateBody<T extends GenerationType = GenerationType> = {
   scope: GenerationScope;
   params: Partial<ParamsFor<T>>;
   language?: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Notifications: an in-app inbox for every role, plus a principal ->
+// school-wide / teacher -> own-grade announce composer. Push (FCM) is handled
+// entirely server-side once a device token is registered elsewhere (mobile);
+// the web client only reads/writes the in-app inbox.
+// ---------------------------------------------------------------------------
+
+export type AppNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  read_at: string | null;
+  created_at: string;
+};
+
+export type AnnounceInput = {
+  title: string;
+  body: string;
+  audience?: "teachers" | "students";
+  grade_id?: string;
+};
+
+export const listNotifications = (token: string | null) =>
+  json<AppNotification[]>(apiFetch("/notifications", { token }));
+
+export const getUnreadCount = (token: string | null) =>
+  json<{ count: number }>(apiFetch("/notifications/unread-count", { token }));
+
+export const markNotificationRead = async (token: string | null, id: string) => {
+  const res = await apiFetch(`/notifications/${id}/read`, { method: "POST", token });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+};
+
+export const announce = (token: string | null, body: AnnounceInput) =>
+  json<{ recipients: number }>(apiFetch("/notifications/announce", { method: "POST", token, body }));
+
+// ---------------------------------------------------------------------------
+// Homework: a teacher assigns to a grade (optionally tied to a subject);
+// students see their own list and toggle done/not-done.
+// ---------------------------------------------------------------------------
+
+export type HomeworkListItem = {
+  id: string;
+  title: string;
+  grade_label: string;
+  subject_name: string | null;
+  due_date: string | null;
+  created_at: string;
+  done_count: number;
+  total_count: number;
+};
+
+export type HomeworkDetail = {
+  id: string;
+  title: string;
+  description: string | null;
+  grade_label: string;
+  subject_name: string | null;
+  due_date: string | null;
+  created_at: string;
+};
+
+export type HomeworkStudentItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  subject_name: string | null;
+  due_date: string | null;
+  done: boolean;
+  created_at: string;
+};
+
+export type HomeworkCreateInput = {
+  grade_id: string;
+  subject_id?: string | null;
+  title: string;
+  description?: string | null;
+  due_date?: string | null;
+};
+
+export const createHomework = (token: string | null, body: HomeworkCreateInput) =>
+  json<HomeworkDetail>(apiFetch("/homework", { method: "POST", token, body }));
+
+export const listHomework = (token: string | null) =>
+  json<HomeworkListItem[]>(apiFetch("/homework", { token }));
+
+export const listMyHomework = (token: string | null) =>
+  json<HomeworkStudentItem[]>(apiFetch("/homework/mine", { token }));
+
+export const markHomeworkDone = (token: string | null, id: string) =>
+  json<HomeworkStudentItem>(apiFetch(`/homework/${id}/done`, { method: "POST", token }));
+
+export const markHomeworkUndone = (token: string | null, id: string) =>
+  json<HomeworkStudentItem>(apiFetch(`/homework/${id}/undone`, { method: "POST", token }));
+
+// ---------------------------------------------------------------------------
+// Timetable: one weekly grid per grade (Mon-Sat x periods), read by anyone at
+// the school, edited by a teacher or principal.
+// ---------------------------------------------------------------------------
+
+export type TimetableSlot = {
+  day_of_week: number; // 0 = Monday
+  period_number: number;
+  subject_id: string | null;
+  subject_name: string | null;
+  teacher_id: string | null;
+  teacher_name: string | null;
+};
+
+export type Timetable = {
+  grade_id: string;
+  grade_label: string;
+  slots: TimetableSlot[];
+};
+
+export type TimetableSlotInput = {
+  day_of_week: number;
+  period_number: number;
+  subject_id?: string | null;
+  teacher_id?: string | null;
+};
+
+export const getTimetable = (token: string | null, gradeId: string) =>
+  json<Timetable>(apiFetch(`/timetable?grade_id=${gradeId}`, { token }));
+
+export const setTimetable = (
+  token: string | null,
+  body: { grade_id: string; slots: TimetableSlotInput[] },
+) => json<Timetable>(apiFetch("/timetable", { method: "PUT", token, body }));
+
+// ---------------------------------------------------------------------------
+// Report card: a teacher enters marks per subject/term for a student they
+// teach; the student (or their teacher/principal) can view the whole card.
+// ---------------------------------------------------------------------------
+
+export type ReportCardMark = {
+  subject_id: string;
+  subject_name: string;
+  term: string;
+  marks_obtained: number;
+  max_marks: number;
+  remarks: string | null;
+  updated_at: string;
+};
+
+export type ReportCard = {
+  student_id: string;
+  student_name: string;
+  marks: ReportCardMark[];
+};
+
+export type ReportCardMarkInput = {
+  student_id: string;
+  subject_id: string;
+  term: string;
+  marks_obtained: number;
+  max_marks?: number;
+  remarks?: string | null;
+};
+
+export const upsertReportCardMark = (token: string | null, body: ReportCardMarkInput) =>
+  json<ReportCardMark>(apiFetch("/report-card/marks", { method: "POST", token, body }));
+
+export const getReportCard = (token: string | null, studentId: string) =>
+  json<ReportCard>(apiFetch(`/report-card/${studentId}`, { token }));
+
+// ---------------------------------------------------------------------------
+// E-library: curated links (not file storage), added by a teacher or
+// principal, browsable by anyone, optionally filtered by grade/subject.
+// ---------------------------------------------------------------------------
+
+export type LibraryItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  url: string;
+  grade_label: string | null;
+  subject_name: string | null;
+  created_at: string;
+};
+
+export type LibraryItemInput = {
+  title: string;
+  description?: string | null;
+  url: string;
+  grade_id?: string | null;
+  subject_id?: string | null;
+};
+
+export const listLibraryItems = (
+  token: string | null,
+  filter: { gradeId?: string; subjectId?: string } = {},
+) => {
+  const qs = new URLSearchParams();
+  if (filter.gradeId) qs.set("grade_id", filter.gradeId);
+  if (filter.subjectId) qs.set("subject_id", filter.subjectId);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return json<LibraryItem[]>(apiFetch(`/library/items${suffix}`, { token }));
+};
+
+export const addLibraryItem = (token: string | null, body: LibraryItemInput) =>
+  json<LibraryItem>(apiFetch("/library/items", { method: "POST", token, body }));
+
+export const deleteLibraryItem = async (token: string | null, id: string) => {
+  const res = await apiFetch(`/library/items/${id}`, { method: "DELETE", token });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+};
+
+// ---------------------------------------------------------------------------
+// Fees: a manually-kept payment log. Only a principal logs a payment; a
+// student sees their own history, a teacher/principal can look up any
+// student at their school.
+// ---------------------------------------------------------------------------
+
+export type FeePayment = {
+  id: string;
+  amount: number;
+  fee_type: string;
+  payment_date: string;
+  note: string | null;
+  logged_by_name: string;
+  created_at: string;
+};
+
+export type FeePaymentInput = {
+  student_id: string;
+  amount: number;
+  fee_type: string;
+  payment_date: string;
+  note?: string | null;
+};
+
+export const logFeePayment = (token: string | null, body: FeePaymentInput) =>
+  json<FeePayment>(apiFetch("/fees", { method: "POST", token, body }));
+
+export const listFees = (token: string | null, studentId: string) =>
+  json<FeePayment[]>(apiFetch(`/fees/${studentId}`, { token }));
+
+// --- principal: school-wide student roster (for pickers, e.g. logging a fee) ---
+
+export const getPrincipalStudents = (token: string | null) =>
+  json<StudentRosterItem[]>(apiFetch("/principal/students", { token }));
+
+// ---------------------------------------------------------------------------
+// Chapter notes and practice questions: teacher/principal-curated student
+// content, kept separate from the private `modules` feature (those stay
+// visible only to the teacher who generated them).
+// ---------------------------------------------------------------------------
+
+export type ChapterNote = {
+  id: string;
+  chapter_id: string;
+  summary: string;
+  key_points: string[];
+  important_terms: string[];
+  updated_at: string;
+};
+
+export type ChapterNoteInput = {
+  chapter_id: string;
+  summary: string;
+  key_points: string[];
+  important_terms: string[];
+};
+
+export const getChapterNotes = (token: string | null, chapterId: string) =>
+  json<ChapterNote | null>(apiFetch(`/notes?chapter_id=${chapterId}`, { token }));
+
+export const upsertChapterNote = (token: string | null, body: ChapterNoteInput) =>
+  json<ChapterNote>(apiFetch("/notes", { method: "POST", token, body }));
+
+export type PracticeQuestion = {
+  id: string;
+  chapter_id: string;
+  question: string;
+  type: "mcq" | "short" | "truefalse";
+  options: string[] | null;
+  answer: string;
+  difficulty: "easy" | "medium" | "hard";
+  created_at: string;
+};
+
+export type PracticeQuestionInput = {
+  chapter_id: string;
+  question: string;
+  type: "mcq" | "short" | "truefalse";
+  options?: string[] | null;
+  answer: string;
+  difficulty: "easy" | "medium" | "hard";
+};
+
+export const getPracticeQuestions = (token: string | null, chapterId: string) =>
+  json<PracticeQuestion[]>(apiFetch(`/practice?chapter_id=${chapterId}`, { token }));
+
+export const addPracticeQuestion = (token: string | null, body: PracticeQuestionInput) =>
+  json<PracticeQuestion>(apiFetch("/practice", { method: "POST", token, body }));
+
+export const deletePracticeQuestion = async (token: string | null, id: string) => {
+  const res = await apiFetch(`/practice/${id}`, { method: "DELETE", token });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
 };
 
