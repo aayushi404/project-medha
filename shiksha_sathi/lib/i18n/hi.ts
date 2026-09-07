@@ -30,6 +30,7 @@ export const hi: Copy = {
     reportCard: "रिपोर्ट कार्ड",
     resources: "ई-लाइब्रेरी",
     fees: "फीस",
+    biharDarpan: "बिहार दर्पण",
   },
   profileMenu: { edit: "प्रोफ़ाइल संपादित करें", logout: "लॉग आउट" },
   language: "भाषा",
@@ -726,5 +727,22 @@ export const hi: Copy = {
     loggedToast: "भुगतान दर्ज हुआ।",
     empty: "अभी कोई भुगतान दर्ज नहीं हुआ।",
     loggedBy: (name: string) => `${name} द्वारा दर्ज`,
+  },
+
+  biharDarpanPage: {
+    title: "बिहार दर्पण",
+    sub: "हर दिन बिहार और यहाँ के लोगों के बारे में कुछ नया सीखें।",
+    todayBadge: "आज",
+    dayLabel: (n: number) => `दिन ${n} / 30`,
+    quoteHeading: "आज का विचार",
+    affairsHeading: "बिहार करेंट अफेयर्स",
+    quizHeading: "आज का क्विज़",
+    gkHeading: "बिहार जी.के.",
+    quizCorrect: "सही जवाब!",
+    quizWrong: "यह सही नहीं है।",
+    quizNext: "अगला प्रश्न",
+    browseHeading: "सभी 30 दिन देखें",
+    disclaimer:
+      "सीखने के लिए संकलित। उद्धरण लोकप्रिय स्रोतों से लिए गए हैं — कक्षा में उपयोग से पहले शिक्षक शब्दों की पुष्टि कर लें।",
   },
 };

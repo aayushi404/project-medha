@@ -14,6 +14,7 @@ import {
   NotebookPen,
   NotebookText,
   PencilRuler,
+  Sparkles,
   LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils";
 
 const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[] = [
   { href: "/learn", navKey: "ask", icon: MessagesSquare },
+  { href: "/bihar-darpan", navKey: "biharDarpan", icon: Sparkles },
   { href: "/english", navKey: "english", icon: Languages },
   { href: "/my-practice", navKey: "practice", icon: PencilRuler },
   { href: "/my-notes", navKey: "notes", icon: NotebookText },
