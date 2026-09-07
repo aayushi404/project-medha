@@ -276,6 +276,7 @@ export const en = {
     practicePickToStart: "Pick a subject and chapter to see practice sets.",
     practiceSampleNote:
       "Full question banks for this chapter are still being prepared — you'll see a short sample set for now.",
+    practiceEmpty: "No practice questions for this chapter yet.",
     questionsCount: (n: number) => `${n} questions`,
     startBtn: "Start",
 
