@@ -19,6 +19,7 @@ export const en = {
     resources: "E-Library",
     notes: "Notes",
     practice: "Practice",
+    simulations: "Simulations",
   },
   navMain: "Main",
   studentNav: {
@@ -33,6 +34,7 @@ export const en = {
     resources: "E-Library",
     fees: "Fees",
     biharDarpan: "Bihar Darpan",
+    simulations: "Simulations",
   },
   profileMenu: { edit: "Edit profile", logout: "Log out" },
   language: "Language",
@@ -750,6 +752,21 @@ export const en = {
     browseHeading: "Browse all 30 days",
     disclaimer:
       "Curated for learning. Quotes are compiled from popular sources — teachers should verify wording before classroom use.",
+  },
+
+  simulations: {
+    title: "Class Simulations",
+    sub: "Engage students with hands-on learning experiences",
+    all: "All",
+    interactiveModule: "Interactive Module",
+    notFound: "That simulation isn't available.",
+    openOnPhet: "Open on PhET",
+    fullscreen: "Fullscreen",
+    exitFullscreen: "Exit fullscreen",
+    back: "All simulations",
+    grades: (a: number, b: number) => `Class ${a}–${b}`,
+    attribution:
+      "Simulations by PhET Interactive Simulations, University of Colorado Boulder, licensed under CC BY 4.0.",
   },
 };
 
