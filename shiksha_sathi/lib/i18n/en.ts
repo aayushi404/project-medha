@@ -32,6 +32,7 @@ export const en = {
     reportCard: "Report Card",
     resources: "E-Library",
     fees: "Fees",
+    biharDarpan: "Bihar Darpan",
   },
   profileMenu: { edit: "Edit profile", logout: "Log out" },
   language: "Language",
@@ -731,6 +732,23 @@ export const en = {
     loggedToast: "Payment logged.",
     empty: "No payments logged yet.",
     loggedBy: (name: string) => `Logged by ${name}`,
+  },
+
+  biharDarpanPage: {
+    title: "Bihar Darpan",
+    sub: "Learn something about Bihar and its people every day.",
+    todayBadge: "Today",
+    dayLabel: (n: number) => `Day ${n} of 30`,
+    quoteHeading: "Thought of the day",
+    affairsHeading: "Bihar current affairs",
+    quizHeading: "Today's quiz",
+    gkHeading: "Bihar GK",
+    quizCorrect: "Correct!",
+    quizWrong: "Not quite.",
+    quizNext: "Next question",
+    browseHeading: "Browse all 30 days",
+    disclaimer:
+      "Curated for learning. Quotes are compiled from popular sources — teachers should verify wording before classroom use.",
   },
 };
 
