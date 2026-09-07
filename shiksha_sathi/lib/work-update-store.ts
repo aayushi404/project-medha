@@ -208,24 +208,33 @@ function writeNotices(notices: SchoolNotice[]) {
 
 let cachedUpdates: TeacherWorkUpdate[] = [];
 let cachedNotices: SchoolNotice[] = [];
+let cachedSnapshot: { updates: TeacherWorkUpdate[]; notices: SchoolNotice[] } = {
+  updates: [],
+  notices: [],
+};
 let cacheLoaded = false;
 const listeners = new Set<() => void>();
 
+function updateSnapshot() {
+  cachedUpdates = readStorage();
+  cachedNotices = readNotices();
+  cachedSnapshot = { updates: cachedUpdates, notices: cachedNotices };
+}
+
 function notify() {
+  updateSnapshot();
   for (const listener of listeners) listener();
 }
 
 function subscribe(callback: () => void) {
   listeners.add(callback);
   const onCustom = () => {
-    cachedUpdates = readStorage();
-    cachedNotices = readNotices();
+    updateSnapshot();
     callback();
   };
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY || e.key === NOTICES_KEY) {
-      cachedUpdates = readStorage();
-      cachedNotices = readNotices();
+      updateSnapshot();
       callback();
     }
   };
@@ -240,17 +249,21 @@ function subscribe(callback: () => void) {
   };
 }
 
+const SERVER_SNAPSHOT: { updates: TeacherWorkUpdate[]; notices: SchoolNotice[] } = {
+  updates: [],
+  notices: [],
+};
+
 function getSnapshot(): { updates: TeacherWorkUpdate[]; notices: SchoolNotice[] } {
   if (!cacheLoaded && typeof window !== "undefined") {
-    cachedUpdates = readStorage();
-    cachedNotices = readNotices();
+    updateSnapshot();
     cacheLoaded = true;
   }
-  return { updates: cachedUpdates, notices: cachedNotices };
+  return cachedSnapshot;
 }
 
 function getServerSnapshot(): { updates: TeacherWorkUpdate[]; notices: SchoolNotice[] } {
-  return { updates: [], notices: [] };
+  return SERVER_SNAPSHOT;
 }
 
 export function useWorkUpdates() {
