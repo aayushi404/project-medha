@@ -181,10 +181,11 @@
   --violet-muted: oklch(0.32 0.045 300);
 }
 
-/* The signed-in app (teacher/student shell) reads softer and more rounded
+/* The signed-in app (teacher + student shells) reads softer and more rounded
    than the marketing landing page's sharp editorial corners — scoped to
-   .app-shell (wraps the sidebar + content in app/(protected)/(app)/layout.tsx)
-   so the landing page's `--radius-*` derived tokens are untouched. */
+   .app-shell (wraps the sidebar + content in both app/(protected)/(app)/ and
+   app/(protected)/(student)/ layout.tsx) so the landing page's `--radius-*`
+   derived tokens are untouched. */
 .app-shell {
   --radius: 0.85rem;
 }
