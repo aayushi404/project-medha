@@ -10,6 +10,8 @@ export const hi: Copy = {
     modules: "मेरे मॉड्यूल",
     tools: "टूल",
     attendance: "उपस्थिति",
+    workUpdate: "कार्य अपडेट",
+    notifications: "सूचनाएं",
     students: "छात्र",
     homework: "गृहकार्य",
     timetable: "समय सारिणी",
