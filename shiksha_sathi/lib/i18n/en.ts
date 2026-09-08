@@ -12,6 +12,8 @@ export const en = {
     modules: "My Modules",
     tools: "Tools",
     attendance: "Attendance",
+    workUpdate: "Work Update",
+    notifications: "Notifications",
     students: "Students",
     homework: "Homework",
     timetable: "Timetable",

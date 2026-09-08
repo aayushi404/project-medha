@@ -2,9 +2,11 @@
 
 import { Dialog } from "@base-ui/react/dialog";
 import {
+  Bell,
   CalendarDays,
   ClipboardCheck,
   ClipboardList,
+  ClipboardPenLine,
   Clock,
   FlaskConical,
   GraduationCap,
@@ -26,28 +28,96 @@ import { useEffect, useState } from "react";
 
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { ProfileMenu } from "@/components/app/profile-menu";
+import { WorkUpdateModal } from "@/components/dashboard/work-update-modal";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
 import type { Copy } from "@/lib/copy";
 import { cn } from "@/lib/utils";
+import { PRINCIPAL_BADGES, useWorkUpdates } from "@/lib/work-update-store";
 
 const NAV: { href: string; navKey: keyof Copy["nav"]; icon: LucideIcon }[] = [
   { href: "/dashboard", navKey: "home", icon: Home },
-  { href: "/ask", navKey: "askMedha", icon: MessageCircle },
-  { href: "/history", navKey: "history", icon: Clock },
-  { href: "/students", navKey: "students", icon: GraduationCap },
-  { href: "/tools", navKey: "tools", icon: Wrench },
-  { href: "/simulations", navKey: "simulations", icon: FlaskConical },
   { href: "/attendance", navKey: "attendance", icon: ClipboardCheck },
+  { href: "/notifications", navKey: "notifications", icon: Bell },
+  { href: "/ask", navKey: "askMedha", icon: MessageCircle },
+  { href: "/students", navKey: "students", icon: GraduationCap },
   { href: "/homework", navKey: "homework", icon: NotebookPen },
   { href: "/timetable", navKey: "timetable", icon: CalendarDays },
-  { href: "/report-card", navKey: "reportCard", icon: ClipboardList },
+  { href: "/simulations", navKey: "simulations", icon: FlaskConical },
+  { href: "/tools", navKey: "tools", icon: Wrench },
   { href: "/resources", navKey: "resources", icon: Library },
   { href: "/notes", navKey: "notes", icon: NotebookText },
   { href: "/practice", navKey: "practice", icon: ListChecks },
+  { href: "/report-card", navKey: "reportCard", icon: ClipboardList },
+  { href: "/history", navKey: "history", icon: Clock },
 ];
 
 const COLLAPSE_KEY = "medha.sidebarCollapsed";
+
+function SidebarWorkUpdateItem({
+  collapsed,
+  onNavigate,
+}: {
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { teacher } = useAuth();
+  const { getTodayUpdateForTeacher } = useWorkUpdates();
+  const copy = useCopy();
+
+  const todayUpdate = getTodayUpdateForTeacher(teacher?.id);
+  const badgeInfo = todayUpdate?.principal_feedback?.badge
+    ? PRINCIPAL_BADGES[todayUpdate.principal_feedback.badge]
+    : null;
+  const label = copy.nav.workUpdate;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+          onNavigate?.();
+        }}
+        title={collapsed ? label : undefined}
+        className={cn(
+          "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors text-left",
+          collapsed && "justify-center px-0",
+          "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+        )}
+      >
+        <div className="relative flex size-4 shrink-0 items-center justify-center">
+          <ClipboardPenLine className="size-4 text-terracotta" />
+          {todayUpdate && (
+            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-emerald-500 ring-2 ring-background" />
+          )}
+        </div>
+        {collapsed ? null : (
+          <div className="flex flex-1 items-center justify-between">
+            <span className="truncate">{label}</span>
+            {badgeInfo ? (
+              <span className="inline-flex items-center gap-0.5 text-xs font-semibold" title={badgeInfo.label}>
+                <span>{badgeInfo.emoji}</span>
+              </span>
+            ) : todayUpdate ? (
+              <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                ✓ Done
+              </span>
+            ) : (
+              <span className="rounded-full bg-terracotta/15 px-1.5 py-0.2 text-[10px] font-semibold text-terracotta">
+                + New
+              </span>
+            )}
+          </div>
+        )}
+      </button>
+
+      <WorkUpdateModal open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
 
 function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
@@ -94,22 +164,27 @@ function NavList({
         const active = pathname === href || pathname.startsWith(`${href}/`);
         const label = copy.nav[navKey];
         return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            title={collapsed ? label : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors",
-              collapsed && "justify-center px-0",
-              active
-                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+          <div key={href} className="contents">
+            <Link
+              href={href}
+              onClick={onNavigate}
+              title={collapsed ? label : undefined}
+              className={cn(
+                "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                collapsed && "justify-center px-0",
+                active
+                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+              )}
+            >
+              <Icon className="size-4 shrink-0" />
+              {collapsed ? null : label}
+            </Link>
+
+            {navKey === "attendance" && (
+              <SidebarWorkUpdateItem collapsed={collapsed} onNavigate={onNavigate} />
             )}
-          >
-            <Icon className="size-4 shrink-0" />
-            {collapsed ? null : label}
-          </Link>
+          </div>
         );
       })}
     </nav>
