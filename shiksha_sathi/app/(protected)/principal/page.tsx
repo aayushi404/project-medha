@@ -30,6 +30,9 @@ import { Select } from "@/components/ui/select";
 import { AnnounceForm } from "@/components/notifications/announce-form";
 import { FeesList } from "@/components/fees/fees-list";
 import { PendingTeachers } from "@/components/principal/pending-teachers";
+import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytics";
+import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
+import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
 import { TeacherRoster } from "@/components/principal/teacher-roster";
 import { StudentRoster } from "@/components/students/student-roster";
 
@@ -236,6 +239,21 @@ function PrincipalDashboard() {
               ]}
             />
           )}
+
+          {/* 1. School Attendance & Syllabus Analytics (Smart graphs & percentages) */}
+          <section>
+            <PrincipalAnalyticsHub />
+          </section>
+
+          {/* 2. Official School Notice Board (सूचना पट्ट) */}
+          <section>
+            <PrincipalNoticeBoard />
+          </section>
+
+          {/* 3. Teacher Daily Work Updates Feed & 1-Click Appreciation */}
+          <section>
+            <PrincipalWorkUpdatesFeed />
+          </section>
 
           <section>
             <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
