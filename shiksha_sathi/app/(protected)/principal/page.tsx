@@ -178,31 +178,29 @@ function FeeLogSection() {
   );
 }
 
-type PrincipalTab =
-  | "all"
-  | "analytics"
-  | "work-updates"
-  | "notices"
-  | "teachers"
-  | "students"
-  | "fees";
-
-const PRINCIPAL_TABS = [
-  { id: "all" as const, labelEn: "Overview", labelHi: "डैशबोर्ड सारांश", icon: LayoutDashboard },
-  { id: "analytics" as const, labelEn: "Attendance & Syllabus", labelHi: "उपस्थिति व सिलेबस", icon: ClipboardCheck },
-  { id: "work-updates" as const, labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
-  { id: "notices" as const, labelEn: "Notice Board", labelHi: "सूचना पट्ट", icon: Megaphone },
-  { id: "teachers" as const, labelEn: "Teachers & Staff", labelHi: "शिक्षक दल", icon: Users },
-  { id: "students" as const, labelEn: "Students", labelHi: "विद्यार्थी", icon: GraduationCap },
-  { id: "fees" as const, labelEn: "Fee Records", labelHi: "शुल्क रिकॉर्ड", icon: IndianRupee },
+const SECTIONS = [
+  { id: "principal-stats", labelEn: "Overview", labelHi: "डैशबोर्ड सारांश", icon: LayoutDashboard },
+  { id: "principal-analytics", labelEn: "Attendance & Syllabus", labelHi: "उपस्थिति व सिलेबस", icon: ClipboardCheck },
+  { id: "principal-notices", labelEn: "Notice Board", labelHi: "सूचना पट्ट", icon: Megaphone },
+  { id: "principal-work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
+  { id: "principal-pending-teachers", labelEn: "Teacher Approvals", labelHi: "शिक्षक अनुमोदन", icon: Users },
+  { id: "principal-teachers", labelEn: "Staff Roster", labelHi: "शिक्षक दल", icon: Users },
+  { id: "principal-students", labelEn: "Students", labelHi: "विद्यार्थी", icon: GraduationCap },
+  { id: "principal-fees", labelEn: "Fees", labelHi: "शुल्क रिकॉर्ड", icon: IndianRupee },
 ];
+
+function scrollToSection(id: string) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
 
 function PrincipalDashboard() {
   const { accessToken } = useAuth();
   const { locale } = useLocale();
   const isHi = locale === "hi";
 
-  const [activeTab, setActiveTab] = useState<PrincipalTab>("all");
   const [stats, setStats] = useState<PrincipalStats | null>(null);
   const [pending, setPending] = useState<PendingTeacher[]>([]);
   const [roster, setRoster] = useState<TeacherRosterItem[]>([]);
@@ -254,142 +252,180 @@ function PrincipalDashboard() {
   }
 
   return (
-    <ConsoleShell title="Principal" maxWidth="max-w-7xl">
+    <ConsoleShell title="Principal" maxWidth="max-w-5xl">
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 items-start">
-          {/* Side Icon Navigation Bar */}
-          <aside className="sticky top-20 flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 rounded-2xl bg-card/85 p-2 border border-border shadow-xs backdrop-blur-sm">
-            <div className="hidden lg:block px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              {isHi ? "त्वरित मेनू" : "Navigation"}
+        <div className="flex flex-col gap-6">
+          {/* Hero Welcome Banner */}
+          <div className="flex flex-col gap-2 rounded-2xl border border-border bg-gradient-to-r from-amber-500/10 via-terracotta/5 to-transparent p-6 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-terracotta/15 px-3 py-0.5 text-xs font-bold text-terracotta">
+                  {isHi ? "प्रधानाचार्य कक्ष" : "Principal Console"}
+                </span>
+                <span className="text-xs text-muted-foreground font-medium">• सत्र 2026-27</span>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                {isHi ? "कैंपस एक्टिव" : "Campus Active"}
+              </span>
             </div>
-            {PRINCIPAL_TABS.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActiveTab(item.id)}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-medium transition-all text-left whitespace-nowrap",
-                    isActive
-                      ? "bg-terracotta text-white shadow-sm shadow-terracotta/20 font-semibold"
-                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                  )}
-                >
-                  <Icon className={cn("size-4 shrink-0", isActive ? "text-white" : "text-terracotta")} />
-                  <span className="truncate">{isHi ? item.labelHi : item.labelEn}</span>
-                  {item.id === "teachers" && pending.length > 0 && (
-                    <span
-                      className={cn(
-                        "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                        isActive
-                          ? "bg-white text-terracotta"
-                          : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                      )}
-                    >
-                      {pending.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </aside>
 
-          {/* Main Content Pane */}
-          <div className="flex flex-col gap-8 min-w-0">
-            {(activeTab === "all" || activeTab === "analytics") && stats && (
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              {isHi ? "नमस्ते, प्रधानाचार्य जी" : "Welcome, Principal"} <span className="align-middle">👋</span>
+            </h1>
+
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              {isHi
+                ? "विद्यालय प्रबंधन, शिक्षक कार्य समीक्षा एवं स्मार्ट विश्लेषिकी डैशबोर्ड"
+                : "Institutional management, teacher daily work reviews, notices, and analytics dashboard"}
+            </p>
+
+            <div className="mt-1 flex items-center gap-3">
+              <span className="text-xs font-semibold text-foreground/85">
+                {isHi ? "बड़े सपने शिक्षा के साथ • शिक्षा से समृद्ध बिहार" : "Building Bihar's Future Through Quality Education"}
+              </span>
+              <span
+                aria-hidden
+                className="h-[3px] w-20 rounded-full shrink-0"
+                style={{ background: "linear-gradient(90deg, #FF9933 0%, #FFFFFF 50%, #138808 100%)" }}
+              />
+            </div>
+
+            {/* Quick Section Jump Chips */}
+            <div className="mt-4 flex flex-wrap items-center gap-1.5 pt-3 border-t border-border/60">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mr-1">
+                {isHi ? "त्वरित लिंक:" : "Quick Jump:"}
+              </span>
+              {SECTIONS.map((s) => {
+                const Icon = s.icon;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => scrollToSection(s.id)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-terracotta/40 hover:bg-terracotta/10 hover:text-terracotta"
+                  >
+                    <Icon className="size-3 text-terracotta" />
+                    <span>{isHi ? s.labelHi : s.labelEn}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          {stats && (
+            <section id="principal-stats">
               <StatGrid
                 stats={[
-                  { label: "Approved teachers", value: stats.teachers },
-                  { label: "Pending teachers", value: stats.pending_teachers },
-                  { label: "Approved students", value: stats.students },
-                  { label: "Pending students", value: stats.pending_students },
+                  { label: isHi ? "स्वीकृत शिक्षक" : "Approved teachers", value: stats.teachers },
+                  { label: isHi ? "लंबित शिक्षक आवेदन" : "Pending teachers", value: stats.pending_teachers },
+                  { label: isHi ? "स्वीकृत छात्र" : "Approved students", value: stats.students },
+                  { label: isHi ? "लंबित छात्र प्रवेश" : "Pending students", value: stats.pending_students },
                 ]}
               />
-            )}
+            </section>
+          )}
 
-            {/* 1. School Attendance & Syllabus Analytics (Smart graphs & percentages) */}
-            {(activeTab === "all" || activeTab === "analytics") && (
-              <section id="principal-analytics">
-                <PrincipalAnalyticsHub />
-              </section>
-            )}
+          {/* 1. School Attendance & Syllabus Analytics */}
+          <section id="principal-analytics" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <PrincipalAnalyticsHub />
+          </section>
 
-            {/* 2. Official School Notice Board (सूचना पट्ट) */}
-            {(activeTab === "all" || activeTab === "notices") && (
-              <section id="principal-notices">
-                <PrincipalNoticeBoard />
-              </section>
-            )}
+          {/* 2. Official School Notice Board */}
+          <section id="principal-notices" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <PrincipalNoticeBoard />
+          </section>
 
-            {/* 3. Teacher Daily Work Updates Feed & 1-Click Appreciation */}
-            {(activeTab === "all" || activeTab === "work-updates") && (
-              <section id="principal-work-updates">
-                <PrincipalWorkUpdatesFeed />
-              </section>
-            )}
+          {/* 3. Teacher Daily Work Updates Feed & 1-Click Appreciation */}
+          <section id="principal-work-updates" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <PrincipalWorkUpdatesFeed />
+          </section>
 
-            {/* Teacher Applications & Roster */}
-            {(activeTab === "all" || activeTab === "teachers") && (
-              <>
-                <section id="principal-pending-teachers">
-                  <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
-                    Teacher applications
-                  </h2>
-                  <PendingTeachers
-                    teachers={pending}
-                    busyId={busyId}
-                    onApprove={(id) =>
-                      void act(id, () => approveTeacher(accessToken, id), "Teacher approved.")
-                    }
-                    onReject={(id, reason) =>
-                      act(id, () => rejectTeacher(accessToken, id, reason), "Application rejected.")
-                    }
-                  />
-                </section>
-
-                <section id="principal-teachers">
-                  <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
-                    Your teachers
-                  </h2>
-                  <TeacherRoster teachers={roster} />
-                </section>
-              </>
-            )}
-
-            {/* Students */}
-            {(activeTab === "all" || activeTab === "students") && (
-              <section id="principal-students">
-                <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
-                  Students
+          {/* 4. Teacher Applications & Approvals */}
+          <section id="principal-pending-teachers" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                  {isHi ? "शिक्षक आवेदन (Teacher Applications)" : "Teacher Applications"}
                 </h2>
-                <StudentRoster students={students} />
-              </section>
-            )}
+                <p className="text-xs text-muted-foreground">
+                  {isHi ? "नए शिक्षकों के पंजीकरण आवेदन स्वीकृत या अस्वीकृत करें" : "Review and approve new teacher registrations"}
+                </p>
+              </div>
+              {pending.length > 0 && (
+                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  {pending.length} {isHi ? "लंबित" : "pending"}
+                </span>
+              )}
+            </div>
+            <PendingTeachers
+              teachers={pending}
+              busyId={busyId}
+              onApprove={(id) =>
+                void act(id, () => approveTeacher(accessToken, id), "Teacher approved.")
+              }
+              onReject={(id, reason) =>
+                act(id, () => rejectTeacher(accessToken, id, reason), "Application rejected.")
+              }
+            />
+          </section>
 
-            {/* Announcements */}
-            {(activeTab === "all" || activeTab === "notices") && (
-              <section id="principal-announcements">
-                <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
-                  Direct Announcements
-                </h2>
-                <AnnounceForm target={{ kind: "audience" }} />
-              </section>
-            )}
+          {/* 5. Teacher Roster */}
+          <section id="principal-teachers" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                {isHi ? "विद्यालय शिक्षक दल (Faculty Staff)" : "Faculty Staff"}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {isHi ? "विद्यालय में अनुमोदित सभी सक्रिय शिक्षक" : "All approved teachers currently active"}
+              </p>
+            </div>
+            <TeacherRoster teachers={roster} />
+          </section>
 
-            {/* Fees */}
-            {(activeTab === "all" || activeTab === "fees") && (
-              <section id="principal-fees">
-                <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">Fees</h2>
-                <FeeLogSection />
-              </section>
-            )}
-          </div>
+          {/* 6. Students */}
+          <section id="principal-students" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                {isHi ? "नामांकित विद्यार्थी (Students)" : "Enrolled Students"}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {isHi ? "कक्षा-वार सभी नामांकित छात्र सूची" : "Class roster and student profiles"}
+              </p>
+            </div>
+            <StudentRoster students={students} />
+          </section>
+
+          {/* 7. Direct Announcements */}
+          <section id="principal-announcements" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                {isHi ? "सीधी घोषणा (Direct Announcement)" : "Direct Announcement"}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {isHi ? "शिक्षकों या विद्यार्थियों को सीधा संदेश भेजें" : "Broadcast direct notices to staff or students"}
+              </p>
+            </div>
+            <AnnounceForm target={{ kind: "audience" }} />
+          </section>
+
+          {/* 8. Fees */}
+          <section id="principal-fees" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                {isHi ? "शुल्क प्रबंधन (Fees)" : "Fee Management"}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {isHi ? "छात्रों के शुल्क भुगतान की रसीद दर्ज करें और देखें" : "Log student fee payments and view records"}
+              </p>
+            </div>
+            <FeeLogSection />
+          </section>
         </div>
       )}
     </ConsoleShell>
