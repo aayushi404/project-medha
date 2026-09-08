@@ -1,0 +1,109 @@
+<div style="max-width:860px;margin:0 auto;border:0.5px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface-2);display:flex;min-height:520px">
+
+  <!-- SIDEBAR -->
+  <div style="width:210px;border-right:0.5px solid var(--border);display:flex;flex-direction:column;background:var(--surface-1)">
+    <div style="padding:16px 14px;display:flex;align-items:center;gap:8px;border-bottom:0.5px solid var(--border)">
+      <i class="ti ti-book-2" style="font-size:19px;color:var(--text-accent)" aria-hidden="true"></i>
+      <span style="font-size:14px;font-weight:500">Medha</span>
+    </div>
+
+    <div style="flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:4px">
+      <div style="padding:9px 10px;border-radius:8px;background:var(--bg-accent);color:var(--text-accent);font-size:13px;display:flex;align-items:center;gap:9px">
+        <i class="ti ti-home" style="font-size:16px" aria-hidden="true"></i>Home
+      </div>
+      <div style="padding:9px 10px;border-radius:8px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:9px">
+        <i class="ti ti-folder" style="font-size:16px" aria-hidden="true"></i>My Kits
+      </div>
+    </div>
+
+    <!-- profile popover, shown open -->
+    <div style="padding:10px;border-top:0.5px solid var(--border);position:relative">
+      <div style="position:absolute;bottom:62px;left:10px;right:10px;background:var(--surface-2);border:0.5px solid var(--border-strong);border-radius:10px;padding:5px;box-shadow:0 4px 14px rgba(0,0,0,0.10)">
+        <div style="padding:8px 9px;border-radius:7px;font-size:12.5px;display:flex;align-items:center;gap:8px">
+          <i class="ti ti-settings" style="font-size:15px" aria-hidden="true"></i>Edit profile
+        </div>
+        <div style="padding:8px 9px;border-radius:7px;font-size:12.5px;display:flex;align-items:center;gap:8px;color:var(--text-danger)">
+          <i class="ti ti-logout" style="font-size:15px" aria-hidden="true"></i>Logout
+        </div>
+      </div>
+
+      <div style="padding:8px 9px;border-radius:9px;background:var(--surface-2);border:0.5px solid var(--border);display:flex;align-items:center;gap:9px">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--bg-accent);color:var(--text-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0">RK</div>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ramesh Kumar</div>
+          <div style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Science · Class 8</div>
+        </div>
+        <i class="ti ti-chevron-up" style="font-size:14px;color:var(--text-muted)" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div style="flex:1;display:flex;flex-direction:column">
+
+    <!-- context selectors -->
+    <div style="padding:14px 18px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="border:0.5px solid var(--border-strong);border-radius:8px;padding:7px 11px;font-size:12.5px;display:flex;align-items:center;gap:7px;background:var(--surface-1)">
+        <span style="color:var(--text-muted)">Class</span><span>8</span>
+        <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text-muted)" aria-hidden="true"></i>
+      </div>
+      <div style="border:0.5px solid var(--border-strong);border-radius:8px;padding:7px 11px;font-size:12.5px;display:flex;align-items:center;gap:7px;background:var(--surface-1)">
+        <span style="color:var(--text-muted)">Subject</span><span>Science</span>
+        <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text-muted)" aria-hidden="true"></i>
+      </div>
+      <div style="border:0.5px solid var(--border-strong);border-radius:8px;padding:7px 11px;font-size:12.5px;display:flex;align-items:center;gap:7px;background:var(--surface-1)">
+        <span style="color:var(--text-muted)">Chapter</span><span>Photosynthesis</span>
+        <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text-muted)" aria-hidden="true"></i>
+      </div>
+    </div>
+
+    <!-- empty state / greeting -->
+    <div style="flex:1;padding:30px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">
+      <div style="text-align:center">
+        <div style="font-size:17px;margin-bottom:5px">Namaste, Ramesh ji</div>
+        <div style="font-size:13px;color:var(--text-secondary)">Aaj kaun sa topic padhana hai?</div>
+      </div>
+
+      <!-- quick action cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:420px">
+        <div style="border:0.5px solid var(--border-strong);border-radius:10px;padding:13px;display:flex;align-items:center;gap:10px;background:var(--surface-1)">
+          <i class="ti ti-presentation" style="font-size:19px;color:var(--text-accent)" aria-hidden="true"></i>
+          <div>
+            <div style="font-size:12.5px">Generate PPT</div>
+            <div style="font-size:10.5px;color:var(--text-muted)">Slides for class</div>
+          </div>
+        </div>
+        <div style="border:0.5px solid var(--border-strong);border-radius:10px;padding:13px;display:flex;align-items:center;gap:10px;background:var(--surface-1)">
+          <i class="ti ti-affiliate" style="font-size:19px;color:var(--text-accent)" aria-hidden="true"></i>
+          <div>
+            <div style="font-size:12.5px">Mindmap</div>
+            <div style="font-size:10.5px;color:var(--text-muted)">Visual summary</div>
+          </div>
+        </div>
+        <div style="border:0.5px solid var(--border-strong);border-radius:10px;padding:13px;display:flex;align-items:center;gap:10px;background:var(--surface-1)">
+          <i class="ti ti-help-circle" style="font-size:19px;color:var(--text-accent)" aria-hidden="true"></i>
+          <div>
+            <div style="font-size:12.5px">Quiz</div>
+            <div style="font-size:10.5px;color:var(--text-muted)">Questions to ask</div>
+          </div>
+        </div>
+        <div style="border:0.5px solid var(--border-strong);border-radius:10px;padding:13px;display:flex;align-items:center;gap:10px;background:var(--surface-1)">
+          <i class="ti ti-ball-basketball" style="font-size:19px;color:var(--text-accent)" aria-hidden="true"></i>
+          <div>
+            <div style="font-size:12.5px">Class Activity</div>
+            <div style="font-size:10.5px;color:var(--text-muted)">Low-tech, hands-on</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- input bar -->
+    <div style="padding:12px 18px;border-top:0.5px solid var(--border)">
+      <div style="border:0.5px solid var(--border-strong);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;background:var(--surface-1)">
+        <input placeholder="Photosynthesis kaise samjhaun taaki bachche bore na hon?" style="flex:1;font-size:12.5px"/>
+        <i class="ti ti-send" style="font-size:17px;color:var(--text-accent)" aria-hidden="true"></i>
+      </div>
+    </div>
+
+  </div>
+</div>

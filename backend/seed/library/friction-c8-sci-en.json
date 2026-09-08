@@ -1,0 +1,92 @@
+{
+  "slug": "friction-c8-sci-en",
+  "language": "en",
+  "grade_label": "Class 8",
+  "subject_name": "Science",
+  "chapter_title": "Friction",
+  "description": "Friction - what causes it, what it depends on, and where it helps and harms.",
+  "tags": ["friction", "force", "grip", "lubricant", "wear"],
+  "spec": {
+    "title": "Friction",
+    "subtitle": "Class 8 - Science",
+    "slides": [
+      {
+        "layout": "bullets",
+        "heading": "What is friction?",
+        "bullets": [
+          "A force that opposes motion between two surfaces in contact.",
+          "It always acts opposite to the direction of motion.",
+          "Caused by tiny bumps and irregularities on every surface.",
+          "Even smooth-looking surfaces are rough under a microscope."
+        ],
+        "notes": "Slide a book across the desk and let it stop. Ask what force stopped it."
+      },
+      {
+        "layout": "bullets",
+        "heading": "What friction depends on",
+        "bullets": [
+          "How rough or smooth the two surfaces are.",
+          "How hard the surfaces are pressed together (weight).",
+          "Rougher surfaces and heavier objects give more friction.",
+          "It does not depend on the area of contact."
+        ],
+        "notes": "Have students rub hands gently, then press hard and rub - they feel more friction and heat."
+      },
+      {
+        "layout": "two_column",
+        "heading": "Types of friction",
+        "bullets": [
+          "Static friction - acts when the object is still and about to move.",
+          "Sliding friction - acts when one surface slides over another.",
+          "Rolling friction - acts when an object rolls; it is the smallest.",
+          "That is why wheels and ball bearings are used."
+        ],
+        "notes": "Push a heavy box: hardest to start (static), easier to keep sliding, easiest on rollers."
+      },
+      {
+        "layout": "bullets",
+        "heading": "Friction is a friend",
+        "bullets": [
+          "Lets us walk without slipping.",
+          "Lets vehicles start, turn and brake.",
+          "Lets us hold a pen, strike a matchstick, tie a knot.",
+          "Lets nails hold and lets us write on paper."
+        ],
+        "notes": "Ask what would happen in a world with no friction - nothing could be held or stopped."
+      },
+      {
+        "layout": "bullets",
+        "heading": "Friction is a foe",
+        "bullets": [
+          "Wears out shoe soles, tyres and machine parts.",
+          "Produces heat and wastes energy in machines.",
+          "Slows moving objects and reduces efficiency.",
+          "Needs extra fuel to overcome it."
+        ],
+        "notes": "Point to a worn tyre or an old shoe sole as everyday evidence."
+      },
+      {
+        "layout": "bullets",
+        "heading": "Increasing and reducing friction",
+        "bullets": [
+          "Increase: treads on tyres and soles, spikes on sports shoes.",
+          "Reduce: oil, grease and lubricants between surfaces.",
+          "Reduce: ball bearings to change sliding into rolling.",
+          "Reduce: smooth, streamlined shapes for vehicles."
+        ],
+        "notes": "Match each method to a real object the students have seen."
+      },
+      {
+        "layout": "summary",
+        "heading": "Quick recap",
+        "bullets": [
+          "Friction opposes motion between touching surfaces.",
+          "More for rough surfaces and heavier objects.",
+          "Rolling friction < sliding friction < static friction.",
+          "We increase it for grip and reduce it with lubricants."
+        ],
+        "notes": "Four students, one point each, to close."
+      }
+    ]
+  }
+}

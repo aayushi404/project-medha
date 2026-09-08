@@ -1,0 +1,43 @@
+erDiagram
+    DISTRICTS ||--o{ BLOCKS : contains
+    DISTRICTS ||--o{ SCHOOLS : contains
+    BLOCKS ||--o{ SCHOOLS : contains
+    SCHOOLS ||--o{ TEACHERS : employs
+    TEACHERS ||--o{ TEACHER_SUBJECTS : teaches
+    SUBJECTS ||--o{ TEACHER_SUBJECTS : "assigned via"
+    GRADES ||--o{ TEACHER_SUBJECTS : "assigned via"
+    TEACHERS ||--o{ AUTH_SESSIONS : has
+
+    OTP_VERIFICATIONS {
+        text phone_number
+        text otp_hash
+        text purpose
+        timestamptz expires_at
+    }
+
+    GRADES ||--o{ CURRICULUM_CHAPTERS : has
+    SUBJECTS ||--o{ CURRICULUM_CHAPTERS : has
+    CURRICULUM_CHAPTERS ||--o{ CURRICULUM_TOPICS : has
+    GRADES ||--o{ SOURCE_DOCUMENTS : has
+    SUBJECTS ||--o{ SOURCE_DOCUMENTS : has
+    SOURCE_DOCUMENTS ||--o{ TEXTBOOK_CONTENT_CHUNKS : produces
+    CURRICULUM_CHAPTERS ||--o{ TEXTBOOK_CONTENT_CHUNKS : has
+    CURRICULUM_TOPICS |o--o{ TEXTBOOK_CONTENT_CHUNKS : has
+
+    TEACHERS ||--o{ CHAT_SESSIONS : starts
+    GRADES ||--o{ CHAT_SESSIONS : "scoped to"
+    SUBJECTS ||--o{ CHAT_SESSIONS : "scoped to"
+    CURRICULUM_CHAPTERS |o--o{ CHAT_SESSIONS : "scoped to"
+    CURRICULUM_TOPICS |o--o{ CHAT_SESSIONS : "scoped to"
+    CHAT_SESSIONS ||--o{ CHAT_MESSAGES : contains
+
+    TEACHERS ||--o{ LESSON_KITS : owns
+    CHAT_SESSIONS |o--o{ LESSON_KITS : produces
+    GRADES ||--o{ LESSON_KITS : "scoped to"
+    SUBJECTS ||--o{ LESSON_KITS : "scoped to"
+    CURRICULUM_TOPICS |o--o{ LESSON_KITS : "scoped to"
+    LESSON_KITS ||--o{ KIT_ARTIFACTS : has
+    LESSON_KITS ||--o{ GENERATION_JOBS : has
+    TEACHERS ||--o{ GENERATION_JOBS : requests
+    LESSON_KITS ||--o{ KIT_FEEDBACK : receives
+    TEACHERS ||--o{ KIT_FEEDBACK : gives

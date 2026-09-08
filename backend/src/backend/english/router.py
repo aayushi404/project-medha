@@ -1,0 +1,164 @@
+import uuid
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
+from sqlalchemy.orm import Session
+from sse_starlette.sse import EventSourceResponse
+
+from backend.auth.dependencies import require_student
+from backend.db.models import Teacher
+from backend.db.session import get_db
+from backend.english import pronunciation, service
+from backend.english.pronunciation_schemas import PronunciationOut
+from backend.english.schemas import (
+    EnglishMessageCreateIn,
+    EnglishMessageOut,
+    EnglishSessionCreateIn,
+    EnglishSessionDetailOut,
+    EnglishSessionOut,
+)
+from backend.speech import client as speech_client
+from backend.speech import service as speech_service
+from backend.speech.rate_limit import voice_rate_limit_student
+from backend.speech.schemas import SpokenTurnIn, VoiceTurnOut
+from backend.tutor.rate_limit import tutor_rate_limit
+
+router = APIRouter(
+    prefix="/english", tags=["english"], dependencies=[Depends(require_student)]
+)
+
+_SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+_MAX_AUDIO_BYTES = 10 * 1024 * 1024
+
+
+@router.post(
+    "/sessions", response_model=EnglishSessionOut, status_code=status.HTTP_201_CREATED
+)
+def create_session(
+    payload: EnglishSessionCreateIn,
+    student: Teacher = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> EnglishSessionOut:
+    session, topic = service.create_session(db, student, payload)
+    return EnglishSessionOut(
+        id=session.id,
+        lesson_topic=topic,
+        title=session.title,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+    )
+
+
+@router.get("/sessions/{session_id}", response_model=EnglishSessionDetailOut)
+def get_session(
+    session_id: uuid.UUID,
+    student: Teacher = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> EnglishSessionDetailOut:
+    from backend.db.models import ChatMessage
+
+    session = service.load_owned_session(db, student, session_id)
+    messages = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session.id)
+        .order_by(ChatMessage.created_at)
+        .all()
+    )
+    return EnglishSessionDetailOut(
+        id=session.id,
+        lesson_topic=session.title,
+        title=session.title,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        messages=[EnglishMessageOut.model_validate(m) for m in messages],
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/messages", dependencies=[Depends(tutor_rate_limit)]
+)
+async def post_message(
+    session_id: uuid.UUID,
+    payload: EnglishMessageCreateIn,
+    student: Teacher = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> EventSourceResponse:
+    session = service.load_owned_session(db, student, session_id)
+    generator = service.stream_message(db, student, session, payload.content)
+    return EventSourceResponse(generator, headers=_SSE_HEADERS)
+
+
+@router.post(
+    "/sessions/{session_id}/converse",
+    dependencies=[Depends(voice_rate_limit_student)],
+)
+async def converse(
+    session_id: uuid.UUID,
+    payload: SpokenTurnIn,
+    student: Teacher = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> EventSourceResponse:
+    """One spoken English-tutor turn. SSE: `token`* -> `audio` (base64 WAV) ->
+    `done`, or a single `error`. Same pipeline as /speech/converse, with the
+    spoken English-tutor prompt; the reply is always synthesised as English."""
+    session = service.load_owned_session(db, student, session_id)
+    generator = speech_service.stream_converse(
+        db, student, session, payload.transcript, payload.language, None, kind="english"
+    )
+    return EventSourceResponse(generator, headers=_SSE_HEADERS)
+
+
+@router.get(
+    "/sessions/{session_id}/voice-turns", response_model=list[VoiceTurnOut]
+)
+def list_voice_turns(
+    session_id: uuid.UUID,
+    limit: int = Query(default=20, ge=1, le=100),
+    student: Teacher = Depends(require_student),
+    db: Session = Depends(get_db),
+) -> list[VoiceTurnOut]:
+    """Recent completed spoken turns for a session, oldest first -- replayed when
+    the voice panel reopens."""
+    service.load_owned_session(db, student, session_id)
+    turns = speech_service.list_recent_turns(db, session_id, limit)
+    return [VoiceTurnOut.model_validate(t) for t in turns]
+
+
+@router.post("/pronunciation-check", response_model=PronunciationOut)
+async def pronunciation_check(
+    file: UploadFile = File(...),
+    expected_text: str = Form(...),
+    student: Teacher = Depends(require_student),
+) -> PronunciationOut:
+    """Score spoken English against an expected phrase."""
+    _ = student
+    data = await file.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty audio file.")
+    if len(data) > _MAX_AUDIO_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Audio file too large.")
+
+    try:
+        return await pronunciation.check_pronunciation(
+            data,
+            expected_text=expected_text,
+            filename=file.filename or "audio.wav",
+            content_type=file.content_type or "audio/wav",
+        )
+    except speech_client.SpeechError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE
+            if "not configured" in str(exc).lower()
+            else status.HTTP_422_UNPROCESSABLE_ENTITY,
+            str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
