@@ -37,3 +37,7 @@ out/
 medha-bihar-s-future/
 
 *.db
+
+# APK build artifacts
+apk-download/
+*.zip
