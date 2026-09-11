@@ -59,14 +59,22 @@ jobs:
 
       - name: Build Android Debug APK
         working-directory: shiksha_sathi/android
-        run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
 
-      - name: Upload Build Log On Failure
-        if: failure()
+      - name: Upload Build Log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gradle-build-log
           path: shiksha_sathi/android/build.log
+
+      - name: Show Gradle Failure Reason
+        if: failure()
+        run: |
+          echo "=================== GRADLE FAILURE TAIL ==================="
+          tail -n 120 shiksha_sathi/android/build.log
 
       - name: Prepare APK for Upload
         run: |
