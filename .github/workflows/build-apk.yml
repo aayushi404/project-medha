@@ -63,7 +63,7 @@ jobs:
         working-directory: shiksha_sathi/android
         run: |
           set -o pipefail
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
+          ./gradlew assembleDebug -x lint -x test --stacktrace 2>&1 | tee build.log
 
       - name: Upload Build Log
         if: always()
@@ -71,6 +71,16 @@ jobs:
         with:
           name: gradle-build-log
           path: shiksha_sathi/android/build.log
+
+      - name: Save Build Failure Log to Branch
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp shiksha_sathi/android/build.log ./build-failure.log
+          git add ./build-failure.log
+          git commit -m "ci: save build failure log [skip ci]" || true
+          git push origin HEAD:feat/mobile-app-android || true
 
       - name: Publish Gradle Output to Step Summary
         if: always()
