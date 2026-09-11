@@ -1,4 +1,4 @@
-﻿name: Build Medha Android APK
+name: Build Medha Android APK
 
 on:
   push:
@@ -45,12 +45,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Sync Capacitor Android
-        working-directory: shiksha_sathi
-        run: npx cap sync android
-
       - name: Make Gradlew Executable
         run: chmod +x shiksha_sathi/android/gradlew
+
+      - name: Sync Capacitor Android
+        working-directory: shiksha_sathi
+        run: npx @capacitor/cli sync android
 
       - name: Build Android Debug APK
         working-directory: shiksha_sathi/android
