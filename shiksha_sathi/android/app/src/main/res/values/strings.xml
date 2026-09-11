@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Medha</string>
+    <string name="title_activity_main">Medha</string>
+    <string name="package_name">com.medha.app</string>
+    <string name="custom_url_scheme">com.medha.app</string>
+</resources>

@@ -25,8 +25,18 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Medha",
-  description: "Your AI teaching co-pilot",
+  title: "Medha - Shiksha Sathi",
+  description: "Your AI teaching and school leadership co-pilot",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Medha",
+  },
+  icons: {
+    icon: "/Logo.jpeg",
+    apple: "/Logo.jpeg",
+  },
 };
 
 export const viewport: Viewport = {
