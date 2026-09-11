@@ -72,15 +72,11 @@ jobs:
           name: gradle-build-log
           path: shiksha_sathi/android/build.log
 
-      - name: Save Build Failure Log to Branch
+      - name: Report Build Error Annotation
         if: failure()
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          cp shiksha_sathi/android/build.log ./build-failure.log
-          git add ./build-failure.log
-          git commit -m "ci: save build failure log [skip ci]" || true
-          git push origin HEAD:feat/mobile-app-android || true
+          ERROR_SUMMARY=$(grep -E -i "error|failed|exception" shiksha_sathi/android/build.log | tail -n 10 | tr '\r\n' ' | ')
+          echo "::error title=GradleBuildError::$ERROR_SUMMARY"
 
       - name: Publish Gradle Output to Step Summary
         if: always()
