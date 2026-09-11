@@ -72,17 +72,13 @@ jobs:
           name: gradle-build-log
           path: shiksha_sathi/android/build.log
 
-      - name: Show Gradle Failure Reason
-        if: failure()
+      - name: Publish Gradle Output to Step Summary
+        if: always()
         run: |
-          echo "=================== GRADLE FAILURE TAIL ==================="
-          tail -n 120 shiksha_sathi/android/build.log
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          cp shiksha_sathi/android/build.log ./build-failure.log
-          git add ./build-failure.log
-          git commit -m "ci: save build failure log" || true
-          git push origin feat/mobile-app-android || true
+          echo "## Gradle Build Output" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          tail -n 150 shiksha_sathi/android/build.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Prepare APK for Upload
         run: |
