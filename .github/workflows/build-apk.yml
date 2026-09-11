@@ -68,10 +68,16 @@ jobs:
           name: gradle-build-log
           path: shiksha_sathi/android/build.log
 
+      - name: Prepare APK for Upload
+        run: |
+          mkdir -p apk-output
+          find shiksha_sathi/android -name "*.apk" -exec cp {} apk-output/Medha-app-debug.apk \;
+          ls -lh apk-output/
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Medha-app-debug
-          path: shiksha_sathi/android/app/build/outputs/apk/debug/app-debug.apk
+          path: apk-output/Medha-app-debug.apk
           if-no-files-found: error
           retention-days: 30
