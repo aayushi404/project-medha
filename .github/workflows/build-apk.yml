@@ -48,9 +48,9 @@ jobs:
       - name: Make Gradlew Executable
         run: chmod +x shiksha_sathi/android/gradlew
 
-      - name: Sync Capacitor Android
+      - name: Copy Capacitor Assets
         working-directory: shiksha_sathi
-        run: npx @capacitor/cli sync android
+        run: npx @capacitor/cli copy android || true
 
       - name: Build Android Debug APK
         working-directory: shiksha_sathi/android

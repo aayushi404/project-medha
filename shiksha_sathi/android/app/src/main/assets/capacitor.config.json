@@ -1,0 +1,12 @@
+{
+	"appId": "com.medha.app",
+	"appName": "Medha",
+	"webDir": "public",
+	"server": {
+		"androidScheme": "https",
+		"cleartext": true
+	},
+	"android": {
+		"allowMixedContent": true
+	}
+}
