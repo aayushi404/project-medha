@@ -386,6 +386,8 @@ export const en = {
     rejectedFallback: "Your registration was not approved.",
     registerAgain: "Register again",
     backToLogin: "Back to log in",
+    wrongPortal: (roleLabel: string, tabLabel: string) =>
+      `This account is registered as ${roleLabel}. Please log in from the ${tabLabel} tab.`,
   },
   pending: {
     title: "Waiting for approval",

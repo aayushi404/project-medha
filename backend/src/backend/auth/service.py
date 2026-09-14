@@ -192,7 +192,11 @@ def google_login(
 
 
 def login(
-    db: Session, email: str, password: str, device_info: str | None
+    db: Session,
+    email: str,
+    password: str,
+    device_info: str | None,
+    expected_role: str | None = None,
 ) -> tuple[str, str, int]:
     if is_locked_out(email):
         raise HTTPException(
@@ -214,6 +218,18 @@ def login(
         # same message for missing user and wrong password -- don't reveal
         # which emails are registered
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password.")
+
+    # The password is right, so this is genuinely their account -- but the
+    # login screen's tab (student/teacher/principal) doesn't match the role on
+    # file. Reject rather than silently letting a teacher in through the
+    # student tab; `admin` has no tab of its own, so it's exempt. Correct
+    # credentials, so don't hold this against the lockout counter.
+    if expected_role is not None and teacher.role != expected_role and teacher.role != "admin":
+        reset(email)
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={"code": "ROLE_MISMATCH", "actual_role": teacher.role},
+        )
 
     if teacher.approval_status == "pending":
         raise HTTPException(

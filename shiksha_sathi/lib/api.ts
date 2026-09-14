@@ -5,6 +5,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export type Role = "admin" | "principal" | "teacher" | "student";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
+/** The tab a person picks on the login screen. No "admin" tab exists. */
+export type LoginRole = Exclude<Role, "admin">;
+
 export type Teacher = {
   id: string;
   email: string | null;
@@ -24,18 +27,27 @@ export type TokenOut = {
 
 /**
  * Raised by the auth-context `login()` when the backend rejects an otherwise
- * valid credential because the account isn't approved yet. `code` is the
- * backend's machine-readable reason (`PENDING_APPROVAL` | `REGISTRATION_REJECTED`).
+ * valid credential. `code` is the backend's machine-readable reason
+ * (`PENDING_APPROVAL` | `REGISTRATION_REJECTED` | `ROLE_MISMATCH`).
+ * `actualRole` is only set for `ROLE_MISMATCH` -- the account's real role, so
+ * the login screen can point back to the right tab.
  */
 export class AuthError extends Error {
   code: string;
   reason: string | null;
+  actualRole: Role | null;
 
-  constructor(code: string, message: string, reason: string | null = null) {
+  constructor(
+    code: string,
+    message: string,
+    reason: string | null = null,
+    actualRole: Role | null = null,
+  ) {
     super(message);
     this.name = "AuthError";
     this.code = code;
     this.reason = reason;
+    this.actualRole = actualRole;
   }
 }
 

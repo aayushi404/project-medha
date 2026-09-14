@@ -61,7 +61,11 @@ def login(
     db: Session = Depends(get_db),
 ) -> TokenOut:
     access_token, refresh_token, expires_in = service.login(
-        db, payload.email, payload.password, request.headers.get("user-agent")
+        db,
+        payload.email,
+        payload.password,
+        request.headers.get("user-agent"),
+        expected_role=payload.role,
     )
     _set_refresh_cookie(response, refresh_token)
     return TokenOut(access_token=access_token, expires_in=expires_in)

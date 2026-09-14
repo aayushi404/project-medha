@@ -15,8 +15,10 @@ import {
   apiFetch,
   extractErrorMessage,
   register as registerRequest,
+  type LoginRole,
   type RegisterInput,
   type RegisterResult,
+  type Role,
   type Teacher,
   type TokenOut,
 } from "@/lib/api";
@@ -27,7 +29,10 @@ type AuthContextValue = {
   status: AuthStatus;
   teacher: Teacher | null;
   accessToken: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  /** `role` is the tab picked on the login screen -- the backend rejects the
+   * login (ROLE_MISMATCH) if the account's actual role doesn't match, so a
+   * teacher's credentials can't be used to sign in via the Student tab. */
+  login: (email: string, password: string, role: LoginRole) => Promise<void>;
   /** Creates a pending account. Does NOT start a session -- the caller shows a
    * "waiting for approval" screen. Throws Error with a readable message. */
   register: (input: RegisterInput) => Promise<RegisterResult>;
@@ -136,16 +141,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [silentRefresh, clearRefreshTimer]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, role: LoginRole) => {
       const res = await apiFetch("/auth/login", {
         method: "POST",
-        body: { email, password },
+        body: { email, password, role },
       });
       if (!res.ok) {
-        // The backend answers a not-yet-approved account with a structured
-        // body: { detail: { code, reason? } }. Surface it as an AuthError so
-        // the login screen can show a friendly waiting/rejected view instead
-        // of a red toast.
+        // The backend answers a not-yet-approved account, or a login attempt
+        // on the wrong tab, with a structured body: { detail: { code, ... } }.
+        // Surface it as an AuthError so the login screen can show a friendly
+        // waiting/rejected/wrong-tab view instead of a red toast.
         let detail: unknown;
         try {
           detail = (await res.clone().json())?.detail;
@@ -153,8 +158,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           detail = undefined;
         }
         if (detail && typeof detail === "object" && "code" in detail) {
-          const d = detail as { code: string; reason?: string | null };
-          throw new AuthError(d.code, d.code, d.reason ?? null);
+          const d = detail as {
+            code: string;
+            reason?: string | null;
+            actual_role?: Role | null;
+          };
+          throw new AuthError(d.code, d.code, d.reason ?? null, d.actual_role ?? null);
         }
         throw new Error(await extractErrorMessage(res));
       }

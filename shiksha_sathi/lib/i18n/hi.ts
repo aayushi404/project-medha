@@ -382,6 +382,8 @@ export const hi: Copy = {
     rejectedFallback: "आपका पंजीकरण स्वीकृत नहीं हुआ।",
     registerAgain: "फिर से पंजीकरण करें",
     backToLogin: "लॉग इन पर वापस जाएँ",
+    wrongPortal: (roleLabel: string, tabLabel: string) =>
+      `यह खाता ${roleLabel} के रूप में पंजीकृत है। कृपया ${tabLabel} टैब से लॉग इन करें।`,
   },
   pending: {
     title: "स्वीकृति की प्रतीक्षा",
