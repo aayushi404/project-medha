@@ -5,12 +5,25 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { Tool } from "@/lib/tools";
+import { cn } from "@/lib/utils";
 
 /**
  * Header + scroll frame shared by every tool screen. Matches the module-detail
  * layout (back chevron, title, sub-line) so the app feels consistent.
+ *
+ * `size="wide"` widens the content column for tools that need real room for a
+ * multi-panel layout (e.g. Random Picker's student list + picker); every
+ * other tool keeps the default single-column max-w-2xl.
  */
-export function ToolShell({ tool, children }: { tool: Tool; children: ReactNode }) {
+export function ToolShell({
+  tool,
+  children,
+  size = "default",
+}: {
+  tool: Tool;
+  children: ReactNode;
+  size?: "default" | "wide";
+}) {
   const { icon: Icon } = tool;
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
@@ -31,7 +44,9 @@ export function ToolShell({ tool, children }: { tool: Tool; children: ReactNode 
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-5 py-5">
-        <div className="mx-auto w-full max-w-2xl">{children}</div>
+        <div className={cn("mx-auto w-full", size === "wide" ? "max-w-5xl" : "max-w-2xl")}>
+          {children}
+        </div>
       </div>
     </main>
   );
