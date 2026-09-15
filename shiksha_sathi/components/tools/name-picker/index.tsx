@@ -6,10 +6,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ToolPanel } from "@/components/tools/form-kit";
-import { Roller } from "@/components/tools/name-picker/roller";
-import { parseStudents, selectRandomStudent, type PickableStudent } from "@/components/tools/name-picker/selection";
-import { Switch } from "@/components/tools/name-picker/toggle";
-import { usePrefersReducedMotion } from "@/components/tools/name-picker/use-reduced-motion";
+import { Roller } from "@/components/shared/picker/roller";
+import { parseStudents, selectRandomStudent, type PickableStudent } from "@/components/shared/picker/selection";
+import { Switch } from "@/components/shared/picker/toggle";
+import { usePrefersReducedMotion } from "@/components/shared/picker/use-reduced-motion";
 import { WinnerDialog } from "@/components/tools/name-picker/winner-dialog";
 import { cn } from "@/lib/utils";
 
