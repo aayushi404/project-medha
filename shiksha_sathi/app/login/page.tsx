@@ -46,8 +46,8 @@ export default function LoginPage() {
     return () => clearTimeout(t);
   }, [status, cameFromForm, router]);
 
-  // the role tab is a UI affordance only -- login() takes just email/password
-  // and the real role comes back from the backend on success.
+  // the role tab is sent with the login request -- the backend rejects a
+  // login whose account role doesn't match the picked tab (ROLE_MISMATCH).
   function selectRole(tab: RoleTab) {
     setActiveRole(tab);
     setEmail("");
@@ -64,7 +64,7 @@ export default function LoginPage() {
     setCameFromForm(true);
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, activeRole);
       // the authenticated effect above shows the role confirmation, then routes
     } catch (err) {
       setCameFromForm(false);
@@ -73,6 +73,16 @@ export default function LoginPage() {
       } else if (err instanceof AuthError && err.code === "REGISTRATION_REJECTED") {
         setRejectionReason(err.reason);
         setView("rejected");
+      } else if (err instanceof AuthError && err.code === "ROLE_MISMATCH") {
+        const actualTab = ROLE_TABS.find((r) => r.id === err.actualRole);
+        const roleLabel = err.actualRole
+          ? (copy.roleLabel[err.actualRole] ?? err.actualRole)
+          : copy.login.couldNotLogIn;
+        toast.error(
+          actualTab
+            ? copy.login.wrongPortal(roleLabel, actualTab.label)
+            : copy.login.couldNotLogIn,
+        );
       } else {
         toast.error(err instanceof Error ? err.message : copy.login.couldNotLogIn);
       }

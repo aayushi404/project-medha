@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AskMedhaBar } from "@/components/app/ask-medha-bar";
+import { SchoolNoticeBanner } from "@/components/app/school-notice-banner";
+import { WorkUpdateButton } from "@/components/dashboard/work-update-modal";
 import { GenerationRow } from "@/components/generation/generation-row";
 import { QuickActionCard } from "@/components/generation/quick-action-card";
 import { listGenerations, type GenerationListItem } from "@/lib/api";
@@ -54,6 +56,8 @@ export default function DashboardHomePage() {
 
   return (
     <main className="relative flex flex-1 flex-col overflow-hidden">
+      <SchoolNoticeBanner audience="teachers" />
+
       {/* Nalanda watercolour -- the page's full background, held still while the
           content scrolls over it. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -70,7 +74,8 @@ export default function DashboardHomePage() {
         <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
           {/* Hero header */}
           <section className="flex min-h-[168px] flex-col pb-1">
-            <div className="flex items-start justify-end gap-2">
+            <div className="flex items-center justify-end gap-2">
+              <WorkUpdateButton />
               <button
                 type="button"
                 aria-label={copy.dashboard.notifications}

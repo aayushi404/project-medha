@@ -25,6 +25,9 @@ const READY: Record<string, ComponentType> = {
   timer: ClassTimer,
 };
 
+// Tools whose layout needs more than the default single-column width.
+const WIDE_TOOLS = new Set(["name-picker"]);
+
 export default function ToolPage() {
   const { slug } = useParams<{ slug: string }>();
   const tool = toolBySlug(slug);
@@ -43,6 +46,8 @@ export default function ToolPage() {
   const Body = tool.status === "ready" ? READY[tool.slug] : undefined;
 
   return (
-    <ToolShell tool={tool}>{Body ? <Body /> : <ComingSoon tool={tool} />}</ToolShell>
+    <ToolShell tool={tool} size={WIDE_TOOLS.has(tool.slug) ? "wide" : "default"}>
+      {Body ? <Body /> : <ComingSoon tool={tool} />}
+    </ToolShell>
   );
 }

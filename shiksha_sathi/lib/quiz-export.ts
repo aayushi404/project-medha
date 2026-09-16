@@ -30,7 +30,7 @@ export async function exportQuizPdf(
   title: string,
   meta: QuizMeta,
 ): Promise<void> {
-  const { jsPDF } = await import("jspdf");
+  const { jsPDF } = await (import("jspdf" as string) as Promise<any>);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -95,7 +95,7 @@ export async function exportQuizDocx(
   title: string,
   meta: QuizMeta,
 ): Promise<void> {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = (await (import("docx" as string) as Promise<any>));
   const questions = content.questions ?? [];
 
   const metaBits = [

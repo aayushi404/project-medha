@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 import { AssistantBody, AssistantMark, UserBubble } from "@/components/chat/turn";
+import { SchoolNoticeBanner } from "@/components/app/school-notice-banner";
 import { Composer } from "@/components/dashboard/composer";
 import {
   SubjectChapterBar,
@@ -137,6 +138,8 @@ export default function LearnPage() {
         <h1 className="text-[15px]">{copy.student.askTitle}</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">{copy.student.askSub}</p>
       </div>
+
+      <SchoolNoticeBanner audience="students" />
 
       <SubjectChapterBar picker={picker} />
 

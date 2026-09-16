@@ -34,6 +34,13 @@ def _normalize_mobile(v: str) -> str:
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+    # The tab picked on the login screen (Student / Teacher / Principal).
+    # Optional: omitted (or None), no portal check is done -- kept optional
+    # rather than required so any other caller of this endpoint (scripts,
+    # future clients) isn't forced to know it. `admin` is deliberately not a
+    # choice here -- there's no admin tab, so an admin account always passes
+    # the check regardless of which portal was picked (see auth/service.py).
+    role: Literal["student", "teacher", "principal"] | None = None
 
     @field_validator("email")
     @classmethod

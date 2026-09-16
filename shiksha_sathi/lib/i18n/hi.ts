@@ -10,6 +10,8 @@ export const hi: Copy = {
     modules: "मेरे मॉड्यूल",
     tools: "टूल",
     attendance: "उपस्थिति",
+    workUpdate: "कार्य अपडेट",
+    notifications: "सूचनाएं",
     students: "छात्र",
     homework: "गृहकार्य",
     timetable: "समय सारिणी",
@@ -17,6 +19,7 @@ export const hi: Copy = {
     resources: "ई-लाइब्रेरी",
     notes: "नोट्स",
     practice: "अभ्यास",
+    simulations: "सिमुलेशन",
   },
   navMain: "मुख्य",
   studentNav: {
@@ -31,6 +34,7 @@ export const hi: Copy = {
     resources: "ई-लाइब्रेरी",
     fees: "फीस",
     biharDarpan: "बिहार दर्पण",
+    simulations: "सिमुलेशन",
   },
   profileMenu: { edit: "प्रोफ़ाइल संपादित करें", logout: "लॉग आउट" },
   language: "भाषा",
@@ -378,6 +382,8 @@ export const hi: Copy = {
     rejectedFallback: "आपका पंजीकरण स्वीकृत नहीं हुआ।",
     registerAgain: "फिर से पंजीकरण करें",
     backToLogin: "लॉग इन पर वापस जाएँ",
+    wrongPortal: (roleLabel: string, tabLabel: string) =>
+      `यह खाता ${roleLabel} के रूप में पंजीकृत है। कृपया ${tabLabel} टैब से लॉग इन करें।`,
   },
   pending: {
     title: "स्वीकृति की प्रतीक्षा",
@@ -744,5 +750,20 @@ export const hi: Copy = {
     browseHeading: "सभी 30 दिन देखें",
     disclaimer:
       "सीखने के लिए संकलित। उद्धरण लोकप्रिय स्रोतों से लिए गए हैं — कक्षा में उपयोग से पहले शिक्षक शब्दों की पुष्टि कर लें।",
+  },
+
+  simulations: {
+    title: "कक्षा सिमुलेशन",
+    sub: "छात्रों को व्यावहारिक अनुभवों से सीखने में जोड़ें",
+    all: "सभी",
+    interactiveModule: "इंटरैक्टिव मॉड्यूल",
+    notFound: "यह सिमुलेशन उपलब्ध नहीं है।",
+    openOnPhet: "PhET पर खोलें",
+    fullscreen: "पूर्ण स्क्रीन",
+    exitFullscreen: "पूर्ण स्क्रीन बंद करें",
+    back: "सभी सिमुलेशन",
+    grades: (a: number, b: number) => `कक्षा ${a}–${b}`,
+    attribution:
+      "सिमुलेशन: PhET Interactive Simulations, University of Colorado Boulder — CC BY 4.0 के अंतर्गत।",
   },
 };

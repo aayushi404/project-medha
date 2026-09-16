@@ -32,8 +32,8 @@ export async function exportLessonPlanPdf(
   title: string,
   meta: Meta,
 ): Promise<void> {
-  const { jsPDF } = await import("jspdf");
-  const autoTable = (await import("jspdf-autotable")).default;
+  const { jsPDF } = await (import("jspdf" as string) as Promise<any>);
+  const autoTable = (await (import("jspdf-autotable" as string) as Promise<any>)).default;
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(15);
@@ -81,7 +81,7 @@ export async function exportLessonPlanDocx(
     HeadingLevel,
     WidthType,
     TextRun,
-  } = await import("docx");
+  } = (await (import("docx" as string) as Promise<any>));
 
   const cell = (text: string, bold = false) =>
     new TableCell({

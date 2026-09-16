@@ -16,6 +16,7 @@ import {
   Languages,
   ListChecks,
   type LucideIcon,
+  MonitorPlay,
   NotebookPen,
   Presentation,
   Shapes,
@@ -36,6 +37,10 @@ export type Tool = {
   icon: LucideIcon;
   category: ToolCategory;
   status: ToolStatus;
+  /** Escape hatch for a tool that isn't the generic /tools/{slug} screen --
+   *  e.g. a full multi-step flow that lives at its own route. Every other
+   *  tool omits this and keeps using /tools/{slug}. */
+  href?: string;
 };
 
 export const TOOL_CATEGORIES: { key: ToolCategory; label: string; hint: string }[] = [
@@ -190,6 +195,17 @@ export const TOOLS: Tool[] = [
     icon: Dices,
     category: "classroom",
     status: "ready",
+  },
+  {
+    slug: "live-quiz",
+    name: "Live Classroom Quiz",
+    tagline: "Generate a quiz, then run it live with the picker",
+    blurb:
+      "Pick a class and chapter, generate and review a quiz, choose who's playing, then run it question by question with the random picker calling on students.",
+    icon: MonitorPlay,
+    category: "classroom",
+    status: "ready",
+    href: "/quiz/live",
   },
   {
     slug: "timer",

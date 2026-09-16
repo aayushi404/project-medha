@@ -19,7 +19,7 @@ function safeName(title: string, suffix = ""): string {
 // --- shared jsPDF flowing-text cursor ---------------------------------------
 
 async function newDoc() {
-  const { jsPDF } = await import("jspdf");
+  const { jsPDF } = await (import("jspdf" as string) as Promise<any>);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -174,7 +174,7 @@ export async function exportAnswerKeyPdf(
 // --- .docx ----------------------------------------------------------------
 
 async function docxBits() {
-  return import("docx");
+  return (import("docx" as string) as Promise<any>);
 }
 
 function saveBlob(blob: Blob, name: string) {

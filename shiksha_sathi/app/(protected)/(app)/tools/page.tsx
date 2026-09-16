@@ -11,7 +11,7 @@ function ToolCard({ tool }: { tool: Tool }) {
   const { icon: Icon, status } = tool;
   return (
     <Link
-      href={`/tools/${tool.slug}`}
+      href={tool.href ?? `/tools/${tool.slug}`}
       className={cn(
         "group flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted",
       )}
