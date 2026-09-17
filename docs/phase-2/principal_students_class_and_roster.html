@@ -1,0 +1,89 @@
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Principal dashboard students view: a grid of class sections, and the student roster within one section.</h2>
+
+<div style="display:flex;border:0.5px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface-2)">
+
+  <div style="width:170px;border-right:0.5px solid var(--border);background:var(--surface-1);display:flex;flex-direction:column">
+    <div style="padding:14px 12px;border-bottom:0.5px solid var(--border);font-size:14px;font-weight:500">Medha</div>
+    <div style="padding:10px 8px;display:flex;flex-direction:column;gap:3px">
+      <div style="padding:8px 10px;border-radius:var(--radius);font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:8px"><i class="ti ti-home" style="font-size:16px" aria-hidden="true"></i>Overview</div>
+      <div style="padding:8px 10px;border-radius:var(--radius);background:var(--bg-accent);color:var(--text-accent);font-size:13px;display:flex;align-items:center;gap:8px"><i class="ti ti-users" style="font-size:16px" aria-hidden="true"></i>Students</div>
+      <div style="padding:8px 10px;border-radius:var(--radius);font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:8px"><i class="ti ti-school" style="font-size:16px" aria-hidden="true"></i>Faculty</div>
+      <div style="padding:8px 10px;border-radius:var(--radius);font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:8px"><i class="ti ti-checkup-list" style="font-size:16px" aria-hidden="true"></i>Approvals<span style="margin-left:auto;background:var(--bg-danger);color:var(--text-danger);font-size:11px;padding:1px 6px;border-radius:10px">3</span></div>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:0">
+    <div style="padding:16px 20px 12px;border-bottom:0.5px solid var(--border)">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Students</div>
+      <div style="font-size:18px;font-weight:500">Classes</div>
+    </div>
+
+    <div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+      <div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem">
+        <div style="font-size:15px;font-weight:500;margin-bottom:6px">Class 6 · A</div>
+        <div style="font-size:13px;color:var(--text-secondary)">42 students</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Sunita Devi</div>
+      </div>
+      <div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem">
+        <div style="font-size:15px;font-weight:500;margin-bottom:6px">Class 7 · A</div>
+        <div style="font-size:13px;color:var(--text-secondary)">38 students</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Ramesh Kumar</div>
+      </div>
+      <div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem;box-shadow:0 0 0 1.5px var(--border-accent)">
+        <div style="font-size:15px;font-weight:500;margin-bottom:6px">Class 8 · A</div>
+        <div style="font-size:13px;color:var(--text-secondary)">45 students</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Anita Sharma</div>
+      </div>
+      <div style="background:var(--surface-1);border-radius:var(--radius);padding:1rem">
+        <div style="font-size:15px;font-weight:500;margin-bottom:6px">Class 8 · B</div>
+        <div style="font-size:13px;color:var(--text-secondary)">41 students</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Vijay Prasad</div>
+      </div>
+    </div>
+
+    <div style="padding:14px 20px 10px;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:10px">
+      <i class="ti ti-chevron-left" style="font-size:16px;color:var(--text-muted)" aria-hidden="true"></i>
+      <div style="font-size:16px;font-weight:500">Class 8 · A</div>
+      <div style="font-size:13px;color:var(--text-secondary)">45 students</div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;border:0.5px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:13px;color:var(--text-muted)">
+        <i class="ti ti-search" style="font-size:15px" aria-hidden="true"></i>Search
+      </div>
+    </div>
+
+    <div style="padding:0 20px 16px">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:0.5px solid var(--border)">
+        <div style="width:30px;font-size:12px;color:var(--text-muted)">Roll</div>
+        <div style="flex:1;font-size:12px;color:var(--text-muted)">Name</div>
+        <div style="width:110px;font-size:12px;color:var(--text-muted)">Guardian</div>
+        <div style="width:70px;font-size:12px;color:var(--text-muted);text-align:right">Attendance</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:0.5px solid var(--border)">
+        <div style="width:30px;font-size:13px;color:var(--text-secondary)">01</div>
+        <div style="flex:1;display:flex;align-items:center;gap:9px">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--bg-accent);color:var(--text-accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500">AK</div>
+          <span style="font-size:13px">Aarti Kumari</span>
+        </div>
+        <div style="width:110px;font-size:12px;color:var(--text-secondary)">Rajesh Kumar</div>
+        <div style="width:70px;text-align:right;font-size:13px;color:var(--text-success)">94%</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:0.5px solid var(--border)">
+        <div style="width:30px;font-size:13px;color:var(--text-secondary)">02</div>
+        <div style="flex:1;display:flex;align-items:center;gap:9px">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--bg-accent);color:var(--text-accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500">SK</div>
+          <span style="font-size:13px">Sonu Kumar</span>
+        </div>
+        <div style="width:110px;font-size:12px;color:var(--text-secondary)">Meena Devi</div>
+        <div style="width:70px;text-align:right;font-size:13px;color:var(--text-warning)">71%</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 4px">
+        <div style="width:30px;font-size:13px;color:var(--text-secondary)">03</div>
+        <div style="flex:1;display:flex;align-items:center;gap:9px">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--bg-accent);color:var(--text-accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500">PY</div>
+          <span style="font-size:13px">Priya Yadav</span>
+        </div>
+        <div style="width:110px;font-size:12px;color:var(--text-secondary)">Suresh Yadav</div>
+        <div style="width:70px;text-align:right;font-size:13px;color:var(--text-danger)">58%</div>
+      </div>
+    </div>
+  </div>
+</div>

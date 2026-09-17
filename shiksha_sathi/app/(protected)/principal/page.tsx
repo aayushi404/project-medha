@@ -9,6 +9,7 @@ import {
   GraduationCap,
   IndianRupee,
   LayoutDashboard,
+  LayoutGrid,
   Loader2,
   LogOut,
   Megaphone,
@@ -49,6 +50,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AnnounceForm } from "@/components/notifications/announce-form";
 import { FeesList } from "@/components/fees/fees-list";
+import { ClassDirectory } from "@/components/principal/class-directory";
 import { PendingTeachers } from "@/components/principal/pending-teachers";
 import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytics";
 import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
@@ -70,6 +72,7 @@ const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
   { id: "principal-pending-teachers", labelEn: "Teacher Approvals", labelHi: "शिक्षक अनुमोदन", icon: UserPlus },
   { id: "principal-teachers", labelEn: "Faculty Staff", labelHi: "शिक्षक दल", icon: Users },
+  { id: "principal-classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid },
   { id: "principal-students", labelEn: "Students", labelHi: "विद्यार्थी सूची", icon: GraduationCap },
   { id: "principal-fees", labelEn: "Fee Records", labelHi: "शुल्क विवरण", icon: IndianRupee },
 ];
@@ -617,14 +620,29 @@ function PrincipalDashboard() {
             <TeacherRoster teachers={roster} />
           </section>
 
-          {/* Feature 7: Students Directory */}
+          {/* Feature 7a: Class Sections -> Roster -> Student Profile (school records) */}
+          <section id="principal-classes" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                {isHi ? "कक्षाएँ" : "Classes"}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {isHi
+                  ? "कक्षा चुनें, उपस्थिति सूची देखें, और छात्र प्रोफ़ाइल खोलें"
+                  : "Browse by class, view the roster, and open a student's profile"}
+              </p>
+            </div>
+            <ClassDirectory />
+          </section>
+
+          {/* Feature 7b: Student login accounts (registration / approval status) */}
           <section id="principal-students" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
             <div className="mb-3">
               <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                {isHi ? "नामांकित विद्यार्थी (Students)" : "Enrolled Students"}
+                {isHi ? "विद्यार्थी खाते (Students)" : "Student Accounts"}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {isHi ? "कक्षा-वार सभी नामांकित छात्र सूची" : "Class roster and student profiles"}
+                {isHi ? "जिन छात्रों ने Medha पर लॉगिन बनाया है" : "Students who've registered a Medha login"}
               </p>
             </div>
             <StudentRoster students={students} />

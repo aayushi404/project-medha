@@ -530,6 +530,50 @@ export const rejectTeacher = (token: string | null, id: string, reason: string) 
     apiFetch(`/principal/teachers/${id}/reject`, { method: "POST", token, body: { reason } }),
   );
 
+// --- principal: class sections / student directory ---
+// A separate domain from `StudentRosterItem` above: that's the login-capable
+// `teachers` role='student' roster; this is the principal-managed school
+// records roster (admission no., guardian contact), independent of login.
+
+export type ClassSectionSummary = {
+  id: string;
+  grade_label: string;
+  section: string;
+  student_count: number;
+  class_teacher_name: string | null;
+};
+
+export type RosterStudentItem = {
+  id: string;
+  roll_number: number | null;
+  full_name: string;
+  guardian_name: string | null;
+};
+
+export type StudentProfile = {
+  id: string;
+  full_name: string;
+  admission_number: string | null;
+  status: string;
+  grade_label: string | null;
+  section: string | null;
+  roll_number: number | null;
+  academic_year_label: string | null;
+  class_teacher_name: string | null;
+  guardian_name: string | null;
+  guardian_relation: string | null;
+  guardian_phone: string | null;
+};
+
+export const getClassSections = (token: string | null) =>
+  json<ClassSectionSummary[]>(apiFetch("/principal/sections", { token }));
+
+export const getSectionRoster = (token: string | null, sectionId: string) =>
+  json<RosterStudentItem[]>(apiFetch(`/principal/sections/${sectionId}/students`, { token }));
+
+export const getStudentProfile = (token: string | null, studentId: string) =>
+  json<StudentProfile>(apiFetch(`/principal/students/${studentId}`, { token }));
+
 // ---------------------------------------------------------------------------
 // Student role. Two-phase onboarding: register (class + roll number, no
 // credential) -> a teacher approves -> activate (set email + password) ->

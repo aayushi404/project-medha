@@ -6,10 +6,20 @@ from sqlalchemy.orm import Session
 
 from backend.approvals import service as approvals
 from backend.approvals.schemas import ApprovalResult
-from backend.db.models import Grade, Teacher
+from backend.db.models import (
+    AcademicYear,
+    ClassSection,
+    Grade,
+    Student,
+    StudentEnrollment,
+    Teacher,
+)
 from backend.principal.schemas import (
+    ClassSectionSummary,
     PendingTeacher,
     PrincipalStats,
+    RosterStudentItem,
+    StudentProfile,
     StudentRosterItem,
     TeacherRosterItem,
 )
@@ -132,6 +142,118 @@ def list_students(db: Session, principal: Teacher) -> list[StudentRosterItem]:
         )
         for s, grade_label in rows
     ]
+
+
+def list_class_sections(db: Session, principal: Teacher) -> list[ClassSectionSummary]:
+    """The current academic year's sections at this school, each with a live
+    headcount -- the landing grid for the "Classes" directory. A separate
+    domain from `list_students` above: this reads the new school-records
+    roster (`students`/`student_enrollments`), not the login-capable
+    `teachers` rows with role='student'."""
+    school_id = _school_id(principal)
+    student_count = (
+        db.query(func.count(StudentEnrollment.id))
+        .filter(
+            StudentEnrollment.class_section_id == ClassSection.id,
+            StudentEnrollment.left_on.is_(None),
+        )
+        .correlate(ClassSection)
+        .scalar_subquery()
+    )
+    rows = (
+        db.query(ClassSection, Grade.label, student_count, Teacher.full_name)
+        .join(Grade, ClassSection.grade_id == Grade.id)
+        .join(AcademicYear, ClassSection.academic_year_id == AcademicYear.id)
+        .outerjoin(Teacher, ClassSection.class_teacher_id == Teacher.id)
+        .filter(ClassSection.school_id == school_id, AcademicYear.is_current.is_(True))
+        .order_by(Grade.numeric_level, ClassSection.section)
+        .all()
+    )
+    return [
+        ClassSectionSummary(
+            id=section.id,
+            grade_label=grade_label,
+            section=section.section,
+            student_count=count,
+            class_teacher_name=teacher_name,
+        )
+        for section, grade_label, count, teacher_name in rows
+    ]
+
+
+def _get_scoped_section(db: Session, principal: Teacher, section_id: uuid.UUID) -> ClassSection:
+    school_id = _school_id(principal)
+    section = db.get(ClassSection, section_id)
+    if section is None or section.school_id != school_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Class not found.")
+    return section
+
+
+def list_section_students(
+    db: Session, principal: Teacher, section_id: uuid.UUID
+) -> list[RosterStudentItem]:
+    """A section's roster, ordered by roll number -- attendance isn't wired
+    into this yet (see docs/phase-2/Medha-principal-dashboard.md build order
+    step 7); this covers identity and enrolment only."""
+    section = _get_scoped_section(db, principal, section_id)
+    rows = (
+        db.query(StudentEnrollment, Student)
+        .join(Student, StudentEnrollment.student_id == Student.id)
+        .filter(
+            StudentEnrollment.class_section_id == section.id,
+            StudentEnrollment.left_on.is_(None),
+        )
+        .order_by(StudentEnrollment.roll_number)
+        .all()
+    )
+    return [
+        RosterStudentItem(
+            id=student.id,
+            roll_number=enrollment.roll_number,
+            full_name=student.full_name,
+            guardian_name=student.guardian_name,
+        )
+        for enrollment, student in rows
+    ]
+
+
+def get_student_profile(
+    db: Session, principal: Teacher, student_id: uuid.UUID
+) -> StudentProfile:
+    school_id = _school_id(principal)
+    student = db.get(Student, student_id)
+    if student is None or student.school_id != school_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
+
+    row = (
+        db.query(StudentEnrollment, ClassSection, Grade, AcademicYear, Teacher.full_name)
+        .join(ClassSection, StudentEnrollment.class_section_id == ClassSection.id)
+        .join(Grade, ClassSection.grade_id == Grade.id)
+        .join(AcademicYear, StudentEnrollment.academic_year_id == AcademicYear.id)
+        .outerjoin(Teacher, ClassSection.class_teacher_id == Teacher.id)
+        .filter(
+            StudentEnrollment.student_id == student.id,
+            StudentEnrollment.left_on.is_(None),
+        )
+        .order_by(AcademicYear.starts_on.desc())
+        .first()
+    )
+    enrollment, section, grade, year, class_teacher_name = row if row else (None, None, None, None, None)
+
+    return StudentProfile(
+        id=student.id,
+        full_name=student.full_name,
+        admission_number=student.admission_number,
+        status=student.status,
+        grade_label=grade.label if grade else None,
+        section=section.section if section else None,
+        roll_number=enrollment.roll_number if enrollment else None,
+        academic_year_label=year.label if year else None,
+        class_teacher_name=class_teacher_name,
+        guardian_name=student.guardian_name,
+        guardian_relation=student.guardian_relation,
+        guardian_phone=student.guardian_phone,
+    )
 
 
 def _get_scoped_teacher(

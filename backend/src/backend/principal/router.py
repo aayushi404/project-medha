@@ -9,9 +9,12 @@ from backend.db.session import get_db
 from backend.principal import service
 from backend.principal.schemas import (
     ApprovalResult,
+    ClassSectionSummary,
     PendingTeacher,
     PrincipalStats,
     RejectIn,
+    RosterStudentItem,
+    StudentProfile,
     StudentRosterItem,
     TeacherRosterItem,
 )
@@ -40,6 +43,31 @@ def students(
     principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
 ) -> list[StudentRosterItem]:
     return service.list_students(db, principal)
+
+
+@router.get("/sections", response_model=list[ClassSectionSummary])
+def class_sections(
+    principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
+) -> list[ClassSectionSummary]:
+    return service.list_class_sections(db, principal)
+
+
+@router.get("/sections/{section_id}/students", response_model=list[RosterStudentItem])
+def section_roster(
+    section_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> list[RosterStudentItem]:
+    return service.list_section_students(db, principal, section_id)
+
+
+@router.get("/students/{student_id}", response_model=StudentProfile)
+def student_profile(
+    student_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> StudentProfile:
+    return service.get_student_profile(db, principal, student_id)
 
 
 @router.get("/teachers/pending", response_model=list[PendingTeacher])
