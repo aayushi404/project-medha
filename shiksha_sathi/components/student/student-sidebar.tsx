@@ -3,6 +3,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import {
   BookOpen,
+  Briefcase,
   CalendarDays,
   ChevronUp,
   ClipboardList,
@@ -44,11 +45,12 @@ const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[
   { href: "/library", navKey: "library", icon: BookOpen },
   { href: "/learn-lab", navKey: "simulations", icon: FlaskConical },
   { href: "/coding", navKey: "codingHub", icon: Code2 },
+  { href: "/skills", navKey: "skillsHub", icon: Briefcase },
   { href: "/my-homework", navKey: "homework", icon: NotebookPen },
   { href: "/my-timetable", navKey: "timetable", icon: CalendarDays },
-  { href: "/my-report-card", navKey: "reportCard", icon: ClipboardList },
-  { href: "/my-resources", navKey: "resources", icon: Library },
-  { href: "/fees", navKey: "fees", icon: IndianRupee },
+  { href: "/my-report-card", navKey: "reportCard", icon: ClipboardList }
+  //{ href: "/my-resources", navKey: "resources", icon: Library },
+  //{ href: "/fees", navKey: "fees", icon: IndianRupee },
 ];
 
 const COLLAPSE_KEY = "medha.studentSidebarCollapsed";

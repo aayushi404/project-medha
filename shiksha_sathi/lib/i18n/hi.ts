@@ -36,6 +36,7 @@ export const hi: Copy = {
     biharDarpan: "बिहार दर्पण",
     simulations: "सिमुलेशन",
     codingHub: "कोडिंग हब",
+    skillsHub: "स्किल्स",
   },
   profileMenu: { edit: "प्रोफ़ाइल संपादित करें", logout: "लॉग आउट" },
   language: "भाषा",

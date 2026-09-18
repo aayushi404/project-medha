@@ -38,6 +38,7 @@ export const en = {
     biharDarpan: "Bihar Darpan",
     simulations: "Simulations",
     codingHub: "Coding Hub",
+    skillsHub: "Skills",
   },
   profileMenu: { edit: "Edit profile", logout: "Log out" },
   language: "Language",
