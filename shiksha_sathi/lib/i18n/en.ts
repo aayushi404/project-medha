@@ -39,6 +39,7 @@ export const en = {
     simulations: "Simulations",
     codingHub: "Coding Hub",
     skillsHub: "Skills",
+    attendance: "Attendance",
   },
   profileMenu: { edit: "Edit profile", logout: "Log out" },
   language: "Language",
@@ -633,6 +634,14 @@ export const en = {
     markUndone: "Mark as not done",
     due: (d: string) => `Due ${d}`,
     noDueDate: "No due date",
+  },
+
+  attendancePage: {
+    studentTitle: "Attendance",
+    studentSub: "Your day-by-day attendance record.",
+    studentEmpty: "No attendance recorded yet.",
+    presentLabel: "Present",
+    absentLabel: "Absent",
   },
 
   timetablePage: {

@@ -6,6 +6,7 @@ import {
   Briefcase,
   CalendarDays,
   ChevronUp,
+  ClipboardCheck,
   ClipboardList,
   Code2,
   FlaskConical,
@@ -47,6 +48,7 @@ const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[
   { href: "/coding", navKey: "codingHub", icon: Code2 },
   { href: "/skills", navKey: "skillsHub", icon: Briefcase },
   { href: "/my-homework", navKey: "homework", icon: NotebookPen },
+  { href: "/my-attendance", navKey: "attendance", icon: ClipboardCheck },
   { href: "/my-timetable", navKey: "timetable", icon: CalendarDays },
   { href: "/my-report-card", navKey: "reportCard", icon: ClipboardList }
   //{ href: "/my-resources", navKey: "resources", icon: Library },

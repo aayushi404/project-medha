@@ -1161,3 +1161,42 @@ export const deletePracticeQuestion = async (token: string | null, id: string) =
   if (!res.ok) throw new Error(await extractErrorMessage(res));
 };
 
+// ---------------------------------------------------------------------------
+// Attendance: a teacher marks present/absent for their school's approved
+// roster in one grade at a time; a student sees their own history.
+// ---------------------------------------------------------------------------
+
+export type AttendanceStatus = "present" | "absent";
+
+export type AttendanceStudent = {
+  student_id: string;
+  full_name: string;
+  roll_number: string | null;
+  status: AttendanceStatus | null; // null = not yet marked for this date
+};
+
+export type AttendanceDay = {
+  grade_id: string;
+  grade_label: string;
+  date: string;
+  students: AttendanceStudent[];
+};
+
+export type AttendanceRecordInput = { student_id: string; status: AttendanceStatus };
+
+export const getAttendance = (token: string | null, gradeId: string, date?: string) => {
+  const qs = new URLSearchParams({ grade_id: gradeId });
+  if (date) qs.set("date", date);
+  return json<AttendanceDay>(apiFetch(`/attendance?${qs}`, { token }));
+};
+
+export const markAttendance = (
+  token: string | null,
+  body: { grade_id: string; date: string; records: AttendanceRecordInput[] },
+) => json<AttendanceDay>(apiFetch("/attendance", { method: "POST", token, body }));
+
+export type AttendanceMineItem = { date: string; status: AttendanceStatus };
+
+export const getMyAttendance = (token: string | null) =>
+  json<AttendanceMineItem[]>(apiFetch("/attendance/mine", { token }));
+

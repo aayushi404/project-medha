@@ -11,7 +11,12 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.attendance.schemas import AttendanceDayOut, AttendanceMarkIn, AttendanceStudentOut
+from backend.attendance.schemas import (
+    AttendanceDayOut,
+    AttendanceMarkIn,
+    AttendanceMineItem,
+    AttendanceStudentOut,
+)
 from backend.db.models import AttendanceRecord, Grade, Teacher
 
 
@@ -108,3 +113,13 @@ def mark_day(db: Session, teacher: Teacher, payload: AttendanceMarkIn) -> Attend
     db.commit()
 
     return get_day(db, teacher, payload.grade_id, payload.date)
+
+
+def list_for_student(db: Session, student: Teacher) -> list[AttendanceMineItem]:
+    rows = (
+        db.query(AttendanceRecord)
+        .filter(AttendanceRecord.student_id == student.id)
+        .order_by(AttendanceRecord.attendance_date.desc())
+        .all()
+    )
+    return [AttendanceMineItem(date=r.attendance_date, status=r.status) for r in rows]

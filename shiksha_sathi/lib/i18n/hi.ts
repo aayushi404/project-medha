@@ -37,6 +37,7 @@ export const hi: Copy = {
     simulations: "सिमुलेशन",
     codingHub: "कोडिंग हब",
     skillsHub: "स्किल्स",
+    attendance: "उपस्थिति",
   },
   profileMenu: { edit: "प्रोफ़ाइल संपादित करें", logout: "लॉग आउट" },
   language: "भाषा",
@@ -627,6 +628,14 @@ export const hi: Copy = {
     markUndone: "अधूरा चिह्नित करें",
     due: (d: string) => `अंतिम तिथि ${d}`,
     noDueDate: "कोई अंतिम तिथि नहीं",
+  },
+
+  attendancePage: {
+    studentTitle: "उपस्थिति",
+    studentSub: "आपका दिन-प्रतिदिन उपस्थिति रिकॉर्ड।",
+    studentEmpty: "अभी तक कोई उपस्थिति दर्ज नहीं हुई।",
+    presentLabel: "उपस्थित",
+    absentLabel: "अनुपस्थित",
   },
 
   timetablePage: {

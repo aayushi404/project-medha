@@ -1,103 +1,80 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 
-import type { AttStatus, DaySummary, Student } from "@/lib/attendance-store";
+import type { AttendanceStatus, AttendanceStudent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-const OPTIONS: { value: AttStatus; label: string; active: string }[] = [
-  { value: "present", label: "P", active: "bg-sage/15 text-sage border-sage/40" },
-  { value: "absent", label: "A", active: "bg-destructive/10 text-destructive border-destructive/40" },
-  { value: "late", label: "L", active: "bg-gold/15 text-earth border-gold/50" },
+const OPTIONS: { value: AttendanceStatus; icon: typeof Check; active: string }[] = [
+  { value: "present", icon: Check, active: "bg-sage/15 text-sage border-sage/40" },
+  { value: "absent", icon: X, active: "bg-destructive/10 text-destructive border-destructive/40" },
 ];
 
 export function AttendanceSheet({
   students,
-  day,
-  summary,
+  busyId,
   onMark,
-  onMarkRemaining,
-  onClear,
 }: {
-  students: Student[];
-  day: Record<string, AttStatus>;
-  summary: DaySummary;
-  onMark: (studentId: string, status: AttStatus) => void;
-  onMarkRemaining: (status: AttStatus) => void;
-  onClear: () => void;
+  students: AttendanceStudent[];
+  busyId: string | null;
+  onMark: (studentId: string, status: AttendanceStatus) => void;
 }) {
   if (students.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-        No students in this class yet. Add them in the Roster tab.
+        No approved students in this class yet.
       </p>
     );
   }
 
+  const present = students.filter((s) => s.status === "present").length;
+  const absent = students.filter((s) => s.status === "absent").length;
+  const marked = present + absent;
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Stat label="Present" value={summary.present} tone="text-sage" />
-        <Stat label="Absent" value={summary.absent} tone="text-destructive" />
-        <Stat label="Late" value={summary.late} tone="text-earth" />
+        <Stat label="Present" value={present} tone="text-sage" />
+        <Stat label="Absent" value={absent} tone="text-destructive" />
         <span className="ml-auto text-muted-foreground">
-          {summary.marked}/{summary.total} marked · {summary.pct}% present
+          {marked}/{students.length} marked
         </span>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => onMarkRemaining("present")}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-muted"
-        >
-          <Check className="size-3.5" /> Mark remaining present
-        </button>
-        {summary.marked > 0 && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted"
-          >
-            Clear day
-          </button>
-        )}
       </div>
 
       <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
         {students.map((s, i) => {
-          const current = day[s.id];
+          const busy = busyId === s.student_id;
           return (
-            <li
-              key={s.id}
-              className="flex items-center gap-3 bg-card px-3 py-2.5"
-            >
+            <li key={s.student_id} className="flex items-center gap-3 bg-card px-3 py-2.5">
               <span className="w-5 shrink-0 text-xs text-muted-foreground tabular-nums">
                 {i + 1}
               </span>
               <span className="min-w-0 flex-1 truncate text-sm">
-                {s.name}
-                {s.roll ? (
-                  <span className="ml-1.5 text-xs text-muted-foreground">#{s.roll}</span>
+                {s.full_name}
+                {s.roll_number ? (
+                  <span className="ml-1.5 text-xs text-muted-foreground">#{s.roll_number}</span>
                 ) : null}
               </span>
-              <div className="flex shrink-0 gap-1">
+              <div className="flex shrink-0 items-center gap-1">
+                {busy && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
                 {OPTIONS.map((o) => {
-                  const on = current === o.value;
+                  const on = s.status === o.value;
+                  const Icon = o.icon;
                   return (
                     <button
                       key={o.value}
                       type="button"
                       aria-pressed={on}
-                      onClick={() => onMark(s.id, o.value)}
+                      disabled={busy}
+                      onClick={() => onMark(s.student_id, o.value)}
                       className={cn(
-                        "size-8 rounded-lg border text-xs font-medium transition-colors",
+                        "flex size-8 items-center justify-center rounded-lg border text-xs font-medium transition-colors disabled:opacity-50",
                         on
                           ? o.active
                           : "border-border text-muted-foreground hover:bg-muted",
                       )}
                     >
-                      {o.label}
+                      <Icon className="size-4" />
                     </button>
                   );
                 })}
@@ -106,9 +83,6 @@ export function AttendanceSheet({
           );
         })}
       </ul>
-      <p className="text-[11px] text-muted-foreground">
-        Saved to this browser as you tap. It won&apos;t sync to other devices yet.
-      </p>
     </div>
   );
 }
