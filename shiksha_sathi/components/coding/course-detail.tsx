@@ -16,11 +16,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   ACCENT_STYLES,
-  CODING_TUTORS,
   LEVEL_LABEL,
   courseDurationMinutes,
   formatDuration,
   getCodingCourse,
+  tutorsForCourse,
 } from "@/lib/coding";
 import { cn } from "@/lib/utils";
 
@@ -109,8 +109,7 @@ export function CourseDetail({ slug }: { slug: string }) {
   }
 
   const styles = ACCENT_STYLES[course.accent];
-  const Icon = course.icon;
-  const tutor = CODING_TUTORS.find((t) => t.courseSlug === course.slug);
+  const tutors = tutorsForCourse(course.slug);
   const minutes = courseDurationMinutes(course);
 
   function startCourse() {
@@ -134,58 +133,65 @@ export function CourseDetail({ slug }: { slug: string }) {
 
       <div className="flex-1 px-5 py-6">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-start gap-4">
-              <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-xl", styles.icon)}>
-                <Icon className="size-6" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-lg font-medium">{course.title}</p>
-                <p className="text-sm text-muted-foreground">{course.tagline}</p>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={course.poster} alt={`${course.title} poster`} className="aspect-video w-full object-cover" />
+            <div className="p-5">
+              <p className="text-lg font-medium">{course.title}</p>
+              <p className="text-sm text-muted-foreground">{course.tagline}</p>
+
+              <p className="mt-4 text-sm text-muted-foreground">{course.blurb}</p>
+
+              <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", styles.chip)}>
+                  {LEVEL_LABEL[course.level]}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  <Clock3 className="size-3" />
+                  {formatDuration(minutes)} total
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  <Layers className="size-3" />
+                  {course.modules.length} modules
+                </span>
               </div>
+
+              <Button onClick={startCourse} className="mt-5 w-full sm:w-auto">
+                <PlayCircle className="size-4" />
+                Start course
+              </Button>
             </div>
-
-            <p className="mt-4 text-sm text-muted-foreground">{course.blurb}</p>
-
-            <div className="mt-4 flex flex-wrap items-center gap-1.5">
-              <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", styles.chip)}>
-                {LEVEL_LABEL[course.level]}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                <Clock3 className="size-3" />
-                {formatDuration(minutes)} total
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                <Layers className="size-3" />
-                {course.modules.length} modules
-              </span>
-            </div>
-
-            <Button onClick={startCourse} className="mt-5 w-full sm:w-auto">
-              <PlayCircle className="size-4" />
-              Start course
-            </Button>
           </div>
 
-          {tutor ? (
-            <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4">
-              <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-full", ACCENT_STYLES[tutor.accent].icon)}>
-                <tutor.icon className="size-4.5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">
-                  Taught by {tutor.name} <span className="text-muted-foreground">· {tutor.role}</span>
-                </p>
-                <p className="line-clamp-1 text-xs text-muted-foreground">{tutor.bio}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toast(`Live chat with ${tutor.name} is launching soon -- stay tuned!`)}
-              >
-                <MessageCircle className="size-3.5" />
-                Chat
-              </Button>
+          {tutors.length > 0 ? (
+            <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {tutors.length > 1 ? "Tutors" : "Taught by"}
+              </p>
+              {tutors.map((tutor) => (
+                <div key={tutor.slug} className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={tutor.photo}
+                    alt={tutor.name}
+                    className="size-10 shrink-0 rounded-full object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                      {tutor.name} <span className="text-muted-foreground">· {tutor.credential}</span>
+                    </p>
+                    <p className="line-clamp-1 text-xs text-muted-foreground">{tutor.bio}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toast(`Live chat with ${tutor.name} is launching soon -- stay tuned!`)}
+                  >
+                    <MessageCircle className="size-3.5" />
+                    Chat
+                  </Button>
+                </div>
+              ))}
             </div>
           ) : null}
 

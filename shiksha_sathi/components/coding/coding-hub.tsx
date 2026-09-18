@@ -17,6 +17,7 @@ import {
   courseDurationMinutes,
   formatDuration,
   getCodingCourse,
+  tutorsForCourse,
 } from "@/lib/coding";
 import { useStudentData } from "@/lib/student-context";
 import { cn } from "@/lib/utils";
@@ -43,10 +44,20 @@ function SectionHeader({
   );
 }
 
+function TutorAvatar({ tutor, className }: { tutor: CodingTutor; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={tutor.photo}
+      alt={tutor.name}
+      className={cn("shrink-0 rounded-full object-cover ring-2 ring-card", className)}
+    />
+  );
+}
+
 function TutorCard({ tutor, onOpen }: { tutor: CodingTutor; onOpen: () => void }) {
   const styles = ACCENT_STYLES[tutor.accent];
   const course = getCodingCourse(tutor.courseSlug);
-  const Icon = tutor.icon;
 
   return (
     <button
@@ -54,15 +65,15 @@ function TutorCard({ tutor, onOpen }: { tutor: CodingTutor; onOpen: () => void }
       onClick={onOpen}
       className="group flex items-start gap-3.5 rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
     >
-      <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-full", styles.icon)}>
-        <Icon className="size-5" />
-      </span>
+      <TutorAvatar tutor={tutor} className="size-14 ring-0" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="font-medium">{tutor.name}</span>
           <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
         </div>
-        <span className="text-xs text-muted-foreground">{tutor.role}</span>
+        <span className="text-xs text-muted-foreground">
+          {tutor.role} · {tutor.credential}
+        </span>
         <p className="mt-2 line-clamp-2 text-[13px] text-muted-foreground">{tutor.bio}</p>
         {course ? (
           <span className={cn("mt-2.5 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium", styles.chip)}>
@@ -85,7 +96,6 @@ function TutorDialog({
 }) {
   const course = tutor ? getCodingCourse(tutor.courseSlug) : undefined;
   const styles = tutor ? ACCENT_STYLES[tutor.accent] : null;
-  const Icon = tutor?.icon;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -98,14 +108,14 @@ function TutorDialog({
             "transition data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
           )}
         >
-          {tutor && Icon && styles ? (
+          {tutor && styles ? (
             <div className="flex flex-col items-center gap-3 text-center">
-              <span className={cn("flex size-16 items-center justify-center rounded-full", styles.icon)}>
-                <Icon className="size-7" />
-              </span>
+              <TutorAvatar tutor={tutor} className={cn("size-24 ring-4", styles.ring)} />
               <div>
                 <Dialog.Title className="text-lg font-medium">{tutor.name}</Dialog.Title>
-                <p className="text-sm text-muted-foreground">{tutor.role}</p>
+                <p className="text-sm text-muted-foreground">
+                  {tutor.role} · {tutor.credential}
+                </p>
               </div>
               <p className="text-sm text-muted-foreground">{tutor.bio}</p>
 
@@ -151,47 +161,73 @@ function TutorDialog({
   );
 }
 
-function CourseCard({ course }: { course: CodingCourse }) {
+function CourseCard({ course, onOpenTutor }: { course: CodingCourse; onOpenTutor: (tutor: CodingTutor) => void }) {
   const styles = ACCENT_STYLES[course.accent];
-  const Icon = course.icon;
   const minutes = courseDurationMinutes(course);
+  const tutors = tutorsForCourse(course.slug);
 
   return (
-    <Link
-      href={`/coding/${course.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:shadow-md"
-    >
-      <div className={cn("flex items-center gap-3 bg-gradient-to-br p-4", styles.gradient)}>
-        <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-xl", styles.icon)}>
-          <Icon className="size-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="font-medium">{course.title}</p>
-          <p className="text-xs text-muted-foreground">{course.tagline}</p>
-        </div>
-      </div>
+    <div className="group flex flex-col overflow-hidden rounded-3xl border border-border bg-card transition-all hover:shadow-lg">
+      <Link href={`/coding/${course.slug}`} className="block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={course.poster}
+          alt={`${course.title} poster`}
+          className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-[1.01]"
+        />
+      </Link>
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <p className="line-clamp-2 text-[13px] text-muted-foreground">{course.blurb}</p>
-        <div className="mt-auto flex flex-wrap items-center gap-1.5">
-          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", styles.chip)}>
+      <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
+        <div>
+          <Link href={`/coding/${course.slug}`} className="hover:underline">
+            <p className="text-xl font-medium">{course.title}</p>
+          </Link>
+          <p className="text-sm text-muted-foreground">{course.tagline}</p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">{course.blurb}</p>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", styles.chip)}>
             {LEVEL_LABEL[course.level]}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
             <Clock3 className="size-3" />
             {formatDuration(minutes)}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
             <Layers className="size-3" />
             {course.modules.length} modules
           </span>
         </div>
-        <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
-          View course
-          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-        </span>
+
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          {tutors.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-2.5">
+                {tutors.map((t) => (
+                  <button key={t.slug} type="button" onClick={() => onOpenTutor(t)} title={t.name}>
+                    <TutorAvatar tutor={t} className="size-8" />
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Taught by {tutors.map((t) => t.name.split(" ")[0]).join(", ")}
+              </span>
+            </div>
+          ) : (
+            <span />
+          )}
+          <Link
+            href={`/coding/${course.slug}`}
+            className="inline-flex items-center gap-1 text-sm font-medium text-foreground"
+          >
+            View course
+            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -227,7 +263,7 @@ export function CodingHub() {
               title="Tutors"
               subtitle="Meet your coding tutors and see what each one can help with."
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {CODING_TUTORS.map((tutor) => (
                 <TutorCard key={tutor.slug} tutor={tutor} onOpen={() => setActiveTutor(tutor)} />
               ))}
@@ -240,9 +276,9 @@ export function CodingHub() {
               title="Courses"
               subtitle="Structured paths to build real skills, step by step."
             />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-6">
               {CODING_COURSES.map((course) => (
-                <CourseCard key={course.slug} course={course} />
+                <CourseCard key={course.slug} course={course} onOpenTutor={setActiveTutor} />
               ))}
             </div>
           </section>

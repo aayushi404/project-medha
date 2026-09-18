@@ -54,6 +54,8 @@ export type CodingCourse = {
   level: CodingLevel;
   icon: LucideIcon;
   accent: CodingAccent;
+  /** Promo poster, shown as the course card's banner and on its detail page. */
+  poster: string;
   modules: CodingModule[];
 };
 
@@ -64,7 +66,9 @@ export type CodingTutor = {
   courseSlug: string;
   bio: string;
   specialties: string[];
-  icon: LucideIcon;
+  /** Cropped headshot from the course poster. */
+  photo: string;
+  credential: string;
   accent: CodingAccent;
 };
 
@@ -78,6 +82,7 @@ export const CODING_COURSES: CodingCourse[] = [
     level: "beginner",
     icon: Code2,
     accent: "violet",
+    poster: "/poster-python.jpeg",
     modules: [
       {
         title: "Getting Started",
@@ -126,6 +131,7 @@ export const CODING_COURSES: CodingCourse[] = [
     level: "beginner",
     icon: Sparkles,
     accent: "sage",
+    poster: "/poster-prompt-engineering.jpeg",
     modules: [
       {
         title: "What Is Prompt Engineering?",
@@ -169,26 +175,66 @@ export const CODING_COURSES: CodingCourse[] = [
 
 export const CODING_TUTORS: CodingTutor[] = [
   {
-    slug: "python-tutor",
-    name: "Arjun",
+    slug: "aashish-verma",
+    name: "Aashish Verma",
     role: "Python Tutor",
     courseSlug: "python",
     bio: "Breaks programming logic down into everyday examples, so code finally clicks -- patient with every \"wait, why did that happen?\" moment.",
     specialties: ["Python basics", "Debugging", "Mini projects"],
-    icon: Code2,
+    photo: "/mentors/aashish-verma.jpg",
+    credential: "IIT Madras",
     accent: "violet",
   },
   {
-    slug: "prompt-tutor",
-    name: "Meera",
+    slug: "ritwick-singh",
+    name: "Ritwick K. Singh",
+    role: "Python Tutor",
+    courseSlug: "python",
+    bio: "Turns coding fundamentals into hands-on practice -- big on logical thinking and building real, working programs from day one.",
+    specialties: ["Control flow", "Functions", "Data structures"],
+    photo: "/mentors/ritwick-singh.jpg",
+    credential: "IIT Madras",
+    accent: "violet",
+  },
+  {
+    slug: "vidhan-chandra",
+    name: "Vidhan Chandra",
+    role: "Python Tutor",
+    courseSlug: "python",
+    bio: "Focuses on solving real-world problems with code, so every concept lands with a project attached, not just theory.",
+    specialties: ["Projects", "Problem solving", "Code review"],
+    photo: "/mentors/vidhan-chandra.jpg",
+    credential: "IIT Madras",
+    accent: "violet",
+  },
+  {
+    slug: "mannu-yadav",
+    name: "Mannu Yadav",
     role: "Prompt Engineering Tutor",
     courseSlug: "prompt-engineering",
     bio: "Helps you talk to AI tools like a pro, one well-crafted prompt at a time -- great for homework help, projects, and just being curious.",
-    specialties: ["Prompt writing", "AI tools", "Code & creative prompts"],
-    icon: Sparkles,
+    specialties: ["Prompt writing", "AI tools", "Responsible AI use"],
+    photo: "/mentors/mannu-yadav.jpg",
+    credential: "IIT Madras",
+    accent: "sage",
+  },
+  {
+    slug: "aayushi",
+    name: "Aayushi",
+    role: "Prompt Engineering Tutor",
+    courseSlug: "prompt-engineering",
+    bio: "Shows you how to iterate on a prompt until it actually works -- spotting AI mistakes and asking better questions along the way.",
+    specialties: ["Iteration", "Critical thinking", "Creative prompts"],
+    photo: "/mentors/aayushi.jpg",
+    credential: "IIT Madras",
     accent: "sage",
   },
 ];
+
+/** All tutors teaching a given course, in listed order. */
+export function tutorsForCourse(courseSlug: string): CodingTutor[] {
+  return CODING_TUTORS.filter((t) => t.courseSlug === courseSlug);
+}
 
 export function getCodingCourse(slug: string): CodingCourse | undefined {
   return CODING_COURSES.find((c) => c.slug === slug);
