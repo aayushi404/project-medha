@@ -5,10 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AttendanceSheet } from "@/components/attendance/attendance-sheet";
+import { GuardianCallsPanel } from "@/components/attendance/guardian-calls-panel";
 import { Select } from "@/components/ui/select";
 import {
+  type AbsenceCall,
   type AttendanceDay,
   type AttendanceStatus,
+  getAbsenceCalls,
   getAttendance,
   getProfile,
   markAttendance,
@@ -25,6 +28,7 @@ export default function AttendancePage() {
   const [date, setDate] = useState(todayISO());
   const [day, setDay] = useState<AttendanceDay | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [calls, setCalls] = useState<AbsenceCall[]>([]);
   const requestKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -58,6 +62,31 @@ export default function AttendancePage() {
   }, [accessToken, gradeId, date]);
 
   const loading = !day || day.grade_id !== gradeId || day.date !== date;
+
+  // Guardian calls only ever fire for today's absences (see
+  // attendance/service.py::mark_day) -- polling on other dates would just
+  // show an empty list forever, so skip it entirely there.
+  useEffect(() => {
+    if (!accessToken || !gradeId || date !== todayISO()) {
+      return;
+    }
+    let active = true;
+    const load = () => {
+      getAbsenceCalls(accessToken, gradeId)
+        .then((rows) => {
+          if (active) setCalls(rows.filter((c) => c.attendance_date === date));
+        })
+        .catch(() => {
+          // quiet -- this panel is a bonus view, not the primary flow
+        });
+    };
+    load();
+    const interval = setInterval(load, 4000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [accessToken, gradeId, date]);
 
   const grades = Array.from(
     new Map((profile?.subjects ?? []).map((s) => [s.grade_id, s.grade_label])).entries(),
@@ -118,7 +147,10 @@ export default function AttendancePage() {
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <AttendanceSheet students={day.students} busyId={busyId} onMark={mark} />
+            <>
+              <AttendanceSheet students={day.students} busyId={busyId} onMark={mark} />
+              <GuardianCallsPanel calls={date === todayISO() ? calls : []} />
+            </>
           )}
         </div>
       </div>

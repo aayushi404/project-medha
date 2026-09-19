@@ -585,6 +585,10 @@ export type StudentRegisterInput = {
   school_id: string;
   grade_id: string;
   roll_number: string;
+  // Optional: the number the absence-calling feature dials if this student
+  // is ever marked absent.
+  guardian_name?: string | null;
+  guardian_phone?: string | null;
 };
 
 export type StudentActivateInput = {
@@ -1199,4 +1203,38 @@ export type AttendanceMineItem = { date: string; status: AttendanceStatus };
 
 export const getMyAttendance = (token: string | null) =>
   json<AttendanceMineItem[]>(apiFetch("/attendance/mine", { token }));
+
+// ---------------------------------------------------------------------------
+// Absence calling: the instant an absent mark is saved, the backend queues an
+// AI phone call to the guardian asking why -- this just reads back the
+// outcome log (see backend/src/backend/absence_calls/).
+// ---------------------------------------------------------------------------
+
+export type AbsenceCallStatus =
+  | "queued"
+  | "no_guardian_phone"
+  | "not_configured"
+  | "dialing"
+  | "ringing"
+  | "in_progress"
+  | "completed"
+  | "no_answer"
+  | "failed";
+
+export type AbsenceCall = {
+  id: string;
+  student_id: string;
+  student_name: string;
+  guardian_phone: string | null;
+  status: AbsenceCallStatus;
+  reason_text: string | null;
+  attendance_date: string;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export const getAbsenceCalls = (token: string | null, gradeId?: string) => {
+  const qs = gradeId ? `?grade_id=${gradeId}` : "";
+  return json<AbsenceCall[]>(apiFetch(`/absence-calls${qs}`, { token }));
+};
 

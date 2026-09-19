@@ -100,6 +100,14 @@ class Teacher(Base):
         UUID(as_uuid=True), ForeignKey("grades.id")
     )
     roll_number: Mapped[str | None]
+    # Collected at student registration (optional -- may be filled in later by
+    # the student/teacher). This is the number the absence-calling feature
+    # dials; kept here rather than on the separate `students` directory table
+    # since that roster is principal-managed and not reliably linked to this
+    # login row (see docs/medha-student-role-plan.md).
+    guardian_name: Mapped[str | None]
+    guardian_phone: Mapped[str | None]
+    guardian_relation: Mapped[str | None]  # father | mother | guardian
 
     # --- registration profile (teachers) ---
     # employee_code is the government teacher ID: the field a principal checks

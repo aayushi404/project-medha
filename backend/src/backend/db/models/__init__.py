@@ -1,3 +1,4 @@
+from backend.db.models.absence_call import AbsenceCall
 from backend.db.models.attendance import AttendanceRecord
 from backend.db.models.chat import ChatMessage, ChatSession, VoiceTurn
 from backend.db.models.curriculum import (
@@ -56,6 +57,7 @@ __all__ = [
     "GenerationExport",
     "GenerationFeedback",
     "AttendanceRecord",
+    "AbsenceCall",
     "Notification",
     "DeviceToken",
     "Homework",

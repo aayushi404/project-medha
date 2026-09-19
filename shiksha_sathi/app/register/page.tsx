@@ -78,6 +78,8 @@ function RegisterForm() {
 
   const [gradeId, setGradeId] = useState<string | null>(null);
   const [rollNumber, setRollNumber] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
   const [grades, setGrades] = useState<Grade[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
@@ -152,6 +154,8 @@ function RegisterForm() {
           school_id: school.id,
           grade_id: gradeId!,
           roll_number: rollNumber.trim(),
+          guardian_name: guardianName.trim() || null,
+          guardian_phone: guardianPhone.trim() || null,
         });
       } else {
         await register({
@@ -357,6 +361,36 @@ function RegisterForm() {
                         />
                       </Field>
                     </div>
+                  )}
+
+                  {isStudent && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Guardian's name (optional)" htmlFor="guardian-name">
+                        <Input
+                          id="guardian-name"
+                          value={guardianName}
+                          onChange={(e) => setGuardianName(e.target.value)}
+                          placeholder="e.g. Sunita Devi"
+                          className="h-11 text-base"
+                        />
+                      </Field>
+                      <Field label="Guardian's mobile (optional)" htmlFor="guardian-phone">
+                        <Input
+                          id="guardian-phone"
+                          type="tel"
+                          value={guardianPhone}
+                          onChange={(e) => setGuardianPhone(e.target.value)}
+                          placeholder="e.g. 98765 43210"
+                          className="h-11 text-base"
+                        />
+                      </Field>
+                    </div>
+                  )}
+                  {isStudent && (
+                    <p className="-mt-1 text-xs text-muted-foreground">
+                      If given, the school calls this number if the student is
+                      marked absent.
+                    </p>
                   )}
 
                   {isTeacher && (

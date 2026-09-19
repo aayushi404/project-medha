@@ -14,11 +14,21 @@ class StudentRegisterIn(BaseModel):
     school_id: uuid.UUID
     grade_id: uuid.UUID
     roll_number: str = Field(min_length=1, max_length=20)
+    # Optional: the number the absence-calling feature dials when this
+    # student is marked absent (see backend.absence_calls). Left blank, that
+    # feature just quietly can't reach anyone for this student.
+    guardian_name: str | None = Field(default=None, max_length=120)
+    guardian_phone: str | None = Field(default=None, max_length=20)
 
     @field_validator("full_name", "roll_number")
     @classmethod
     def _trim(cls, v: str) -> str:
         return v.strip()
+
+    @field_validator("guardian_name", "guardian_phone")
+    @classmethod
+    def _trim_optional(cls, v: str | None) -> str | None:
+        return v.strip() or None if v is not None else None
 
 
 class StudentRegisterOut(BaseModel):

@@ -1,0 +1,381 @@
+"""Two halves of the live call, plus the teacher-facing log.
+
+`status-callback`, `twiml`, and the `voicebot` websockets are hit by the
+telephony provider, not by our own frontend -- they're unauthenticated
+(Exotel/Twilio can't send our JWTs), guarded instead by a shared-secret
+token / by only ever acting on calls our own `AbsenceCall` rows already
+know about.
+
+Exotel and Twilio speak genuinely different wire protocols for the
+bidirectional audio stream (field names, event shapes, and -- crucially --
+audio codec: Exotel wants raw 16-bit PCM, Twilio wants 8-bit mu-law). Rather
+than duplicate the whole call state machine per provider, `_run_voicebot`
+below is the one state machine, parameterized by a small `_Wire` adapter per
+provider; only the adapters know about the protocol differences. See
+https://docs.exotel.com/exotel-agentstream/voicebot-applet and
+https://www.twilio.com/docs/voice/media-streams/websocket-messages.
+"""
+
+import base64
+import json
+import logging
+import time
+import uuid
+from dataclasses import dataclass
+from typing import Protocol
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import Response
+from sqlalchemy.orm import Session
+
+from backend.absence_calls import service
+from backend.absence_calls.audio import (
+    chunk_bytes_fixed,
+    chunk_for_exotel,
+    mulaw_to_pcm16,
+    pcm16_to_mulaw,
+    pcm16_to_wav,
+    wav_to_pcm16,
+    TWILIO_CHUNK_BYTES,
+)
+from backend.absence_calls.conversation import ConversationState, next_reply, opening_line, summarize_reason
+from backend.absence_calls.schemas import AbsenceCallOut
+from backend.auth.dependencies import require_teacher
+from backend.core.config import settings
+from backend.db.models import AbsenceCall, Teacher
+from backend.db.session import SessionLocal, get_db
+from backend.llm.client import LLMError
+from backend.speech.client import SpeechError, synthesize, transcribe
+
+logger = logging.getLogger("backend.absence_calls")
+
+router = APIRouter(prefix="/absence-calls", tags=["absence-calls"])
+
+# How long we listen after each prompt before transcribing whatever came in.
+# A fixed window rather than real silence detection -- simple and predictable
+# for v1; tightening this to voice-activity-based cutoff is the natural next
+# step once this is tested against real calls.
+_LISTEN_WINDOW_SECONDS = 6.0
+_MIN_UTTERANCE_BYTES = 3200  # ~200ms @ 8kHz/16-bit mono PCM; below this, treat as silence
+
+
+@router.get("", response_model=list[AbsenceCallOut])
+def list_absence_calls(
+    grade_id: uuid.UUID | None = Query(default=None),
+    teacher: Teacher = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> list[AbsenceCallOut]:
+    rows = service.list_recent_for_teacher(db, teacher, grade_id=grade_id)
+    return [
+        AbsenceCallOut(
+            id=call.id,
+            student_id=student.id,
+            student_name=student.full_name,
+            guardian_phone=call.guardian_phone,
+            status=call.status,
+            reason_text=call.reason_text,
+            attendance_date=str(record.attendance_date),
+            created_at=call.created_at,
+            completed_at=call.completed_at,
+        )
+        for call, student, record in rows
+    ]
+
+
+def _find_call_by_sid(db: Session, call_sid: str | None) -> AbsenceCall | None:
+    if not call_sid:
+        return None
+    return db.query(AbsenceCall).filter(AbsenceCall.provider_call_sid == call_sid).first()
+
+
+# --------------------------------------------------------------------------
+# Exotel: status callback (webhook) + TwiML has no Exotel equivalent -- the
+# Voicebot Applet is wired to our websocket URL once, manually, in Exotel's
+# dashboard (see telephony.py's ExotelProvider docstring).
+# --------------------------------------------------------------------------
+
+
+@router.post("/exotel/status-callback")
+async def exotel_status_callback(
+    request: Request,
+    token: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Exotel's call-progress webhook. Field names (CallSid/Status) match
+    Exotel's documented StatusCallback params as of writing -- verify against
+    a live account, provider webhook payloads are the part most likely to
+    have drifted from docs."""
+    if settings.exotel_webhook_token and token != settings.exotel_webhook_token:
+        raise HTTPException(403, "Invalid webhook token.")
+
+    form = await request.form()
+    call_sid = form.get("CallSid") or form.get("Sid")
+    provider_status = form.get("Status") or form.get("DialCallStatus")
+    if call_sid and provider_status:
+        call = _find_call_by_sid(db, str(call_sid))
+        if call is not None:
+            service.update_status_from_provider_status(db, call, str(provider_status))
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------
+# Twilio: unlike Exotel, the TwiML that starts the stream is generated by us
+# on every call (no dashboard flow needed) -- see TwilioProvider.place_call.
+# --------------------------------------------------------------------------
+
+
+@router.api_route("/twilio/twiml", methods=["GET", "POST"])
+async def twilio_twiml() -> Response:
+    ws_url = settings.public_base_url.replace("https://", "wss://").replace("http://", "ws://")
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<Response><Connect><Stream url="{ws_url}/absence-calls/twilio/voicebot" /></Connect></Response>'
+    )
+    return Response(content=xml, media_type="text/xml")
+
+
+@router.post("/twilio/status-callback")
+async def twilio_status_callback(
+    request: Request,
+    token: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Twilio's call-progress webhook. CallSid/CallStatus are Twilio's
+    documented StatusCallback field names (https://www.twilio.com/docs/voice/twiml)."""
+    if settings.twilio_webhook_token and token != settings.twilio_webhook_token:
+        raise HTTPException(403, "Invalid webhook token.")
+
+    form = await request.form()
+    call_sid = form.get("CallSid")
+    provider_status = form.get("CallStatus")
+    if call_sid and provider_status:
+        call = _find_call_by_sid(db, str(call_sid))
+        if call is not None:
+            service.update_status_from_provider_status(db, call, str(provider_status))
+    return {"ok": True}
+
+
+# --------------------------------------------------------------------------
+# The shared call state machine, parameterized per provider by a `_Wire`.
+# --------------------------------------------------------------------------
+
+
+class _Wire(Protocol):
+    name: str
+    chunk_size: int
+
+    def encode(self, pcm: bytes) -> bytes: ...  # PCM16 -> this provider's wire codec
+    def decode(self, wire_bytes: bytes) -> bytes: ...  # wire codec -> PCM16
+    def parse_start(self, evt: dict) -> tuple[str | None, str | None]: ...  # -> (stream_sid, call_sid)
+    def parse_media_payload(self, evt: dict) -> str: ...  # -> base64 payload
+    def build_media(self, stream_sid: str, seq: int, chunk_idx: int, payload_b64: str) -> dict: ...
+    def build_mark(self, stream_sid: str, seq: int, name: str) -> dict: ...
+
+
+@dataclass
+class _ExotelWire:
+    name: str = "exotel"
+    chunk_size: int = 3200
+
+    def encode(self, pcm: bytes) -> bytes:
+        return pcm  # already raw/slin PCM16 -- no conversion needed
+
+    def decode(self, wire_bytes: bytes) -> bytes:
+        return wire_bytes
+
+    def parse_start(self, evt: dict) -> tuple[str | None, str | None]:
+        start_info = evt.get("start", {})
+        return evt.get("stream_sid") or start_info.get("stream_sid"), start_info.get("call_sid")
+
+    def parse_media_payload(self, evt: dict) -> str:
+        return evt.get("media", {}).get("payload", "")
+
+    def build_media(self, stream_sid: str, seq: int, chunk_idx: int, payload_b64: str) -> dict:
+        return {
+            "event": "media",
+            "sequence_number": seq,
+            "stream_sid": stream_sid,
+            "media": {
+                "chunk": chunk_idx,
+                "timestamp": str(int(time.monotonic() * 1000)),
+                "payload": payload_b64,
+            },
+        }
+
+    def build_mark(self, stream_sid: str, seq: int, name: str) -> dict:
+        return {"event": "mark", "sequence_number": seq, "stream_sid": stream_sid, "mark": {"name": name}}
+
+
+@dataclass
+class _TwilioWire:
+    name: str = "twilio"
+    chunk_size: int = TWILIO_CHUNK_BYTES
+
+    def encode(self, pcm: bytes) -> bytes:
+        return pcm16_to_mulaw(pcm)
+
+    def decode(self, wire_bytes: bytes) -> bytes:
+        return mulaw_to_pcm16(wire_bytes)
+
+    def parse_start(self, evt: dict) -> tuple[str | None, str | None]:
+        start_info = evt.get("start", {})
+        return evt.get("streamSid") or start_info.get("streamSid"), start_info.get("callSid")
+
+    def parse_media_payload(self, evt: dict) -> str:
+        return evt.get("media", {}).get("payload", "")
+
+    def build_media(self, stream_sid: str, seq: int, chunk_idx: int, payload_b64: str) -> dict:
+        # Twilio's outbound media message carries no sequence_number/chunk --
+        # just the payload (https://www.twilio.com/docs/voice/media-streams/websocket-messages).
+        return {"event": "media", "streamSid": stream_sid, "media": {"payload": payload_b64}}
+
+    def build_mark(self, stream_sid: str, seq: int, name: str) -> dict:
+        return {"event": "mark", "streamSid": stream_sid, "mark": {"name": name}}
+
+
+async def _speak(websocket: WebSocket, wire: _Wire, stream_sid: str, seq: int, text: str) -> int:
+    """Synthesize `text` (Bihari-accented Hindi) and stream it to the
+    provider as `media` frames, followed by a `mark` so we learn when
+    playback finishes. Returns the next sequence_number to use."""
+    try:
+        result = await synthesize(text, language="hi-IN", accent="bihari")
+        pcm = wav_to_pcm16(result.audio_bytes)
+    except SpeechError as exc:
+        logger.warning("absence_call_tts_failed: %s", exc)
+        return seq
+    except Exception:
+        # A malformed/unexpected TTS response shouldn't take the whole call
+        # down -- skip this line (the guardian hears silence for one turn
+        # instead of the call dropping) and keep going.
+        logger.exception("absence_call_tts_audio_error")
+        return seq
+
+    wire_bytes = wire.encode(pcm)
+    if wire.name == "exotel":
+        chunks = chunk_for_exotel(wire_bytes, chunk_bytes=wire.chunk_size)
+    else:
+        chunks = chunk_bytes_fixed(wire_bytes, wire.chunk_size)
+    for i, chunk in enumerate(chunks):
+        seq += 1
+        payload_b64 = base64.b64encode(chunk).decode("ascii")
+        await websocket.send_text(json.dumps(wire.build_media(stream_sid, seq, i, payload_b64)))
+    seq += 1
+    await websocket.send_text(json.dumps(wire.build_mark(stream_sid, seq, "prompt-end")))
+    return seq
+
+
+async def _transcribe_or_silence(pcm: bytes) -> str:
+    if len(pcm) < _MIN_UTTERANCE_BYTES:
+        return "(अभिभावक की तरफ़ से कोई जवाब नहीं आया)"
+    try:
+        result = await transcribe(
+            pcm16_to_wav(pcm), filename="guardian.wav", content_type="audio/wav", language="hi-IN"
+        )
+        return result.transcript
+    except SpeechError as exc:
+        logger.warning("absence_call_stt_failed: %s", exc)
+        return "(आवाज़ समझ में नहीं आई)"
+
+
+async def _safe_summarize(conv: ConversationState) -> str:
+    try:
+        return await summarize_reason(conv)
+    except LLMError as exc:
+        logger.warning("absence_call_summary_failed: %s", exc)
+        return "कॉल हुई, लेकिन वजह अपने आप summarise नहीं हो पाई -- ट्रांसक्रिप्ट देखें।"
+
+
+async def _run_voicebot(websocket: WebSocket, wire: _Wire) -> None:
+    await websocket.accept()
+    db = SessionLocal()
+    call: AbsenceCall | None = None
+    conv: ConversationState | None = None
+    stream_sid: str | None = None
+    seq = 0
+    audio_buffer = bytearray()
+    listening = False
+    listen_started = 0.0
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            evt = json.loads(raw)
+            event = evt.get("event")
+
+            if event == "start":
+                stream_sid, call_sid = wire.parse_start(evt)
+                call = _find_call_by_sid(db, call_sid)
+                if call is None:
+                    logger.warning(
+                        "absence_call_voicebot_unknown_call_sid provider=%s call_sid=%s", wire.name, call_sid
+                    )
+                    await websocket.close()
+                    return
+
+                student = db.get(Teacher, call.student_id)
+                conv = ConversationState(student_name=(student.full_name if student else "बच्चे"))
+                service.update_status_from_provider_status(db, call, "in-progress")
+
+                assert stream_sid is not None
+                seq = await _speak(websocket, wire, stream_sid, seq, opening_line(conv.student_name))
+                audio_buffer.clear()
+                listening = True
+                listen_started = time.monotonic()
+                continue
+
+            if event == "media" and listening and stream_sid:
+                payload = wire.parse_media_payload(evt)
+                if payload:
+                    audio_buffer.extend(wire.decode(base64.b64decode(payload)))
+                if time.monotonic() - listen_started < _LISTEN_WINDOW_SECONDS:
+                    continue
+
+                listening = False
+                guardian_text = await _transcribe_or_silence(bytes(audio_buffer))
+                audio_buffer.clear()
+                assert conv is not None
+                assert call is not None
+
+                try:
+                    reply_text, is_final = await next_reply(conv, guardian_text)
+                except LLMError:
+                    logger.exception("absence_call_llm_failed call_id=%s", call.id)
+                    reply_text, is_final = "क्षमा करें, अभी तकनीकी दिक़्क़त है। धन्यवाद, नमस्ते।", True
+
+                seq = await _speak(websocket, wire, stream_sid, seq, reply_text)
+
+                if is_final:
+                    reason = await _safe_summarize(conv)
+                    transcript = "\n".join(f"{m.role}: {m.content}" for m in conv.messages)
+                    service.save_transcript_and_reason(db, call, transcript=transcript, reason_text=reason)
+                    await websocket.close()
+                    return
+
+                listening = True
+                listen_started = time.monotonic()
+                continue
+
+            if event == "stop":
+                if call is not None and call.status not in ("completed", "no_answer", "failed"):
+                    reason = await _safe_summarize(conv) if conv else "कॉल पूरी नहीं हो पाई।"
+                    transcript = (
+                        "\n".join(f"{m.role}: {m.content}" for m in conv.messages) if conv else ""
+                    )
+                    service.save_transcript_and_reason(db, call, transcript=transcript, reason_text=reason)
+                break
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        logger.exception("absence_call_voicebot_error provider=%s call_id=%s", wire.name, call.id if call else None)
+    finally:
+        db.close()
+
+
+@router.websocket("/exotel/voicebot")
+async def exotel_voicebot(websocket: WebSocket) -> None:
+    await _run_voicebot(websocket, _ExotelWire())
+
+
+@router.websocket("/twilio/voicebot")
+async def twilio_voicebot(websocket: WebSocket) -> None:
+    await _run_voicebot(websocket, _TwilioWire())
