@@ -44,7 +44,7 @@ from backend.auth.dependencies import require_teacher
 from backend.core.config import settings
 from backend.db.models import AbsenceCall, Teacher
 from backend.db.session import SessionLocal, get_db
-from backend.llm.client import LLMError
+from backend.llm.client import LLMError, Message
 from backend.speech.client import SpeechError, synthesize, transcribe
 
 logger = logging.getLogger("backend.absence_calls")
@@ -57,6 +57,11 @@ router = APIRouter(prefix="/absence-calls", tags=["absence-calls"])
 # step once this is tested against real calls.
 _LISTEN_WINDOW_SECONDS = 6.0
 _MIN_UTTERANCE_BYTES = 3200  # ~200ms @ 8kHz/16-bit mono PCM; below this, treat as silence
+# Hard wall-clock cap on the whole call, independent of MAX_GUARDIAN_TURNS --
+# a guardian who keeps talking shouldn't be able to run the call (and its
+# LLM/TTS/STT cost) past this regardless of turn count.
+_MAX_CALL_SECONDS = 120.0
+_TIME_UP_CLOSING_LINE = "माफ़ कीजिए, समय हो गया है। जानकारी देने के लिए धन्यवाद। नमस्ते।"
 
 
 @router.get("", response_model=list[AbsenceCallOut])
@@ -75,6 +80,7 @@ def list_absence_calls(
             status=call.status,
             reason_text=call.reason_text,
             failure_reason=call.failure_reason,
+            transcript=call.transcript,
             attendance_date=str(record.attendance_date),
             created_at=call.created_at,
             completed_at=call.completed_at,
@@ -296,6 +302,7 @@ async def _run_voicebot(websocket: WebSocket, wire: _Wire) -> None:
     audio_buffer = bytearray()
     listening = False
     listen_started = 0.0
+    call_started = 0.0
 
     try:
         while True:
@@ -318,6 +325,7 @@ async def _run_voicebot(websocket: WebSocket, wire: _Wire) -> None:
                 service.update_status_from_provider_status(db, call, "in-progress")
 
                 assert stream_sid is not None
+                call_started = time.monotonic()
                 seq = await _speak(websocket, wire, stream_sid, seq, opening_line(conv.student_name))
                 audio_buffer.clear()
                 listening = True
@@ -332,16 +340,20 @@ async def _run_voicebot(websocket: WebSocket, wire: _Wire) -> None:
                     continue
 
                 listening = False
-                guardian_text = await _transcribe_or_silence(bytes(audio_buffer))
-                audio_buffer.clear()
                 assert conv is not None
                 assert call is not None
 
-                try:
-                    reply_text, is_final = await next_reply(conv, guardian_text)
-                except LLMError:
-                    logger.exception("absence_call_llm_failed call_id=%s", call.id)
-                    reply_text, is_final = "क्षमा करें, अभी तकनीकी दिक़्क़त है। धन्यवाद, नमस्ते।", True
+                if time.monotonic() - call_started >= _MAX_CALL_SECONDS:
+                    reply_text, is_final = _TIME_UP_CLOSING_LINE, True
+                    conv.messages.append(Message(role="assistant", content=reply_text))
+                else:
+                    guardian_text = await _transcribe_or_silence(bytes(audio_buffer))
+                    audio_buffer.clear()
+                    try:
+                        reply_text, is_final = await next_reply(conv, guardian_text)
+                    except LLMError:
+                        logger.exception("absence_call_llm_failed call_id=%s", call.id)
+                        reply_text, is_final = "क्षमा करें, अभी तकनीकी दिक़्क़त है। धन्यवाद, नमस्ते।", True
 
                 seq = await _speak(websocket, wire, stream_sid, seq, reply_text)
 

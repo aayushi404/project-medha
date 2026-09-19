@@ -1,9 +1,21 @@
 "use client";
 
-import { Loader2, Phone, PhoneMissed, PhoneOff } from "lucide-react";
+import { ChevronDown, Loader2, Phone, PhoneMissed, PhoneOff } from "lucide-react";
 
 import type { AbsenceCall, AbsenceCallStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+const SPEAKER_LABEL: Record<string, string> = { user: "Guardian", assistant: "Medha" };
+
+function parseTranscript(transcript: string): { speaker: string; text: string }[] {
+  return transcript
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const [role, ...rest] = line.split(": ");
+      return { speaker: SPEAKER_LABEL[role] ?? role, text: rest.join(": ") };
+    });
+}
 
 const STATUS_META: Record<
   AbsenceCallStatus,
@@ -63,6 +75,22 @@ export function GuardianCallsPanel({ calls }: { calls: AbsenceCall[] }) {
               )}
               {!call.reason_text && call.failure_reason && (
                 <p className="text-xs text-destructive/80">{call.failure_reason}</p>
+              )}
+              {call.transcript && (
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                    <ChevronDown className="size-3 transition-transform group-open:rotate-180" />
+                    Conversation
+                  </summary>
+                  <ul className="mt-1.5 flex flex-col gap-1 rounded-lg bg-muted/50 p-2">
+                    {parseTranscript(call.transcript).map((line, i) => (
+                      <li key={i} className="text-xs">
+                        <span className="font-medium text-foreground">{line.speaker}: </span>
+                        <span className="text-muted-foreground">{line.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </li>
           );

@@ -28,6 +28,9 @@ class AbsenceCallOut(BaseModel):
     # (not_configured, no_guardian_phone, failed) -- distinct from
     # reason_text, which is the AI's takeaway from a call that DID happen.
     failure_reason: str | None
+    # The full back-and-forth, one "role: line" per row -- set once the call
+    # actually happened (completed, or ended mid-conversation on `stop`).
+    transcript: str | None
     attendance_date: str
     created_at: datetime
     completed_at: datetime | None

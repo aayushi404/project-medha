@@ -1229,6 +1229,7 @@ export type AbsenceCall = {
   status: AbsenceCallStatus;
   reason_text: string | null;
   failure_reason: string | null;
+  transcript: string | null;
   attendance_date: string;
   created_at: string;
   completed_at: string | null;

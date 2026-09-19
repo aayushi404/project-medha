@@ -30,6 +30,17 @@ class PlacedCall:
     provider_call_sid: str
 
 
+def _status_callback_url(path: str, token: str) -> str:
+    """Build a `{PUBLIC_BASE_URL}/absence-calls/{path}/status-callback` URL,
+    with the shared-secret token appended when set. Registering this with
+    the provider on every outbound call is what makes ringing/no-answer/busy/
+    failed actually reach us -- without it, a call that's never answered (so
+    the voicebot websocket never even connects) stays stuck at whatever
+    status place_call() set, forever."""
+    url = f"{settings.public_base_url}/absence-calls/{path}/status-callback"
+    return f"{url}?token={token}" if token else url
+
+
 class TelephonyProvider(ABC):
     @abstractmethod
     async def place_call(self, *, to_number: str, correlation_id: str) -> PlacedCall:
@@ -59,10 +70,11 @@ class ExotelProvider(TelephonyProvider):
             and settings.exotel_api_token
             and settings.exotel_caller_id
             and settings.exotel_app_id
+            and settings.public_base_url
         ):
             raise TelephonyNotConfigured(
                 "Exotel isn't configured (EXOTEL_SID / EXOTEL_API_KEY / "
-                "EXOTEL_API_TOKEN / EXOTEL_CALLER_ID / EXOTEL_APP_ID)."
+                "EXOTEL_API_TOKEN / EXOTEL_CALLER_ID / EXOTEL_APP_ID / PUBLIC_BASE_URL)."
             )
         self._base = (
             f"https://{settings.exotel_api_key}:{settings.exotel_api_token}"
@@ -82,6 +94,9 @@ class ExotelProvider(TelephonyProvider):
             # surfaced to the voicebot websocket as a custom_parameter on
             # the `start` event (max 3 custom params, ≤256 chars total)
             "CustomField": correlation_id,
+            # fires on call completion (ringing/answered/etc are best-effort
+            # -- Exotel's docs only firmly document the completion callback)
+            "StatusCallback": _status_callback_url("exotel", settings.exotel_webhook_token),
         }
         async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=10.0)) as client:
             try:
@@ -138,6 +153,9 @@ class TwilioProvider(TelephonyProvider):
             "To": to_number,
             "From": settings.twilio_caller_number,
             "Url": f"{settings.public_base_url}/absence-calls/twilio/twiml",
+            "StatusCallback": _status_callback_url("twilio", settings.twilio_webhook_token),
+            "StatusCallbackEvent": ["initiated", "ringing", "answered", "completed"],
+            "StatusCallbackMethod": "POST",
         }
         async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=10.0)) as client:
             try:
