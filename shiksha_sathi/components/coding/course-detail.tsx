@@ -17,10 +17,13 @@ import { Button } from "@/components/ui/button";
 import {
   ACCENT_STYLES,
   LEVEL_LABEL,
+  type CodingModule,
   courseDurationMinutes,
   formatDuration,
   getCodingCourse,
+  getCodingTutor,
   tutorsForCourse,
+  youtubeEmbedUrl,
 } from "@/lib/coding";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +33,7 @@ function ModuleRow({
   summary,
   minutes,
   outcomes,
+  video,
   expanded,
   onToggle,
   accentBar,
@@ -40,11 +44,14 @@ function ModuleRow({
   summary: string;
   minutes: number;
   outcomes: string[];
+  video?: CodingModule["video"];
   expanded: boolean;
   onToggle: () => void;
   accentBar: string;
   moduleRef?: (el: HTMLDivElement | null) => void;
 }) {
+  const videoTutor = video ? getCodingTutor(video.tutorSlug) : undefined;
+
   return (
     <div ref={moduleRef} className="overflow-hidden rounded-xl border border-border">
       <button
@@ -65,6 +72,12 @@ function ModuleRow({
           <p className="font-medium">{title}</p>
           <p className="line-clamp-1 text-xs text-muted-foreground">{summary}</p>
         </div>
+        {video ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+            <PlayCircle className="size-3" />
+            Video
+          </span>
+        ) : null}
         <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
           <Clock3 className="size-3" />
           {minutes} min
@@ -75,6 +88,22 @@ function ModuleRow({
       </button>
       {expanded ? (
         <div className="border-t border-border bg-muted/30 px-4 py-3.5 pl-[3.25rem]">
+          {video ? (
+            <div className="mb-4">
+              <div className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-black">
+                <iframe
+                  src={youtubeEmbedUrl(video.youtubeId)}
+                  title={`${title} -- video lesson`}
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+              {videoTutor ? (
+                <p className="mt-1.5 text-xs text-muted-foreground">Taught by {videoTutor.name}</p>
+              ) : null}
+            </div>
+          ) : null}
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             You&apos;ll be able to
           </p>
@@ -209,6 +238,7 @@ export function CourseDetail({ slug }: { slug: string }) {
                   summary={m.summary}
                   minutes={m.minutes}
                   outcomes={m.outcomes}
+                  video={m.video}
                   expanded={openIndex === i}
                   onToggle={() => setOpenIndex((cur) => (cur === i ? null : i))}
                   accentBar={styles.bar}

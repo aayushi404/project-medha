@@ -44,7 +44,23 @@ export type CodingModule = {
   minutes: number;
   /** 2-3 concrete things the student can do after this module. */
   outcomes: string[];
+  /** An embedded lesson video, taught by one of the course's tutors. */
+  video?: {
+    youtubeId: string;
+    /** Must match a CodingTutor.slug -- whose video this is. */
+    tutorSlug: string;
+  };
 };
+
+/** Playable embed URL for a YouTube video id. */
+export function youtubeEmbedUrl(youtubeId: string): string {
+  return `https://www.youtube.com/embed/${youtubeId}`;
+}
+
+/** The video's normal watch-page URL, e.g. for an "Open on YouTube" link. */
+export function youtubeWatchUrl(youtubeId: string): string {
+  return `https://www.youtube.com/watch?v=${youtubeId}`;
+}
 
 export type CodingCourse = {
   slug: string;
@@ -89,6 +105,7 @@ export const CODING_COURSES: CodingCourse[] = [
         summary: "Set up Python, run your first line of code, and see how a program actually executes.",
         minutes: 25,
         outcomes: ["Run Python code and read the output", "Explain what a program is, step by step"],
+        video: { youtubeId: "Ut7JHXQvUc8", tutorSlug: "vidhan-chandra" },
       },
       {
         title: "Variables & Data Types",

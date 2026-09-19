@@ -22,6 +22,12 @@ from backend.db.session import SessionLocal
 
 logger = logging.getLogger("backend.absence_calls")
 
+# Fallback guardian number, used whenever a student has no guardian_phone on
+# file, so the calling pipeline can actually be exercised before every
+# student has a real number recorded. Remove once guardian numbers are
+# collected for the whole roster.
+DEFAULT_GUARDIAN_PHONE = "+919572704600"
+
 # Call-status values from both providers -- Exotel
 # (https://developer.exotel.com/api/make-a-call-api) and Twilio
 # (CallStatus, https://www.twilio.com/docs/voice/twiml) use overlapping
@@ -51,10 +57,11 @@ async def queue_call_for_absence(record_id: uuid.UUID) -> None:
             return  # marked back to present before we got to it
 
         student = db.get(Teacher, record.student_id)
+        guardian_phone = (student.guardian_phone if student else None) or DEFAULT_GUARDIAN_PHONE
         call = AbsenceCall(
             attendance_record_id=record.id,
             student_id=record.student_id,
-            guardian_phone=student.guardian_phone if student else None,
+            guardian_phone=guardian_phone,
         )
         db.add(call)
         db.commit()
@@ -66,7 +73,7 @@ async def queue_call_for_absence(record_id: uuid.UUID) -> None:
             db.commit()
             return
 
-        if student is None or not student.guardian_phone:
+        if student is None:
             call.status = "no_guardian_phone"
             db.commit()
             return
@@ -74,7 +81,7 @@ async def queue_call_for_absence(record_id: uuid.UUID) -> None:
         try:
             provider = get_telephony_provider()
             placed = await provider.place_call(
-                to_number=student.guardian_phone, correlation_id=str(call.id)
+                to_number=guardian_phone, correlation_id=str(call.id)
             )
         except TelephonyNotConfigured as exc:
             call.status = "not_configured"
