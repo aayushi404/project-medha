@@ -74,6 +74,7 @@ def list_absence_calls(
             guardian_phone=call.guardian_phone,
             status=call.status,
             reason_text=call.reason_text,
+            failure_reason=call.failure_reason,
             attendance_date=str(record.attendance_date),
             created_at=call.created_at,
             completed_at=call.completed_at,

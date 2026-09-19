@@ -24,6 +24,10 @@ class AbsenceCallOut(BaseModel):
     guardian_phone: str | None
     status: AbsenceCallStatus
     reason_text: str | None
+    # The provider/config error text when the call couldn't even be placed
+    # (not_configured, no_guardian_phone, failed) -- distinct from
+    # reason_text, which is the AI's takeaway from a call that DID happen.
+    failure_reason: str | None
     attendance_date: str
     created_at: datetime
     completed_at: datetime | None

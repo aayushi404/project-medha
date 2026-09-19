@@ -61,6 +61,9 @@ export function GuardianCallsPanel({ calls }: { calls: AbsenceCall[] }) {
               {call.reason_text && (
                 <p className="text-xs text-muted-foreground">{call.reason_text}</p>
               )}
+              {!call.reason_text && call.failure_reason && (
+                <p className="text-xs text-destructive/80">{call.failure_reason}</p>
+              )}
             </li>
           );
         })}

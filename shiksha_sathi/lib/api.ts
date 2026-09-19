@@ -1228,6 +1228,7 @@ export type AbsenceCall = {
   guardian_phone: string | null;
   status: AbsenceCallStatus;
   reason_text: string | null;
+  failure_reason: string | null;
   attendance_date: string;
   created_at: string;
   completed_at: string | null;

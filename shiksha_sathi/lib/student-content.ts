@@ -468,6 +468,8 @@ export type Book = {
   classLabel: string;
   pages: number;
   blurb: string;
+  /** Path to an actual PDF under /public, when available. */
+  pdfUrl?: string;
 };
 
 export const BOOK_CATEGORIES: BookCategory[] = [
@@ -479,6 +481,17 @@ export const BOOK_CATEGORIES: BookCategory[] = [
 ];
 
 export const LIBRARY_BOOKS: Book[] = [
+  {
+    id: "living-world",
+    title: "Living World",
+    author: "Bihar State Textbook Corporation",
+    category: "Textbook",
+    subject: "Science",
+    classLabel: "Class 8",
+    pages: 2,
+    blurb: "A look at living organisms and the world around us.",
+    pdfUrl: "/books/Living-World.pdf",
+  },
   {
     id: "sci-8-bseb",
     title: "Science, Class 8",
