@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2, Phone, X } from "lucide-react";
+import { toast } from "sonner";
 
 import type { AttendanceStatus, AttendanceStudent } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,12 @@ const OPTIONS: { value: AttendanceStatus; icon: typeof Check; active: string }[]
   { value: "present", icon: Check, active: "bg-sage/15 text-sage border-sage/40" },
   { value: "absent", icon: X, active: "bg-destructive/10 text-destructive border-destructive/40" },
 ];
+
+// Placeholder guardian contact number, shared across every student, until
+// real per-student guardian numbers are wired up (see absence_calls on the
+// backend, which already has one per student for the automated AI call --
+// this manual "Call" button is a separate, teacher-initiated action).
+const PLACEHOLDER_GUARDIAN_PHONE = "+919572704600";
 
 export function AttendanceSheet({
   students,
@@ -57,6 +64,17 @@ export function AttendanceSheet({
               </span>
               <div className="flex shrink-0 items-center gap-1">
                 {busy && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+                {s.status === "absent" ? (
+                  <a
+                    href={`tel:${PLACEHOLDER_GUARDIAN_PHONE}`}
+                    onClick={() => toast(`Calling ${s.full_name}'s guardian…`)}
+                    title={`Call guardian — ${PLACEHOLDER_GUARDIAN_PHONE}`}
+                    aria-label={`Call ${s.full_name}'s guardian`}
+                    className="flex size-8 items-center justify-center rounded-lg border border-terracotta/40 text-terracotta transition-colors hover:bg-terracotta/10"
+                  >
+                    <Phone className="size-4" />
+                  </a>
+                ) : null}
                 {OPTIONS.map((o) => {
                   const on = s.status === o.value;
                   const Icon = o.icon;
