@@ -57,7 +57,11 @@ async def queue_call_for_absence(record_id: uuid.UUID) -> None:
             return  # marked back to present before we got to it
 
         student = db.get(Teacher, record.student_id)
-        guardian_phone = (student.guardian_phone if student else None) or DEFAULT_GUARDIAN_PHONE
+        guardian_phone = (
+            settings.absence_call_force_phone
+            or (student.guardian_phone if student else None)
+            or DEFAULT_GUARDIAN_PHONE
+        )
         call = AbsenceCall(
             attendance_record_id=record.id,
             student_id=record.student_id,

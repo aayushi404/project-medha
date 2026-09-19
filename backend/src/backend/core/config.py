@@ -154,6 +154,11 @@ class Settings(BaseSettings):
     # vice versa). See backend/src/backend/absence_calls/conversation.py.
     absence_call_gemini_api_key: str = ""
     absence_call_gemini_model: str = "gemini-flash-lite-latest"
+    # Demo-only safety valve: when set, EVERY absence call is dialed to this
+    # number instead of the student's real (or fallback) guardian_phone --
+    # for showcasing the feature without risking a call to a real guardian.
+    # Empty (default) = off, normal per-student number is used.
+    absence_call_force_phone: str = ""
 
     # --- Voice assistant (/speech/converse) — see docs/medha-voice-assistant-plan.md ---
     voice_enabled: bool = True  # kill switch; hides the FE launcher when false
