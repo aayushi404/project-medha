@@ -3,8 +3,9 @@
 import type { ReportCard, ReportCardMark } from "@/lib/api";
 import { useCopy } from "@/lib/copy";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Award, BookOpen, CheckCircle, Percent, Printer, Edit2, Trash2 } from "lucide-react";
+import { Award, BookOpen, Printer, Edit2, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/alert-dialog";
 
 interface ReportCardViewProps {
   card: ReportCard | null;
@@ -13,6 +14,7 @@ interface ReportCardViewProps {
   rollNumber?: string;
   onEditMark?: (mark: ReportCardMark) => void;
   onDeleteMark?: (mark: ReportCardMark) => void;
+  onAddSubjectToExam?: (term: string) => void;
 }
 
 function calculateGrade(percentage: number) {
@@ -31,6 +33,7 @@ export function ReportCardView({
   rollNumber,
   onEditMark,
   onDeleteMark,
+  onAddSubjectToExam,
 }: ReportCardViewProps) {
   const copy = useCopy();
   const t = copy.reportCardPage;
@@ -54,7 +57,7 @@ export function ReportCardView({
   const overallPercentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
   const overallGrade = calculateGrade(overallPercentage);
 
-  // Group marks by term
+  // Group marks by term / exam
   const byTerm = new Map<string, ReportCardMark[]>();
   for (const m of card.marks) {
     byTerm.set(m.term, [...(byTerm.get(m.term) ?? []), m]);
@@ -75,17 +78,17 @@ export function ReportCardView({
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-terracotta">
                 <Award className="size-4" />
-                Official Academic Summary
+                {t.officialSummary}
               </div>
               <h3 className="font-serif text-2xl font-bold text-foreground mt-1">
-                {studentName || card.student_name || "Student Report"}
+                {studentName || card.student_name || t.studentReport}
               </h3>
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-1 font-mono">
-                {gradeLabel && <span>Grade: {gradeLabel}</span>}
+                {gradeLabel && <span>{t.gradeLabel}: {gradeLabel}</span>}
                 {rollNumber && (
                   <>
                     <span>•</span>
-                    <span>Roll No: {rollNumber}</span>
+                    <span>{t.rollNo}: {rollNumber}</span>
                   </>
                 )}
               </div>
@@ -93,14 +96,14 @@ export function ReportCardView({
 
             <div className="flex items-center gap-4 self-stretch md:self-auto justify-between md:justify-end border-t md:border-t-0 md:border-l border-hairline/80 pt-3 md:pt-0 md:pl-6">
               <div className="text-right">
-                <div className="text-xs text-muted-foreground">Cumulative Score</div>
+                <div className="text-xs text-muted-foreground">{t.cumulativeScore}</div>
                 <div className="font-serif text-2xl font-bold text-foreground font-mono">
                   {totalObtained} <span className="text-sm font-normal text-muted-foreground">/ {totalMax}</span>
                 </div>
               </div>
 
               <div className="text-center px-4 py-2 rounded-xl border bg-background/80 shadow-xs">
-                <div className="text-xs font-medium text-muted-foreground">Overall Grade</div>
+                <div className="text-xs font-medium text-muted-foreground">{t.overallGrade}</div>
                 <div className={`mt-0.5 px-3 py-0.5 rounded-md font-mono text-base font-bold border ${overallGrade.color}`}>
                   {overallGrade.letter} ({overallPercentage.toFixed(1)}%)
                 </div>
@@ -133,15 +136,29 @@ export function ReportCardView({
 
         return (
           <Card key={term} className="border border-border overflow-hidden">
-            <CardHeader className="bg-muted/40 border-b border-border py-3 px-5 flex flex-row items-center justify-between">
-              <CardTitle className="font-serif text-base font-semibold flex items-center gap-2">
-                <BookOpen className="size-4 text-terracotta" />
-                {t.term}: {term}
-              </CardTitle>
+            <CardHeader className="bg-muted/40 border-b border-border py-3 px-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <CardTitle className="font-serif text-base font-semibold flex items-center gap-2">
+                  <BookOpen className="size-4 text-terracotta" />
+                  {t.term}: {term}
+                </CardTitle>
+
+                {onAddSubjectToExam && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onAddSubjectToExam(term)}
+                    className="h-7 text-xs gap-1 border-terracotta/30 text-terracotta hover:bg-terracotta/10 print:hidden"
+                  >
+                    <Plus className="size-3" />
+                    {t.addSubjectToExam}
+                  </Button>
+                )}
+              </div>
 
               <div className="flex items-center gap-3 text-xs">
                 <span className="font-mono text-muted-foreground">
-                  Term Total: <strong className="text-foreground">{termObtained}/{termMax}</strong>
+                  {t.termTotal}: <strong className="text-foreground">{termObtained}/{termMax}</strong>
                 </span>
                 <span className={`px-2 py-0.5 rounded font-mono font-semibold border ${termGrade.color}`}>
                   {termGrade.letter} ({termPercentage.toFixed(1)}%)
@@ -156,11 +173,11 @@ export function ReportCardView({
                     <tr className="border-b border-hairline/80 text-left text-xs font-medium text-muted-foreground bg-muted/10">
                       <th className="py-3 px-5">{t.subject}</th>
                       <th className="py-3 px-5">{t.marks}</th>
-                      <th className="py-3 px-5">Percentage</th>
-                      <th className="py-3 px-5">Performance Bar</th>
+                      <th className="py-3 px-5">{t.percentageLabel}</th>
+                      <th className="py-3 px-5">{t.performanceBar}</th>
                       <th className="py-3 px-5">{t.remarksLabel}</th>
                       {(onEditMark || onDeleteMark) && (
-                        <th className="py-3 px-5 text-right print:hidden">Actions</th>
+                        <th className="py-3 px-5 text-right print:hidden">{t.actionsLabel}</th>
                       )}
                     </tr>
                   </thead>
@@ -210,16 +227,26 @@ export function ReportCardView({
                                     <Edit2 className="size-3.5" />
                                   </Button>
                                 )}
+
                                 {onDeleteMark && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => onDeleteMark(m)}
-                                    className="h-8 size-8 p-0 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                                    title="Delete Mark Entry"
-                                  >
-                                    <Trash2 className="size-3.5" />
-                                  </Button>
+                                  <ConfirmDialog
+                                    title={t.deleteMarkTitle}
+                                    description={`Are you sure you want to delete the mark entry for ${m.subject_name} (${m.term})?`}
+                                    confirmLabel={t.confirmDeleteBtn}
+                                    cancelLabel={t.cancelBtn}
+                                    destructive
+                                    onConfirm={() => onDeleteMark(m)}
+                                    trigger={
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 size-8 p-0 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                        title="Delete Mark Entry"
+                                      >
+                                        <Trash2 className="size-3.5" />
+                                      </Button>
+                                    }
+                                  />
                                 )}
                               </div>
                             </td>
@@ -237,4 +264,3 @@ export function ReportCardView({
     </div>
   );
 }
-

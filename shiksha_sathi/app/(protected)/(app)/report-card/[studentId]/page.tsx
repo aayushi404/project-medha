@@ -124,6 +124,7 @@ export default function StudentReportCardDetailPage({ params }: StudentDetailPag
   // Modal State for adding/editing student exam marks
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedMarkForEdit, setSelectedMarkForEdit] = useState<ReportCardMark | null>(null);
+  const [defaultTermForAdd, setDefaultTermForAdd] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     // Initial exam & marks data for this student
@@ -133,11 +134,19 @@ export default function StudentReportCardDetailPage({ params }: StudentDetailPag
 
   const handleOpenAddMark = () => {
     setSelectedMarkForEdit(null);
+    setDefaultTermForAdd(undefined);
+    setIsEditModalOpen(true);
+  };
+
+  const handleAddSubjectToExam = (term: string) => {
+    setSelectedMarkForEdit(null);
+    setDefaultTermForAdd(term);
     setIsEditModalOpen(true);
   };
 
   const handleOpenEditMark = (mark: ReportCardMark) => {
     setSelectedMarkForEdit(mark);
+    setDefaultTermForAdd(mark.term);
     setIsEditModalOpen(true);
   };
 
@@ -203,11 +212,6 @@ export default function StudentReportCardDetailPage({ params }: StudentDetailPag
   const handleDeleteMark = async (mark: ReportCardMark) => {
     if (!cardData) return;
 
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete the mark entry for ${mark.subject_name} (${mark.term})?`
-    );
-    if (!confirmDelete) return;
-
     const filteredMarks = cardData.marks.filter(
       (m) => !(m.subject_id === mark.subject_id && m.term === mark.term)
     );
@@ -251,7 +255,7 @@ export default function StudentReportCardDetailPage({ params }: StudentDetailPag
           className="bg-terracotta hover:bg-terracotta/90 text-white shadow-xs"
         >
           <PlusCircle className="size-4 mr-1.5" />
-          Add Exam & Marks
+          {t.addExamAndMarks}
         </Button>
       </div>
 
@@ -281,7 +285,7 @@ export default function StudentReportCardDetailPage({ params }: StudentDetailPag
                       <span>•</span>
                       <span className="flex items-center gap-1">
                         <Hash className="size-4 text-terracotta" />
-                        Roll No: {rollNumber}
+                        {t.rollNo}: {rollNumber}
                       </span>
                     </div>
                   </div>
@@ -292,7 +296,7 @@ export default function StudentReportCardDetailPage({ params }: StudentDetailPag
                   <div className="px-3 py-1.5 rounded-xl bg-background/60 border border-hairline/60">
                     <div className="text-xs text-muted-foreground">{t.rankInClass}</div>
                     <div className="font-serif text-lg font-bold text-terracotta font-mono mt-0.5">
-                      #3 <span className="text-xs font-normal text-muted-foreground">in class</span>
+                      #3 <span className="text-xs font-normal text-muted-foreground">{t.inClass}</span>
                     </div>
                   </div>
 
@@ -322,6 +326,7 @@ export default function StudentReportCardDetailPage({ params }: StudentDetailPag
             rollNumber={rollNumber}
             onEditMark={handleOpenEditMark}
             onDeleteMark={handleDeleteMark}
+            onAddSubjectToExam={handleAddSubjectToExam}
           />
         </div>
       </div>
@@ -331,6 +336,7 @@ export default function StudentReportCardDetailPage({ params }: StudentDetailPag
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         initialMark={selectedMarkForEdit}
+        defaultTerm={defaultTermForAdd}
         onSaveMark={handleSaveMark}
       />
     </main>
