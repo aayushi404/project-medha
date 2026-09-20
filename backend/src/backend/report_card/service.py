@@ -95,3 +95,20 @@ def get_report_card(db: Session, viewer: Teacher, student_id: uuid.UUID) -> Repo
         for m, name in rows
     ]
     return ReportCardOut(student_id=student.id, student_name=student.full_name, marks=marks)
+
+
+def delete_mark(db: Session, teacher: Teacher, student_id: uuid.UUID, subject_id: uuid.UUID, term: str) -> None:
+    row = (
+        db.query(ReportCardMark)
+        .filter(
+            ReportCardMark.student_id == student_id,
+            ReportCardMark.subject_id == subject_id,
+            ReportCardMark.term == term,
+        )
+        .first()
+    )
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Mark entry not found.")
+    db.delete(row)
+    db.commit()
+

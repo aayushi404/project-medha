@@ -1029,6 +1029,18 @@ export const upsertReportCardMark = (token: string | null, body: ReportCardMarkI
 export const getReportCard = (token: string | null, studentId: string) =>
   json<ReportCard>(apiFetch(`/report-card/${studentId}`, { token }));
 
+export const deleteReportCardMark = (
+  token: string | null,
+  studentId: string,
+  subjectId: string,
+  term: string
+) =>
+  apiFetch(`/report-card/marks/${studentId}/${subjectId}/${encodeURIComponent(term)}`, {
+    method: "DELETE",
+    token,
+  });
+
+
 // ---------------------------------------------------------------------------
 // E-library: curated links (not file storage), added by a teacher or
 // principal, browsable by anyone, optionally filtered by grade/subject.

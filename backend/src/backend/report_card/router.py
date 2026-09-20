@@ -24,3 +24,16 @@ def get_report_card(
     student_id: uuid.UUID, user: Teacher = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> ReportCardOut:
     return service.get_report_card(db, user, student_id)
+
+
+@router.delete("/marks/{student_id}/{subject_id}/{term}")
+def delete_mark(
+    student_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    term: str,
+    teacher: Teacher = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    service.delete_mark(db, teacher, student_id, subject_id, term)
+    return {"status": "deleted"}
+
