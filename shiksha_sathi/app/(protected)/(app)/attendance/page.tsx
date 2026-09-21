@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AttendanceSheet } from "@/components/attendance/attendance-sheet";
 import { GuardianCallsPanel } from "@/components/attendance/guardian-calls-panel";
+import { LiveCallModal } from "@/components/attendance/live-call-modal";
 import { Select } from "@/components/ui/select";
 import {
   type AbsenceCall,
@@ -29,6 +30,11 @@ export default function AttendancePage() {
   const [day, setDay] = useState<AttendanceDay | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [calls, setCalls] = useState<AbsenceCall[]>([]);
+  const [activeCallStudent, setActiveCallStudent] = useState<{
+    id: string;
+    name: string;
+    phone?: string | null;
+  } | null>(null);
   const requestKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -96,17 +102,45 @@ export default function AttendancePage() {
     if (!gradeId) return;
     setBusyId(studentId);
     try {
+      const studentObj = day?.students.find((s) => s.student_id === studentId);
       const updated = await markAttendance(accessToken, {
         grade_id: gradeId,
         date,
         records: [{ student_id: studentId, status }],
       });
       setDay(updated);
+
+      if (status === "absent") {
+        setActiveCallStudent({
+          id: studentId,
+          name: studentObj?.full_name || "Student",
+          phone: "+917050020815",
+        });
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save attendance.");
     } finally {
       setBusyId(null);
     }
+  }
+
+  function handleCallComplete(reasonText: string, transcriptText: string) {
+    if (!activeCallStudent) return;
+    const newCall: AbsenceCall = {
+      id: `sim-${activeCallStudent.id}-${Date.now()}`,
+      student_id: activeCallStudent.id,
+      student_name: activeCallStudent.name,
+      guardian_phone: activeCallStudent.phone || "+917050020815",
+      status: "completed",
+      reason_text: reasonText,
+      failure_reason: null,
+      transcript: transcriptText,
+      attendance_date: date,
+      created_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    };
+
+    setCalls((prev) => [newCall, ...prev.filter((c) => c.student_id !== activeCallStudent.id)]);
   }
 
   return (
@@ -154,6 +188,15 @@ export default function AttendancePage() {
           )}
         </div>
       </div>
+
+      {/* Simulated Automated Calling Modal */}
+      <LiveCallModal
+        isOpen={!!activeCallStudent}
+        onClose={() => setActiveCallStudent(null)}
+        studentName={activeCallStudent?.name || ""}
+        guardianPhone={activeCallStudent?.phone}
+        onCompleteCall={handleCallComplete}
+      />
     </main>
   );
 }

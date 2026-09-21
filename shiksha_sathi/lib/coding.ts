@@ -38,19 +38,34 @@ export const ACCENT_STYLES: Record<
   },
 };
 
+export type CodingVideo = {
+  youtubeId: string;
+  tutorSlug: string;
+  language?: string;
+  languageCode?: "hi" | "mai" | "en";
+};
+
 export type CodingModule = {
   title: string;
   summary: string;
   minutes: number;
   /** 2-3 concrete things the student can do after this module. */
   outcomes: string[];
-  /** An embedded lesson video, taught by one of the course's tutors. */
-  video?: {
-    youtubeId: string;
-    /** Must match a CodingTutor.slug -- whose video this is. */
-    tutorSlug: string;
-  };
+  /** Single embedded lesson video or multiple language video options. */
+  video?: CodingVideo;
+  videos?: CodingVideo[];
 };
+
+/** Get all video options for a module. */
+export function getModuleVideos(module: CodingModule): CodingVideo[] {
+  if (module.videos && module.videos.length > 0) {
+    return module.videos;
+  }
+  if (module.video) {
+    return [module.video];
+  }
+  return [];
+}
 
 /** Playable embed URL for a YouTube video id. */
 export function youtubeEmbedUrl(youtubeId: string): string {
@@ -105,7 +120,20 @@ export const CODING_COURSES: CodingCourse[] = [
         summary: "Set up Python, run your first line of code, and see how a program actually executes.",
         minutes: 25,
         outcomes: ["Run Python code and read the output", "Explain what a program is, step by step"],
-        video: { youtubeId: "Ut7JHXQvUc8", tutorSlug: "vidhan-chandra" },
+        videos: [
+          {
+            youtubeId: "Ut7JHXQvUc8",
+            tutorSlug: "vidhan-chandra",
+            language: "Hindi (हिंदी)",
+            languageCode: "hi",
+          },
+          {
+            youtubeId: "r0Xmlk3Wgj0",
+            tutorSlug: "vidhan-chandra",
+            language: "Maithili (मैथिली)",
+            languageCode: "mai",
+          },
+        ],
       },
       {
         title: "Variables & Data Types",
@@ -155,6 +183,12 @@ export const CODING_COURSES: CodingCourse[] = [
         summary: "Understand how AI models read instructions, and why wording changes the answer.",
         minutes: 20,
         outcomes: ["Explain why two prompts can get very different answers", "Spot a vague prompt vs. a clear one"],
+        video: {
+          youtubeId: "HsaKd5kP5S0",
+          tutorSlug: "mannu-yadav",
+          language: "Hindi (हिंदी)",
+          languageCode: "hi",
+        },
       },
       {
         title: "Anatomy of a Great Prompt",

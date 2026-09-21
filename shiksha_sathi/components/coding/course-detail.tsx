@@ -5,6 +5,9 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
+  ExternalLink,
+  Globe,
+  Languages,
   Layers,
   MessageCircle,
   PlayCircle,
@@ -22,8 +25,10 @@ import {
   formatDuration,
   getCodingCourse,
   getCodingTutor,
+  getModuleVideos,
   tutorsForCourse,
   youtubeEmbedUrl,
+  youtubeWatchUrl,
 } from "@/lib/coding";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +39,7 @@ function ModuleRow({
   minutes,
   outcomes,
   video,
+  videos,
   expanded,
   onToggle,
   accentBar,
@@ -45,12 +51,19 @@ function ModuleRow({
   minutes: number;
   outcomes: string[];
   video?: CodingModule["video"];
+  videos?: CodingModule["videos"];
   expanded: boolean;
   onToggle: () => void;
   accentBar: string;
   moduleRef?: (el: HTMLDivElement | null) => void;
 }) {
-  const videoTutor = video ? getCodingTutor(video.tutorSlug) : undefined;
+  const allVideos = getModuleVideos({ title, summary, minutes, outcomes, video, videos });
+  const [selectedLangIndex, setSelectedLangIndex] = useState(0);
+
+  const activeVideo = allVideos[selectedLangIndex] || allVideos[0];
+  const videoTutor = activeVideo ? getCodingTutor(activeVideo.tutorSlug) : undefined;
+  const hasMultipleVideos = allVideos.length > 1;
+  const hasVideo = allVideos.length > 0;
 
   return (
     <div ref={moduleRef} className="overflow-hidden rounded-xl border border-border">
@@ -72,10 +85,10 @@ function ModuleRow({
           <p className="font-medium">{title}</p>
           <p className="line-clamp-1 text-xs text-muted-foreground">{summary}</p>
         </div>
-        {video ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+        {hasVideo ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet/10 px-2 py-0.5 text-[11px] font-medium text-violet">
             <PlayCircle className="size-3" />
-            Video
+            Video {hasMultipleVideos ? "(Hindi & Maithili)" : ""}
           </span>
         ) : null}
         <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
@@ -87,21 +100,65 @@ function ModuleRow({
         />
       </button>
       {expanded ? (
-        <div className="border-t border-border bg-muted/30 px-4 py-3.5 pl-[3.25rem]">
-          {video ? (
+        <div className="border-t border-border bg-muted/30 px-4 py-3.5 pl-4 sm:pl-[3.25rem]">
+          {hasVideo && activeVideo ? (
             <div className="mb-4">
-              <div className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-black">
+              {hasMultipleVideos ? (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card p-2 shadow-2xs">
+                  <div className="flex items-center gap-1.5 px-1 text-xs font-medium text-foreground">
+                    <Globe className="size-3.5 text-violet" />
+                    <span>Select Language:</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {allVideos.map((v, idx) => {
+                      const isSelected = idx === selectedLangIndex;
+                      return (
+                        <button
+                          key={v.youtubeId + (v.languageCode || idx)}
+                          type="button"
+                          onClick={() => setSelectedLangIndex(idx)}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                            isSelected
+                              ? "bg-violet text-white shadow-xs"
+                              : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                          )}
+                        >
+                          <Languages className="size-3" />
+                          <span>{v.language || (v.languageCode === "mai" ? "Maithili (मैथिली)" : "Hindi (हिंदी)")}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-black shadow-md">
                 <iframe
-                  src={youtubeEmbedUrl(video.youtubeId)}
+                  src={youtubeEmbedUrl(activeVideo.youtubeId)}
                   title={`${title} -- video lesson`}
                   className="h-full w-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />
               </div>
-              {videoTutor ? (
-                <p className="mt-1.5 text-xs text-muted-foreground">Taught by {videoTutor.name}</p>
-              ) : null}
+
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                {videoTutor ? (
+                  <span>Taught by <span className="font-medium text-foreground">{videoTutor.name}</span></span>
+                ) : (
+                  <span />
+                )}
+                <a
+                  href={youtubeWatchUrl(activeVideo.youtubeId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-violet hover:underline"
+                >
+                  <span>Watch on YouTube</span>
+                  <ExternalLink className="size-3" />
+                </a>
+              </div>
             </div>
           ) : null}
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -239,6 +296,7 @@ export function CourseDetail({ slug }: { slug: string }) {
                   minutes={m.minutes}
                   outcomes={m.outcomes}
                   video={m.video}
+                  videos={m.videos}
                   expanded={openIndex === i}
                   onToggle={() => setOpenIndex((cur) => (cur === i ? null : i))}
                   accentBar={styles.bar}
