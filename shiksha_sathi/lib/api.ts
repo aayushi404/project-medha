@@ -1023,8 +1023,133 @@ export type ReportCardMarkInput = {
   remarks?: string | null;
 };
 
+export type StudentMarkItemInput = {
+  student_id: string;
+  marks_obtained: number;
+  remarks?: string | null;
+};
+
+export type BulkReportCardMarksInput = {
+  grade_id: string;
+  subject_id: string;
+  term: string;
+  max_marks: number;
+  marks: StudentMarkItemInput[];
+};
+
+export type BulkReportCardMarksResult = {
+  saved_count: number;
+  marks: ReportCardMark[];
+};
+
+export type OMRUploadResult = {
+  file_name: string;
+  file_size_bytes: number;
+  status: string;
+  message: string;
+};
+
+export type BubbleScore = {
+  digit: number;
+  fill_ratio: number;
+  is_filled: boolean;
+};
+
+export type DigitEvaluation = {
+  place: "hundreds" | "tens" | "units";
+  selected_digit: number | null;
+  confidence: number;
+  status: "valid" | "ambiguous" | "missing";
+  scores: BubbleScore[];
+};
+
+export type StudentOMRResult = {
+  roll_number: number;
+  student_id: string | null;
+  student_name: string | null;
+  hundreds: number | null;
+  tens: number | null;
+  units: number | null;
+  detected_marks: number | null;
+  max_marks: number;
+  status: "valid" | "ambiguous" | "missing" | "invalid_max";
+  confidence: number;
+  issues: string[];
+  digit_evaluations: {
+    hundreds?: DigitEvaluation;
+    tens?: DigitEvaluation;
+    units?: DigitEvaluation;
+  };
+};
+
+export type OMRPipelineSummary = {
+  total_rows: number;
+  valid_count: number;
+  needs_review_count: number;
+  missing_count: number;
+};
+
+export type OMREvaluationResult = {
+  processed: boolean;
+  page_count: number;
+  summary: OMRPipelineSummary;
+  results: StudentOMRResult[];
+  debug_job_id?: string | null;
+  message: string;
+};
+
 export const upsertReportCardMark = (token: string | null, body: ReportCardMarkInput) =>
   json<ReportCardMark>(apiFetch("/report-card/marks", { method: "POST", token, body }));
+
+export const bulkUpsertReportCardMarks = (
+  token: string | null,
+  body: BulkReportCardMarksInput
+) =>
+  json<BulkReportCardMarksResult>(
+    apiFetch("/report-card/bulk-marks", { method: "POST", token, body })
+  );
+
+export const getClassReportCardMarks = (
+  token: string | null,
+  gradeId: string,
+  subjectId: string,
+  term: string
+) =>
+  json<ReportCardMark[]>(
+    apiFetch(
+      `/report-card/class-marks?grade_id=${gradeId}&subject_id=${subjectId}&term=${encodeURIComponent(term)}`,
+      { token }
+    )
+  );
+
+export const uploadOMRSheet = async (token: string | null, file: File): Promise<OMRUploadResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return json<OMRUploadResult>(
+    apiFetch("/report-card/omr/upload", {
+      method: "POST",
+      token,
+      body: formData,
+    })
+  );
+};
+
+export const evaluateOMRSheet = async (
+  token: string | null,
+  file: File,
+  gradeId: string,
+  maxMarks: number = 100
+): Promise<OMREvaluationResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return json<OMREvaluationResult>(
+    apiFetch(`/report-card/omr/evaluate?grade_id=${gradeId}&max_marks=${maxMarks}`, {
+      method: "POST",
+      token,
+      body: formData,
+    })
+  );
+};
 
 export const getReportCard = (token: string | null, studentId: string) =>
   json<ReportCard>(apiFetch(`/report-card/${studentId}`, { token }));
@@ -1039,6 +1164,7 @@ export const deleteReportCardMark = (
     method: "DELETE",
     token,
   });
+
 
 
 // ---------------------------------------------------------------------------

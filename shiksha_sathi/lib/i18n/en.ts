@@ -725,6 +725,28 @@ export const en = {
     term: "Term",
     subject: "Subject",
     marks: "Marks",
+
+    // Update Marks Workflow
+    updateMarksBtn: "Update Marks",
+    updateMarksTitle: "Update Marks",
+    updateMarksSub: "Enter or upload marks for students in an examination.",
+    backToReportCards: "Back to Report Cards",
+    examDetailsTitle: "Examination details",
+    examLabel: "Examination",
+    examPlaceholder: "e.g. Unit Test 1, Mid Term, Half Yearly",
+    noClassesAssigned: "No classes are assigned to you yet.",
+    noSubjectsAvailable: "No subjects are available for this class.",
+    studentMarksHeading: "Student Marks",
+    enterMarksSub: "Enter marks for each student.",
+    marksEnteredProgress: "Marks entered",
+    omrUploadTitle: "Upload OMR",
+    omrUploadSub: "Upload an OMR answer sheet to automatically fill marks.",
+    omrSupportedFormats: "Supported formats: PDF / JPG / PNG",
+    omrUploadBtn: "Upload OMR",
+    omrUploaded: "OMR uploaded",
+    omrReadyToProcess: "Ready to process",
+    saveMarksBtn: "Save marks",
+    marksSavedSuccess: "Marks saved successfully.",
   },
 
   resourcesPage: {

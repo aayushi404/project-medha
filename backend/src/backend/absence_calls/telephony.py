@@ -154,8 +154,6 @@ class TwilioProvider(TelephonyProvider):
             "From": settings.twilio_caller_number,
             "Url": f"{settings.public_base_url}/absence-calls/twilio/twiml",
             "StatusCallback": _status_callback_url("twilio", settings.twilio_webhook_token),
-            "StatusCallbackEvent": ["initiated", "ringing", "answered", "completed"],
-            "StatusCallbackMethod": "POST",
         }
         async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=10.0)) as client:
             try:

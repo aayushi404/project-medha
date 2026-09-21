@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Search, Users, Award, BookCheck, Filter } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Plus, Search, Users, Award, BookCheck, Filter, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 
 import { getProfile, getStudentRoster, type Profile, type StudentRosterItem } from "@/lib/api";
@@ -107,13 +108,25 @@ export default function TeacherReportCardPage() {
           <p className="mt-0.5 text-xs text-muted-foreground">{t.sub}</p>
         </div>
 
-        <Button
-          onClick={() => setIsExamModalOpen(true)}
-          className="bg-terracotta hover:bg-terracotta/90 text-white shadow-xs self-start sm:self-auto"
-        >
-          <Plus className="size-4 mr-1.5" />
-          {t.createExamBtn}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <Link href="/report-card/update-marks">
+            <Button
+              variant="outline"
+              className="border-terracotta/40 text-terracotta hover:bg-terracotta/10 hover:text-terracotta shadow-2xs font-medium"
+            >
+              <FileSpreadsheet className="size-4 mr-1.5" />
+              {t.updateMarksBtn || "Update Marks"}
+            </Button>
+          </Link>
+
+          <Button
+            onClick={() => setIsExamModalOpen(true)}
+            className="bg-terracotta hover:bg-terracotta/90 text-white shadow-2xs font-medium"
+          >
+            <Plus className="size-4 mr-1.5" />
+            {t.createExamBtn}
+          </Button>
+        </div>
       </div>
 
       {/* Main Content Area */}

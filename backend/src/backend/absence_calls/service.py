@@ -26,7 +26,7 @@ logger = logging.getLogger("backend.absence_calls")
 # file, so the calling pipeline can actually be exercised before every
 # student has a real number recorded. Remove once guardian numbers are
 # collected for the whole roster.
-DEFAULT_GUARDIAN_PHONE = "+916388512839"
+DEFAULT_GUARDIAN_PHONE = "+917050020815"
 
 # Call-status values from both providers -- Exotel
 # (https://developer.exotel.com/api/make-a-call-api) and Twilio

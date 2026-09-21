@@ -719,6 +719,28 @@ export const hi: Copy = {
     term: "सत्र",
     subject: "विषय",
     marks: "अंक",
+
+    // Update Marks Workflow
+    updateMarksBtn: "अंक अपडेट करें",
+    updateMarksTitle: "अंक अपडेट करें",
+    updateMarksSub: "परीक्षा में छात्रों के लिए अंक दर्ज या अपलोड करें।",
+    backToReportCards: "रिपोर्ट कार्ड पर वापस जाएं",
+    examDetailsTitle: "परीक्षा विवरण",
+    examLabel: "परीक्षा",
+    examPlaceholder: "जैसे- मिड टर्म, यूनिट टेस्ट 1, अर्धवार्षिक",
+    noClassesAssigned: "अभी आपको कोई कक्षाएं आवंटित नहीं की गई हैं।",
+    noSubjectsAvailable: "इस कक्षा के लिए कोई विषय उपलब्ध नहीं है।",
+    studentMarksHeading: "छात्र अंक",
+    enterMarksSub: "प्रत्येक छात्र के लिए अंक दर्ज करें।",
+    marksEnteredProgress: "दर्ज किए गए अंक",
+    omrUploadTitle: "OMR अपलोड करें",
+    omrUploadSub: "अंक स्वतः भरने के लिए OMR उत्तर पुस्तिका अपलोड करें।",
+    omrSupportedFormats: "समर्थित प्रारूप: PDF / JPG / PNG",
+    omrUploadBtn: "OMR अपलोड करें",
+    omrUploaded: "OMR अपलोड हुआ",
+    omrReadyToProcess: "प्रसंस्करण के लिए तैयार",
+    saveMarksBtn: "अंक सहेजें",
+    marksSavedSuccess: "अंक सफलतापूर्वक सहेजे गए।",
   },
 
   resourcesPage: {
