@@ -107,6 +107,59 @@ class Settings(BaseSettings):
     sarvam_tts_speaker_bihari: str = "ritu"
     sarvam_tts_pace_bihari: float = 0.92
 
+    # --- Absence calling: instant guardian call + AI voice conversation when a
+    # teacher marks a student absent (backend.absence_calls). Off by default --
+    # explicit opt-in once Exotel + Sarvam are configured, so a fresh/dev
+    # deployment never dials real phone numbers by accident.
+    absence_calling_enabled: bool = False
+    # Which provider places the call -- "twilio" | "exotel". Twilio's trial
+    # needs no business KYC (good for a quick demo, but only calls numbers
+    # you've pre-verified in the Twilio console); Exotel needs KYC approved
+    # first but has no such per-call restriction once it's live. See
+    # backend/src/backend/absence_calls/telephony.py.
+    telephony_provider: str = "twilio"
+    # Twilio (https://twilio.com) -- Account SID + Auth Token from the
+    # Console dashboard, and a Twilio number as the caller ID. Twilio does
+    # not sell local Indian numbers, so this will usually be a US/UK number;
+    # test connect quality to a real Indian mobile before relying on it.
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_caller_number: str = ""  # E.164, e.g. +14155551234
+    # Shared secret this server checks on Twilio's status-callback webhook
+    # (?token=...) -- distinct from Twilio's own request signature, which
+    # isn't verified here yet.
+    twilio_webhook_token: str = ""
+    # Exotel (Indian cloud telephony) -- see backend/src/backend/absence_calls/telephony.py
+    exotel_sid: str = ""
+    exotel_api_key: str = ""
+    exotel_api_token: str = ""
+    exotel_subdomain: str = "api.in.exotel.com"  # Mumbai; use api.exotel.com for Singapore
+    exotel_caller_id: str = ""  # the ExoPhone calls are placed from
+    # The Exotel "App" (Flow) that has a Voicebot Applet configured, pointed at
+    # this server's /absence-calls/exotel/voicebot websocket -- see Exotel's
+    # dashboard (App Bazaar). Not creatable via API; one-time manual setup.
+    exotel_app_id: str = ""
+    # Shared secret this server checks on Exotel's status-callback webhook
+    # (?token=...), since Exotel doesn't sign these by default.
+    exotel_webhook_token: str = ""
+    # This server's own publicly reachable origin (e.g. the Render URL), used
+    # to build the webhook/websocket URLs the telephony provider calls back
+    # (e.g. https://medha-backend.onrender.com, no trailing slash).
+    public_base_url: str = ""
+    # A separate Gemini API key/project for the absence-call conversation
+    # itself, kept apart from the main app's GEMINI_API_KEY (llm_provider /
+    # llm.get_llm_client) so this feature's usage, quota and billing are
+    # trackable on their own -- it's a live phone call, not a chat reply, and
+    # a quota clash with the rest of the app shouldn't ever drop a call (or
+    # vice versa). See backend/src/backend/absence_calls/conversation.py.
+    absence_call_gemini_api_key: str = ""
+    absence_call_gemini_model: str = "gemini-flash-lite-latest"
+    # Demo-only safety valve: when set, EVERY absence call is dialed to this
+    # number instead of the student's real (or fallback) guardian_phone --
+    # for showcasing the feature without risking a call to a real guardian.
+    # Empty (default) = off, normal per-student number is used.
+    absence_call_force_phone: str = ""
+
     # --- Voice assistant (/speech/converse) — see docs/medha-voice-assistant-plan.md ---
     voice_enabled: bool = True  # kill switch; hides the FE launcher when false
     # Spoken replies are short by contract; caps keep TTS latency + cost down.

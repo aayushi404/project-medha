@@ -1,3 +1,4 @@
+from backend.db.models.absence_call import AbsenceCall
 from backend.db.models.attendance import AttendanceRecord
 from backend.db.models.chat import ChatMessage, ChatSession, VoiceTurn
 from backend.db.models.curriculum import (
@@ -22,6 +23,12 @@ from backend.db.models.notification import DeviceToken, Notification
 from backend.db.models.organization import Block, District, School
 from backend.db.models.practice import PracticeQuestion
 from backend.db.models.report_card import ReportCardMark
+from backend.db.models.school_records import (
+    AcademicYear,
+    ClassSection,
+    Student,
+    StudentEnrollment,
+)
 from backend.db.models.teacher import ApprovalEvent, AuthSession, Teacher
 from backend.db.models.timetable import TimetableEntry
 
@@ -50,6 +57,7 @@ __all__ = [
     "GenerationExport",
     "GenerationFeedback",
     "AttendanceRecord",
+    "AbsenceCall",
     "Notification",
     "DeviceToken",
     "Homework",
@@ -59,4 +67,8 @@ __all__ = [
     "FeePayment",
     "ChapterNote",
     "PracticeQuestion",
+    "AcademicYear",
+    "ClassSection",
+    "Student",
+    "StudentEnrollment",
 ]

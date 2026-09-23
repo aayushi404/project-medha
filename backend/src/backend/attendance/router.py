@@ -1,16 +1,16 @@
 import uuid
 from datetime import date as date_
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.attendance import service
-from backend.attendance.schemas import AttendanceDayOut, AttendanceMarkIn
-from backend.auth.dependencies import require_teacher
+from backend.attendance.schemas import AttendanceDayOut, AttendanceMarkIn, AttendanceMineItem
+from backend.auth.dependencies import require_student, require_teacher
 from backend.db.models import Teacher
 from backend.db.session import get_db
 
-router = APIRouter(prefix="/attendance", tags=["attendance"], dependencies=[Depends(require_teacher)])
+router = APIRouter(prefix="/attendance", tags=["attendance"])
 
 
 @router.get("", response_model=AttendanceDayOut)
@@ -26,7 +26,15 @@ def get_attendance(
 @router.post("", response_model=AttendanceDayOut)
 def mark_attendance(
     payload: AttendanceMarkIn,
+    background_tasks: BackgroundTasks,
     teacher: Teacher = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> AttendanceDayOut:
-    return service.mark_day(db, teacher, payload)
+    return service.mark_day(db, teacher, payload, background_tasks)
+
+
+@router.get("/mine", response_model=list[AttendanceMineItem])
+def my_attendance(
+    student: Teacher = Depends(require_student), db: Session = Depends(get_db)
+) -> list[AttendanceMineItem]:
+    return service.list_for_student(db, student)

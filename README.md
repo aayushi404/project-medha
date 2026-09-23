@@ -76,7 +76,7 @@ Each is a bounded, independently testable service behind an interface — swappa
 | PPT generation | `python-pptx` | Real editable `.pptx` output teachers can tweak, not just an image |
 | Mindmap generation | Server-side SVG/diagram rendering (or Mermaid.js rendered server-side) | Lightweight, no heavy client rendering needed |
 | STT | Whisper (fine-tuned/prompted for Hindi-Bihari) or a regional-language ASR API | Needs evaluation against actual Bihari-accented Hindi audio |
-| TTS | Regional Indian-language TTS provider (e.g. AI4Bharat's models, or commercial Indic TTS) fine-tuned/prompt-conditioned for Bihari accent | Neutral Hindi TTS will *not* feel personalized — this needs dedicated evaluation, likely a fine-tuning effort with AI4Bharat's open Indic-TTS work as a starting point |
+| TTS | Regional Indian-language TTS provider (e.g. AI4Bharat's models, or commercial Indic TTS) fine-tuned/prompt-conditioned for Bihari accent | Neutral Hindi TTS will *not* feel personalized — this needs dedicated evaluation, likely a fine-tuning effort with AI4Bharat's open Indic-TTS work as a starting point | //Mannu Yadav
 | Database | PostgreSQL + pgvector | Relational data + retrieval-augmented generation in one store |
 | Cache/Queue | Redis | Caching + background job queue for generation tasks |
 | Storage | S3-compatible object storage | Generated files |

@@ -34,6 +34,11 @@ def complete_onboarding(
     teacher.school_id = payload.school_id
     teacher.onboarded_at = datetime.now(timezone.utc)
 
+    # A teacher onboards exactly once (guarded above), but a stray row can
+    # already exist here -- e.g. dev/demo seed data -- so clear before
+    # inserting rather than risk a unique-constraint violation on re-submit.
+    db.query(TeacherSubject).filter(TeacherSubject.teacher_id == teacher.id).delete()
+
     for item in payload.subjects:
         db.add(
             TeacherSubject(

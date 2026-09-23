@@ -30,3 +30,8 @@ class AttendanceMarkIn(BaseModel):
     grade_id: uuid.UUID
     date: date_
     records: list[AttendanceRecordIn] = Field(min_length=1)
+
+
+class AttendanceMineItem(BaseModel):
+    date: date_
+    status: AttendanceStatus

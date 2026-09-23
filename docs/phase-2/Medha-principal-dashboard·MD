@@ -1,0 +1,257 @@
+# Medha — Principal Dashboard Architecture
+
+Two sections under the principal role: **Students** (drill down class → roster → profile) and **Faculty** (list → profile). This adds a school-records domain that Medha didn't previously have.
+
+---
+
+## 1. Why `grades` can't serve as "classes"
+
+`grades` holds Class 6–10 as curriculum lookup rows, shared across every school and referenced by chapters, chat sessions, and generations. A principal's "Class 8A" is a different thing: a specific section, at one school, for one academic year, with a class teacher and a roster.
+
+Conflating them breaks immediately — "students in Class 8" would mean every Class 8 student in the state, and you'd have nowhere to put sections or a class teacher.
+
+So: `grades` stays curriculum-level. `class_sections` is the school-level entity.
+
+---
+
+## 2. Schema additions
+
+```python
+class AcademicYear(Base):
+    """e.g. 2026-27. Enrolment and attendance are always year-scoped --
+    without this, last year's roster and this year's are indistinguishable."""
+
+    __tablename__ = "academic_years"
+    __table_args__ = (UniqueConstraint("school_id", "label"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE")
+    )
+    label: Mapped[str]                     # "2026-27"
+    starts_on: Mapped[date]
+    ends_on: Mapped[date]
+    is_current: Mapped[bool] = mapped_column(server_default=text("false"))
+
+
+class ClassSection(Base):
+    """A real class at a real school: Class 8, section A, 2026-27."""
+
+    __tablename__ = "class_sections"
+    __table_args__ = (
+        UniqueConstraint("school_id", "academic_year_id", "grade_id", "section"),
+        Index("idx_sections_school_year", "school_id", "academic_year_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE")
+    )
+    academic_year_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("academic_years.id", ondelete="CASCADE")
+    )
+    grade_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grades.id"))
+    section: Mapped[str] = mapped_column(server_default=text("'A'"))   # A, B, C
+    class_teacher_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+
+
+class Student(Base):
+    """A student record. Deliberately minimal -- see the data-minimisation note."""
+
+    __tablename__ = "students"
+    __table_args__ = (
+        UniqueConstraint("school_id", "admission_number"),
+        Index("idx_students_school", "school_id"),
+        CheckConstraint("status IN ('active','transferred','dropped_out','graduated')",
+                        name="chk_student_status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    school_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE")
+    )
+    full_name: Mapped[str]
+    admission_number: Mapped[str | None]
+    guardian_name: Mapped[str | None]
+    guardian_relation: Mapped[str | None]      # father | mother | guardian
+    guardian_phone: Mapped[str | None]
+    status: Mapped[str] = mapped_column(server_default=text("'active'"))
+    created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+    updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+
+
+class StudentEnrollment(Base):
+    """Which section a student sits in, for which year. Separate from `students`
+    so a student's history survives promotion to the next class."""
+
+    __tablename__ = "student_enrollments"
+    __table_args__ = (
+        UniqueConstraint("student_id", "academic_year_id"),
+        UniqueConstraint("class_section_id", "roll_number"),
+        Index("idx_enrollments_section", "class_section_id", "roll_number"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
+    )
+    class_section_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("class_sections.id", ondelete="CASCADE")
+    )
+    academic_year_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("academic_years.id", ondelete="CASCADE")
+    )
+    roll_number: Mapped[int | None]
+    enrolled_on: Mapped[date | None]
+    left_on: Mapped[date | None]
+```
+
+### Faculty needs almost nothing new
+
+Faculty are already `teachers` rows (or `users`, post-rename) with `role='teacher'`, `school_id`, `approval_status`, plus the fields you added for registration: mobile, employee code, years of experience, qualification. `teacher_subjects` already holds what they teach.
+
+The only addition worth making is a teaching assignment, so a faculty profile can show "teaches Science to 8A and 8B" rather than just "teaches Science to Class 8":
+
+```python
+class TeachingAssignment(Base):
+    __tablename__ = "teaching_assignments"
+    __table_args__ = (
+        UniqueConstraint("teacher_id", "class_section_id", "subject_id"),
+        Index("idx_assignments_section", "class_section_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+    )
+    class_section_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("class_sections.id", ondelete="CASCADE")
+    )
+    subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("subjects.id"))
+```
+
+This also gives you the rule for teacher-level access control: a teacher may see students in sections they're assigned to, and no others.
+
+### Attendance — the one student feature that earns its place
+
+Your original problem statement was low student attendance. A directory of names doesn't address that; an attendance record does, and it's what makes the student profile worth opening.
+
+```python
+class AttendanceRecord(Base):
+    __tablename__ = "attendance_records"
+    __table_args__ = (
+        UniqueConstraint("enrollment_id", "date"),
+        Index("idx_attendance_section_date", "class_section_id", "date"),
+        CheckConstraint("status IN ('present','absent','late','excused')",
+                        name="chk_attendance_status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    enrollment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("student_enrollments.id", ondelete="CASCADE")
+    )
+    class_section_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("class_sections.id", ondelete="CASCADE")
+    )
+    date: Mapped[date]
+    status: Mapped[str]
+    marked_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+```
+
+One row per student per day is the right grain — it grows at roughly 45 students × 200 school days × sections per year, which is trivially small for Postgres, and it lets you compute any rollup you need later.
+
+**Don't compute attendance percentages on the fly for a roster of 45.** That's 45 aggregate queries per page load. Either compute the whole section's summary in one grouped query, or keep a small `attendance_summaries` rollup table refreshed nightly.
+
+---
+
+## 3. Data minimisation — decide the field list deliberately
+
+Everything above is intentionally narrow. Government MIS forms collect date of birth, address, caste category, Aadhaar, parent occupation, bank details. Do not mirror that form.
+
+For each field, ask: *which screen in Medha renders this, and what decision does it change?* If there's no answer, it doesn't go in the schema. Under India's DPDP Act, children's data carries heightened obligations — the cheapest way to comply is to hold less of it.
+
+Specifically, I'd leave out for now: date of birth, address, caste/category, Aadhaar or any government ID, parent occupation, bank/scholarship details. If a real requirement appears later, add the column then, with a clear purpose attached.
+
+---
+
+## 4. Routes
+
+```
+/principal
+  /overview                          stat cards, pending approvals
+  /students
+    /                                class section grid
+    /classes/[sectionId]             roster
+    /[studentId]                     student profile
+  /faculty
+    /                                faculty list
+    /[teacherId]                     faculty profile
+  /approvals                         existing pending-teacher queue
+```
+
+Keep approvals where they are — it's a queue, not a directory, and folding it into Faculty muddles "people who work here" with "people asking to."
+
+---
+
+## 5. API
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/principal/overview` | counts: students, faculty, sections, pending |
+| GET | `/principal/sections` | sections for current year + student count + class teacher |
+| GET | `/principal/sections/{id}/students` | roster: roll, name, guardian, attendance % |
+| GET | `/principal/students/{id}` | profile + enrolment + guardian + attendance summary |
+| GET | `/principal/faculty` | approved teachers + subjects + sections taught |
+| GET | `/principal/faculty/{id}` | profile + assignments + registration details |
+| POST | `/principal/sections` | create a section |
+| PATCH | `/principal/sections/{id}` | assign class teacher |
+| POST | `/principal/students` | add a student |
+| POST | `/principal/students/bulk` | CSV import (see below) |
+
+**Build the CSV import early.** No principal will hand-enter 400 students through a web form. Without bulk import the student directory is a feature nobody populates, and an empty directory is worse than no directory. Accept a CSV of name, admission number, roll, section, guardian name, guardian phone; validate row-by-row; report failures with line numbers rather than aborting the whole file.
+
+---
+
+## 6. Access control
+
+The rule, enforced in the **repository layer**, not the router:
+
+- **Principal** — all sections, students, and faculty where `school_id = their school`. Never another school's.
+- **Teacher** — students only in sections they hold via `teaching_assignments` or `class_sections.class_teacher_id`. A Class 8 Science teacher has no business reading Class 6's roster.
+- **Admin** — aggregate counts across schools, not individual student records. There's no admin screen that needs a child's name, so don't build the query that returns one.
+
+Every principal and teacher query takes the caller's `school_id` (and for teachers, their section IDs) as a mandatory argument. Router-level checks get forgotten on the next endpoint; repository-level ones can't be.
+
+---
+
+## 7. Build order
+
+1. `academic_years`, `class_sections`, `students`, `student_enrollments` + migration.
+2. Seed one academic year and two sections for your test school.
+3. `/principal/sections` and `/principal/sections/{id}/students` + the two screens.
+4. Student profile (without attendance — just identity and enrolment).
+5. Faculty list and profile — mostly reads from tables you already have.
+6. CSV bulk import.
+7. `teaching_assignments`, then attendance.
+
+Steps 1–5 give a working directory. Attendance is the piece that makes it matter, but it needs the directory populated first, so don't invert the order.
+
+---

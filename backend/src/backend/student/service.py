@@ -70,6 +70,8 @@ def register(db: Session, payload: StudentRegisterIn) -> StudentRegisterOut:
     student.school_id = payload.school_id
     student.grade_id = payload.grade_id
     student.roll_number = payload.roll_number
+    student.guardian_name = payload.guardian_name
+    student.guardian_phone = payload.guardian_phone
     student.email = None
     student.password_hash = None
     student.approval_status = "pending"

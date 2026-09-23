@@ -194,15 +194,18 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     font-synthesis-weight: none;
     -webkit-font-smoothing: antialiased;
   }
+
   html {
     @apply font-sans;
     scroll-behavior: smooth;
   }
+
   /* Serif headings everywhere — utility weight classes (font-medium,
      font-semibold, the landing's `.display`) still win where set. */
   h1,
@@ -328,6 +331,7 @@
 
 @utility grain {
   position: relative;
+
   &::after {
     content: "";
     position: absolute;
@@ -379,11 +383,13 @@
 }
 
 @keyframes medha-breathe {
+
   0%,
   100% {
     opacity: 0.55;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.85;
     transform: scale(1.045);
@@ -409,7 +415,9 @@
    --hairline/--muted-foreground) via a hue-bucketed recolor
    pass -- see the port plan for the mapping used.
    ========================================================= */
-.medha-landing, .mlogin-root, .mreg-root {
+.medha-landing,
+.mlogin-root,
+.mreg-root {
   --medha-blue: var(--terracotta);
   --medha-green: var(--sage);
   --medha-orange: var(--gold);
@@ -578,12 +586,10 @@
   min-height: 465px;
   overflow: hidden;
   background:
-    linear-gradient(
-      110deg,
+    linear-gradient(110deg,
       oklch(1.000 0.000 85.0) 0%,
       oklch(0.987 0.005 85.0) 45%,
-      oklch(0.969 0.011 85.0) 100%
-    );
+      oklch(0.969 0.011 85.0) 100%);
 }
 
 .hero-heritage-photo {
@@ -593,12 +599,10 @@
   width: 54%;
   height: 100%;
   background:
-    linear-gradient(
-      90deg,
+    linear-gradient(90deg,
       oklch(0.987 0.005 85.0 / 0.98) 0%,
       oklch(0.987 0.005 85.0 / 0.72) 34%,
-      oklch(0.987 0.005 85.0 / 0.20) 100%
-    ),
+      oklch(0.987 0.005 85.0 / 0.20) 100%),
     url("/landing/hero-composition.jpg") center / cover no-repeat;
   opacity: 0.35;
 }
@@ -960,12 +964,10 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(
-      90deg,
+    linear-gradient(90deg,
       oklch(0.244 0.057 40.0 / 0.98),
       oklch(0.244 0.057 40.0 / 0.80),
-      oklch(0.244 0.057 40.0 / 0.95)
-    );
+      oklch(0.244 0.057 40.0 / 0.95));
 }
 
 .heritage-inner {
@@ -2643,7 +2645,7 @@
   line-height: 1.7;
 }
 
-.footer-about > span {
+.footer-about>span {
   color: oklch(0.584 0.038 78.0);
   font-size: 8px;
 }
@@ -2655,7 +2657,7 @@
 }
 
 .footer a,
-.footer div > span {
+.footer div>span {
   display: block;
   margin-bottom: 9px;
   color: oklch(0.729 0.038 78.0);
@@ -3481,6 +3483,7 @@
     padding: 24px 20px 28px;
   }
 }
+
 /* ------------------------------------------------------------------ */
 /* Print: isolate a document (.print-region) from the app shell.      */
 /* The Print button (generation-toolbar.tsx) adds `.printing` to      */
@@ -3515,9 +3518,9 @@
   /* Let every wrapper between <body> and the region grow so the whole
      document prints, not just the first screen. */
   body.printing .app-shell,
-  body.printing .app-shell > div,
+  body.printing .app-shell>div,
   body.printing main,
-  body.printing main > div {
+  body.printing main>div {
     display: block !important;
     overflow: visible !important;
     height: auto !important;
@@ -3536,7 +3539,7 @@
   }
 
   /* Flatten the card chrome so the page reads as a document. */
-  body.printing .print-region > div {
+  body.printing .print-region>div {
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
@@ -3546,4 +3549,24 @@
   body.printing .print\:hidden {
     display: none !important;
   }
+}
+
+@keyframes scan-laser {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0.8;
+  }
+}
+
+.animate-scan-laser {
+  animation: scan-laser 2s cubic-bezier(0.4, 0, 0.6, 1) infinite alternate;
 }

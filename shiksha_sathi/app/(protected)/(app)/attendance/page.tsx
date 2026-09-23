@@ -1,146 +1,202 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
-import { AttendanceHistory } from "@/components/attendance/attendance-history";
 import { AttendanceSheet } from "@/components/attendance/attendance-sheet";
-import { RosterManager } from "@/components/attendance/roster-manager";
+import { GuardianCallsPanel } from "@/components/attendance/guardian-calls-panel";
+import { LiveCallModal } from "@/components/attendance/live-call-modal";
 import { Select } from "@/components/ui/select";
-import { daySummary, todayISO, useAttendance } from "@/lib/attendance-store";
-import { cn } from "@/lib/utils";
-
-type Tab = "take" | "roster" | "history";
-const TABS: { key: Tab; label: string }[] = [
-  { key: "take", label: "Take attendance" },
-  { key: "roster", label: "Roster" },
-  { key: "history", label: "History" },
-];
+import {
+  type AbsenceCall,
+  type AttendanceDay,
+  type AttendanceStatus,
+  getAbsenceCalls,
+  getAttendance,
+  getProfile,
+  markAttendance,
+  type Profile,
+} from "@/lib/api";
+import { todayISO } from "@/lib/attendance-store";
+import { useAuth } from "@/lib/auth-context";
 
 export default function AttendancePage() {
-  const att = useAttendance();
-  const { data, ready } = att;
+  const { accessToken } = useAuth();
 
-  const [tab, setTab] = useState<Tab>("take");
-  // the teacher's explicit pick; falls back to the first class when unset or stale
-  const [picked, setPicked] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [gradeId, setGradeId] = useState<string | null>(null);
   const [date, setDate] = useState(todayISO());
+  const [day, setDay] = useState<AttendanceDay | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [calls, setCalls] = useState<AbsenceCall[]>([]);
+  const [activeCallStudent, setActiveCallStudent] = useState<{
+    id: string;
+    name: string;
+    phone?: string | null;
+  } | null>(null);
+  const requestKeyRef = useRef<string | null>(null);
 
-  const activeId =
-    picked && data.classes.some((c) => c.id === picked)
-      ? picked
-      : (data.classes[0]?.id ?? null);
-  const setActiveId = setPicked;
+  useEffect(() => {
+    if (!accessToken) return;
+    let active = true;
+    getProfile(accessToken)
+      .then((p) => {
+        if (!active) return;
+        setProfile(p);
+        setGradeId((cur) => cur ?? p.subjects[0]?.grade_id ?? null);
+      })
+      .catch((e: unknown) => {
+        toast.error(e instanceof Error ? e.message : "Could not load your classes.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
 
-  const activeClass = data.classes.find((c) => c.id === activeId) ?? null;
-  const dayMarks = (activeId && data.records[activeId]?.[date]) || {};
-  const summary = daySummary(data, activeId, date);
+  useEffect(() => {
+    if (!accessToken || !gradeId) return;
+    const key = `${gradeId}:${date}`;
+    requestKeyRef.current = key;
+    getAttendance(accessToken, gradeId, date)
+      .then((result) => {
+        if (requestKeyRef.current === key) setDay(result);
+      })
+      .catch((e: unknown) => {
+        toast.error(e instanceof Error ? e.message : "Could not load attendance.");
+      });
+  }, [accessToken, gradeId, date]);
 
-  if (!ready) {
-    return (
-      <main className="flex flex-1 items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-      </main>
-    );
+  const loading = !day || day.grade_id !== gradeId || day.date !== date;
+
+  // Guardian calls only ever fire for today's absences (see
+  // attendance/service.py::mark_day) -- polling on other dates would just
+  // show an empty list forever, so skip it entirely there.
+  useEffect(() => {
+    if (!accessToken || !gradeId || date !== todayISO()) {
+      return;
+    }
+    let active = true;
+    const load = () => {
+      getAbsenceCalls(accessToken, gradeId)
+        .then((rows) => {
+          if (active) setCalls(rows.filter((c) => c.attendance_date === date));
+        })
+        .catch(() => {
+          // quiet -- this panel is a bonus view, not the primary flow
+        });
+    };
+    load();
+    const interval = setInterval(load, 4000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [accessToken, gradeId, date]);
+
+  const grades = Array.from(
+    new Map((profile?.subjects ?? []).map((s) => [s.grade_id, s.grade_label])).entries(),
+  ).map(([value, label]) => ({ value, label }));
+
+  async function mark(studentId: string, status: AttendanceStatus) {
+    if (!gradeId) return;
+    setBusyId(studentId);
+    try {
+      const studentObj = day?.students.find((s) => s.student_id === studentId);
+      const updated = await markAttendance(accessToken, {
+        grade_id: gradeId,
+        date,
+        records: [{ student_id: studentId, status }],
+      });
+      setDay(updated);
+
+      if (status === "absent") {
+        setActiveCallStudent({
+          id: studentId,
+          name: studentObj?.full_name || "Student",
+          phone: "+917050020815",
+        });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save attendance.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
-  const noClasses = data.classes.length === 0;
+  function handleCallComplete(reasonText: string, transcriptText: string) {
+    if (!activeCallStudent) return;
+    const newCall: AbsenceCall = {
+      id: `sim-${activeCallStudent.id}-${Date.now()}`,
+      student_id: activeCallStudent.id,
+      student_name: activeCallStudent.name,
+      guardian_phone: activeCallStudent.phone || "+917050020815",
+      status: "completed",
+      reason_text: reasonText,
+      failure_reason: null,
+      transcript: transcriptText,
+      attendance_date: date,
+      created_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    };
+
+    setCalls((prev) => [newCall, ...prev.filter((c) => c.student_id !== activeCallStudent.id)]);
+  }
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <div className="border-b border-border px-5 py-4">
         <h1 className="text-[15px]">Attendance</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Mark it each day — kept on this device for now.
+          Mark today&apos;s attendance for a class.
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors",
-                tab === t.key
-                  ? "border-transparent bg-accent text-accent-foreground"
-                  : "border-border text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-          {!noClasses && (
-            <div className="ml-auto flex items-center gap-2">
-              <Select
-                ariaLabel="Class"
-                value={activeId}
-                onValueChange={setActiveId}
-                options={data.classes.map((c) => ({ value: c.id, label: c.name }))}
-                className="h-8"
-              />
-              {tab === "take" && (
-                <input
-                  type="date"
-                  value={date}
-                  max={todayISO()}
-                  onChange={(e) => setDate(e.target.value || todayISO())}
-                  className="h-8 rounded-lg border border-border bg-background px-2 text-xs outline-none focus-visible:border-ring"
-                />
-              )}
-            </div>
-          )}
-        </div>
+        {grades.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Select
+              ariaLabel="Class"
+              value={gradeId}
+              onValueChange={setGradeId}
+              options={grades}
+              className="h-8"
+            />
+            <input
+              type="date"
+              value={date}
+              max={todayISO()}
+              onChange={(e) => setDate(e.target.value || todayISO())}
+              className="h-8 rounded-lg border border-border bg-background px-2 text-xs outline-none focus-visible:border-ring"
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
         <div className="mx-auto w-full max-w-2xl">
-          {noClasses && tab !== "roster" ? (
-            <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border p-6">
-              <p className="text-sm text-muted-foreground">
-                No classes yet. Create one to start taking attendance.
-              </p>
-              <button
-                type="button"
-                onClick={() => setTab("roster")}
-                className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
-              >
-                Go to Roster
-              </button>
+          {grades.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              No classes assigned to you yet.
+            </p>
+          ) : loading || !day ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
-          ) : tab === "take" ? (
-            <AttendanceSheet
-              students={activeClass?.students ?? []}
-              day={dayMarks}
-              summary={summary}
-              onMark={(sid, status) => activeId && att.setMark(activeId, date, sid, status)}
-              onMarkRemaining={(status) =>
-                activeId && att.markRemaining(activeId, date, status)
-              }
-              onClear={() => activeId && att.clearDay(activeId, date)}
-            />
-          ) : tab === "roster" ? (
-            <RosterManager
-              classes={data.classes}
-              activeId={activeId}
-              onAddClass={(name) => setActiveId(att.addClass(name))}
-              onRenameClass={att.renameClass}
-              onRemoveClass={att.removeClass}
-              onSelectClass={setActiveId}
-              onAddStudents={att.addStudents}
-              onRemoveStudent={att.removeStudent}
-            />
           ) : (
-            <AttendanceHistory
-              data={data}
-              cls={activeClass}
-              onOpenDate={(d) => {
-                setDate(d);
-                setTab("take");
-              }}
-            />
+            <>
+              <AttendanceSheet students={day.students} busyId={busyId} onMark={mark} />
+              <GuardianCallsPanel calls={date === todayISO() ? calls : []} />
+            </>
           )}
         </div>
       </div>
+
+      {/* Simulated Automated Calling Modal */}
+      <LiveCallModal
+        isOpen={!!activeCallStudent}
+        onClose={() => setActiveCallStudent(null)}
+        studentName={activeCallStudent?.name || ""}
+        guardianPhone={activeCallStudent?.phone}
+        onCompleteCall={handleCallComplete}
+      />
     </main>
   );
 }

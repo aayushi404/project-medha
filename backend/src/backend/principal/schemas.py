@@ -11,6 +11,9 @@ __all__ = [
     "PendingTeacher",
     "TeacherRosterItem",
     "StudentRosterItem",
+    "ClassSectionSummary",
+    "RosterStudentItem",
+    "StudentProfile",
     "RejectIn",
     "ApprovalResult",
 ]
@@ -42,3 +45,33 @@ class TeacherRosterItem(BaseModel):
     employee_code: str | None
     years_of_experience: int | None
     approved_at: datetime | None
+
+
+class ClassSectionSummary(BaseModel):
+    id: uuid.UUID
+    grade_label: str
+    section: str
+    student_count: int
+    class_teacher_name: str | None
+
+
+class RosterStudentItem(BaseModel):
+    id: uuid.UUID
+    roll_number: int | None
+    full_name: str
+    guardian_name: str | None
+
+
+class StudentProfile(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    admission_number: str | None
+    status: str
+    grade_label: str | None
+    section: str | None
+    roll_number: int | None
+    academic_year_label: str | None
+    class_teacher_name: str | None
+    guardian_name: str | None
+    guardian_relation: str | None
+    guardian_phone: str | None

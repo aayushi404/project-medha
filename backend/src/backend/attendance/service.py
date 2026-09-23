@@ -8,10 +8,16 @@ import uuid
 from datetime import date as date_
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.attendance.schemas import AttendanceDayOut, AttendanceMarkIn, AttendanceStudentOut
+from backend.absence_calls.service import queue_call_for_absence
+from backend.attendance.schemas import (
+    AttendanceDayOut,
+    AttendanceMarkIn,
+    AttendanceMineItem,
+    AttendanceStudentOut,
+)
 from backend.db.models import AttendanceRecord, Grade, Teacher
 
 
@@ -76,10 +82,22 @@ def get_day(db: Session, teacher: Teacher, grade_id: uuid.UUID, on_date: date_) 
     )
 
 
-def mark_day(db: Session, teacher: Teacher, payload: AttendanceMarkIn) -> AttendanceDayOut:
+def mark_day(
+    db: Session,
+    teacher: Teacher,
+    payload: AttendanceMarkIn,
+    background_tasks: BackgroundTasks | None = None,
+) -> AttendanceDayOut:
     school_id = _school_id(teacher)
     _scoped_grade(db, payload.grade_id)
     valid_ids = {s.id for s in _roster(db, school_id, payload.grade_id)}
+
+    # Rows that just transitioned into "absent" for the first time -- these,
+    # and only these, get an instant guardian call (see queue_call_for_absence).
+    # A re-save of an already-absent row, or backdating a past day, doesn't
+    # re-ring the phone.
+    newly_absent: list[AttendanceRecord] = []
+    is_today = payload.date == date_.today()
 
     for record in payload.records:
         if record.student_id not in valid_ids:
@@ -93,18 +111,38 @@ def mark_day(db: Session, teacher: Teacher, payload: AttendanceMarkIn) -> Attend
             .first()
         )
         if existing is not None:
+            was_absent = existing.status == "absent"
             existing.status = record.status
             existing.marked_by_teacher_id = teacher.id
             existing.updated_at = datetime.now(timezone.utc)
+            row = existing
         else:
-            db.add(
-                AttendanceRecord(
-                    student_id=record.student_id,
-                    marked_by_teacher_id=teacher.id,
-                    attendance_date=payload.date,
-                    status=record.status,
-                )
+            was_absent = False
+            row = AttendanceRecord(
+                student_id=record.student_id,
+                marked_by_teacher_id=teacher.id,
+                attendance_date=payload.date,
+                status=record.status,
             )
+            db.add(row)
+
+        if is_today and record.status == "absent" and not was_absent:
+            newly_absent.append(row)
+
     db.commit()
 
+    if background_tasks is not None:
+        for row in newly_absent:
+            background_tasks.add_task(queue_call_for_absence, row.id)
+
     return get_day(db, teacher, payload.grade_id, payload.date)
+
+
+def list_for_student(db: Session, student: Teacher) -> list[AttendanceMineItem]:
+    rows = (
+        db.query(AttendanceRecord)
+        .filter(AttendanceRecord.student_id == student.id)
+        .order_by(AttendanceRecord.attendance_date.desc())
+        .all()
+    )
+    return [AttendanceMineItem(date=r.attendance_date, status=r.status) for r in rows]

@@ -530,6 +530,50 @@ export const rejectTeacher = (token: string | null, id: string, reason: string) 
     apiFetch(`/principal/teachers/${id}/reject`, { method: "POST", token, body: { reason } }),
   );
 
+// --- principal: class sections / student directory ---
+// A separate domain from `StudentRosterItem` above: that's the login-capable
+// `teachers` role='student' roster; this is the principal-managed school
+// records roster (admission no., guardian contact), independent of login.
+
+export type ClassSectionSummary = {
+  id: string;
+  grade_label: string;
+  section: string;
+  student_count: number;
+  class_teacher_name: string | null;
+};
+
+export type RosterStudentItem = {
+  id: string;
+  roll_number: number | null;
+  full_name: string;
+  guardian_name: string | null;
+};
+
+export type StudentProfile = {
+  id: string;
+  full_name: string;
+  admission_number: string | null;
+  status: string;
+  grade_label: string | null;
+  section: string | null;
+  roll_number: number | null;
+  academic_year_label: string | null;
+  class_teacher_name: string | null;
+  guardian_name: string | null;
+  guardian_relation: string | null;
+  guardian_phone: string | null;
+};
+
+export const getClassSections = (token: string | null) =>
+  json<ClassSectionSummary[]>(apiFetch("/principal/sections", { token }));
+
+export const getSectionRoster = (token: string | null, sectionId: string) =>
+  json<RosterStudentItem[]>(apiFetch(`/principal/sections/${sectionId}/students`, { token }));
+
+export const getStudentProfile = (token: string | null, studentId: string) =>
+  json<StudentProfile>(apiFetch(`/principal/students/${studentId}`, { token }));
+
 // ---------------------------------------------------------------------------
 // Student role. Two-phase onboarding: register (class + roll number, no
 // credential) -> a teacher approves -> activate (set email + password) ->
@@ -541,6 +585,10 @@ export type StudentRegisterInput = {
   school_id: string;
   grade_id: string;
   roll_number: string;
+  // Optional: the number the absence-calling feature dials if this student
+  // is ever marked absent.
+  guardian_name?: string | null;
+  guardian_phone?: string | null;
 };
 
 export type StudentActivateInput = {
@@ -975,11 +1023,149 @@ export type ReportCardMarkInput = {
   remarks?: string | null;
 };
 
+export type StudentMarkItemInput = {
+  student_id: string;
+  marks_obtained: number;
+  remarks?: string | null;
+};
+
+export type BulkReportCardMarksInput = {
+  grade_id: string;
+  subject_id: string;
+  term: string;
+  max_marks: number;
+  marks: StudentMarkItemInput[];
+};
+
+export type BulkReportCardMarksResult = {
+  saved_count: number;
+  marks: ReportCardMark[];
+};
+
+export type OMRUploadResult = {
+  file_name: string;
+  file_size_bytes: number;
+  status: string;
+  message: string;
+};
+
+export type BubbleScore = {
+  digit: number;
+  fill_ratio: number;
+  is_filled: boolean;
+};
+
+export type DigitEvaluation = {
+  place: "hundreds" | "tens" | "units";
+  selected_digit: number | null;
+  confidence: number;
+  status: "valid" | "ambiguous" | "missing";
+  scores: BubbleScore[];
+};
+
+export type StudentOMRResult = {
+  roll_number: number;
+  student_id: string | null;
+  student_name: string | null;
+  hundreds: number | null;
+  tens: number | null;
+  units: number | null;
+  detected_marks: number | null;
+  max_marks: number;
+  status: "valid" | "ambiguous" | "missing" | "invalid_max";
+  confidence: number;
+  issues: string[];
+  digit_evaluations: {
+    hundreds?: DigitEvaluation;
+    tens?: DigitEvaluation;
+    units?: DigitEvaluation;
+  };
+};
+
+export type OMRPipelineSummary = {
+  total_rows: number;
+  valid_count: number;
+  needs_review_count: number;
+  missing_count: number;
+};
+
+export type OMREvaluationResult = {
+  processed: boolean;
+  page_count: number;
+  summary: OMRPipelineSummary;
+  results: StudentOMRResult[];
+  debug_job_id?: string | null;
+  message: string;
+};
+
 export const upsertReportCardMark = (token: string | null, body: ReportCardMarkInput) =>
   json<ReportCardMark>(apiFetch("/report-card/marks", { method: "POST", token, body }));
 
+export const bulkUpsertReportCardMarks = (
+  token: string | null,
+  body: BulkReportCardMarksInput
+) =>
+  json<BulkReportCardMarksResult>(
+    apiFetch("/report-card/bulk-marks", { method: "POST", token, body })
+  );
+
+export const getClassReportCardMarks = (
+  token: string | null,
+  gradeId: string,
+  subjectId: string,
+  term: string
+) =>
+  json<ReportCardMark[]>(
+    apiFetch(
+      `/report-card/class-marks?grade_id=${gradeId}&subject_id=${subjectId}&term=${encodeURIComponent(term)}`,
+      { token }
+    )
+  );
+
+export const uploadOMRSheet = async (token: string | null, file: File): Promise<OMRUploadResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return json<OMRUploadResult>(
+    apiFetch("/report-card/omr/upload", {
+      method: "POST",
+      token,
+      body: formData,
+    })
+  );
+};
+
+export const evaluateOMRSheet = async (
+  token: string | null,
+  file: File,
+  gradeId: string,
+  maxMarks: number = 100
+): Promise<OMREvaluationResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return json<OMREvaluationResult>(
+    apiFetch(`/report-card/omr/evaluate?grade_id=${gradeId}&max_marks=${maxMarks}`, {
+      method: "POST",
+      token,
+      body: formData,
+    })
+  );
+};
+
 export const getReportCard = (token: string | null, studentId: string) =>
   json<ReportCard>(apiFetch(`/report-card/${studentId}`, { token }));
+
+export const deleteReportCardMark = (
+  token: string | null,
+  studentId: string,
+  subjectId: string,
+  term: string
+) =>
+  apiFetch(`/report-card/marks/${studentId}/${subjectId}/${encodeURIComponent(term)}`, {
+    method: "DELETE",
+    token,
+  });
+
+
 
 // ---------------------------------------------------------------------------
 // E-library: curated links (not file storage), added by a teacher or
@@ -1115,5 +1301,80 @@ export const addPracticeQuestion = (token: string | null, body: PracticeQuestion
 export const deletePracticeQuestion = async (token: string | null, id: string) => {
   const res = await apiFetch(`/practice/${id}`, { method: "DELETE", token });
   if (!res.ok) throw new Error(await extractErrorMessage(res));
+};
+
+// ---------------------------------------------------------------------------
+// Attendance: a teacher marks present/absent for their school's approved
+// roster in one grade at a time; a student sees their own history.
+// ---------------------------------------------------------------------------
+
+export type AttendanceStatus = "present" | "absent";
+
+export type AttendanceStudent = {
+  student_id: string;
+  full_name: string;
+  roll_number: string | null;
+  status: AttendanceStatus | null; // null = not yet marked for this date
+};
+
+export type AttendanceDay = {
+  grade_id: string;
+  grade_label: string;
+  date: string;
+  students: AttendanceStudent[];
+};
+
+export type AttendanceRecordInput = { student_id: string; status: AttendanceStatus };
+
+export const getAttendance = (token: string | null, gradeId: string, date?: string) => {
+  const qs = new URLSearchParams({ grade_id: gradeId });
+  if (date) qs.set("date", date);
+  return json<AttendanceDay>(apiFetch(`/attendance?${qs}`, { token }));
+};
+
+export const markAttendance = (
+  token: string | null,
+  body: { grade_id: string; date: string; records: AttendanceRecordInput[] },
+) => json<AttendanceDay>(apiFetch("/attendance", { method: "POST", token, body }));
+
+export type AttendanceMineItem = { date: string; status: AttendanceStatus };
+
+export const getMyAttendance = (token: string | null) =>
+  json<AttendanceMineItem[]>(apiFetch("/attendance/mine", { token }));
+
+// ---------------------------------------------------------------------------
+// Absence calling: the instant an absent mark is saved, the backend queues an
+// AI phone call to the guardian asking why -- this just reads back the
+// outcome log (see backend/src/backend/absence_calls/).
+// ---------------------------------------------------------------------------
+
+export type AbsenceCallStatus =
+  | "queued"
+  | "no_guardian_phone"
+  | "not_configured"
+  | "dialing"
+  | "ringing"
+  | "in_progress"
+  | "completed"
+  | "no_answer"
+  | "failed";
+
+export type AbsenceCall = {
+  id: string;
+  student_id: string;
+  student_name: string;
+  guardian_phone: string | null;
+  status: AbsenceCallStatus;
+  reason_text: string | null;
+  failure_reason: string | null;
+  transcript: string | null;
+  attendance_date: string;
+  created_at: string;
+  completed_at: string | null;
+};
+
+export const getAbsenceCalls = (token: string | null, gradeId?: string) => {
+  const qs = gradeId ? `?grade_id=${gradeId}` : "";
+  return json<AbsenceCall[]>(apiFetch(`/absence-calls${qs}`, { token }));
 };
 

@@ -3,6 +3,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.absence_calls.router import router as absence_calls_router
 from backend.admin.router import router as admin_router
 from backend.ask.router import router as ask_router
 from backend.attendance.router import router as attendance_router
@@ -89,6 +90,7 @@ app.include_router(modules_router)
 app.include_router(library_router)
 app.include_router(generation_router)
 app.include_router(attendance_router)
+app.include_router(absence_calls_router)
 app.include_router(notifications_router)
 app.include_router(homework_router)
 app.include_router(timetable_router)

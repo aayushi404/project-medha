@@ -393,12 +393,28 @@ function BooksView() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toast(copy.student.downloadSoon)}
+                    onClick={() => {
+                      if (!selected.pdfUrl) {
+                        toast(copy.student.downloadSoon);
+                        return;
+                      }
+                      const a = document.createElement("a");
+                      a.href = selected.pdfUrl;
+                      a.download = `${selected.title}.pdf`;
+                      a.click();
+                    }}
                   >
                     <Download className="size-3.5" />
                     {copy.student.downloadBtn}
                   </Button>
-                  <Button size="sm" onClick={() => toast(copy.student.readerSoon)}>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      selected.pdfUrl
+                        ? window.open(selected.pdfUrl, "_blank", "noopener,noreferrer")
+                        : toast(copy.student.readerSoon)
+                    }
+                  >
                     <BookOpen className="size-3.5" />
                     {copy.student.readOnlineBtn}
                   </Button>
