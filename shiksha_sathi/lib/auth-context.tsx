@@ -47,11 +47,24 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // minutes early so a teacher mid-conversation never hits a surprise 401.
 const REFRESH_MARGIN_MS = 2 * 60 * 1000;
 
+// When a refresh fails for a reason other than "your session is invalid"
+// (offline, a phone waking from sleep, or the Render free-tier backend taking
+// 30-60 s to spin up), retry instead of logging the user out. ~60 s total.
+const REFRESH_RETRY_DELAYS_MS = [1_000, 2_000, 4_000, 8_000, 15_000, 30_000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+class SessionRejected extends Error {}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // When the current access token expires (epoch ms). Background tabs and a
+  // backgrounded Android app pause timers, so on returning to the app we
+  // compare against this instead of trusting the timer to have fired.
+  const accessExpiresAt = useRef(0);
   // Indirection to let scheduleRefresh call silentRefresh without a forward
   // reference (silentRefresh is declared later and itself depends on
   // scheduleRefresh) -- kept in sync by the effect below.
@@ -85,9 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const establishSession = useCallback(
     async (tokens: TokenOut) => {
       const meRes = await apiFetch("/auth/me", { token: tokens.access_token });
+      if (meRes.status === 401 || meRes.status === 403) throw new SessionRejected();
       if (!meRes.ok) throw new Error("Could not load your profile.");
       const me = (await meRes.json()) as Teacher;
 
+      accessExpiresAt.current = Date.now() + tokens.expires_in * 1000;
       setAccessToken(tokens.access_token);
       setTeacher(me);
       setStatus("authenticated");
@@ -108,14 +123,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const run = async () => {
       try {
-        const res = await apiFetch("/auth/refresh", { method: "POST" });
-        if (!res.ok) {
-          clearSession();
-          return;
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const res = await apiFetch("/auth/refresh", { method: "POST" });
+            // 401/403: no cookie, or the session was revoked/expired -- the
+            // only case where signing in again is genuinely required.
+            if (res.status === 401 || res.status === 403) throw new SessionRejected();
+            if (res.ok) {
+              await establishSession((await res.json()) as TokenOut);
+              return;
+            }
+            // 5xx (e.g. backend still waking up): fall through and retry.
+          } catch (err) {
+            if (err instanceof SessionRejected) {
+              clearSession();
+              return;
+            }
+            // Network error: fall through and retry.
+          }
+          if (attempt >= REFRESH_RETRY_DELAYS_MS.length) {
+            clearSession();
+            return;
+          }
+          await sleep(REFRESH_RETRY_DELAYS_MS[attempt]);
         }
-        await establishSession((await res.json()) as TokenOut);
-      } catch {
-        clearSession();
       } finally {
         inFlightRefresh.current = null;
       }
@@ -139,6 +170,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void silentRefresh();
     return clearRefreshTimer;
   }, [silentRefresh, clearRefreshTimer]);
+
+  // Coming back to the app (switching back from another app, unlocking the
+  // phone): timers were paused while hidden, so the access token may already
+  // be stale. Refresh right away rather than letting the next API call 401.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (status !== "authenticated") return;
+      if (Date.now() >= accessExpiresAt.current - REFRESH_MARGIN_MS) void silentRefresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [status, silentRefresh]);
 
   const login = useCallback(
     async (email: string, password: string, role: LoginRole) => {
