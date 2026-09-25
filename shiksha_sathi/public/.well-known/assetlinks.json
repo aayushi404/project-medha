@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.medha.education.medha_app",
+      "sha256_cert_fingerprints": [
+        "34:74:B8:89:F9:95:33:D3:24:19:6B:00:EA:FE:F2:18:67:5F:55:AE:39:60:07:94:22:34:B1:0D:FB:DE:65:4E"
+      ]
+    }
+  }
+]
