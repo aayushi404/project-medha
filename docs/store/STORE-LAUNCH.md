@@ -84,11 +84,13 @@ AI assistant; users do not message each other publicly.
 | Personal info → Phone number | Yes | App functionality (guardian numbers for absence calls; teacher phone) | Optional |
 | Personal info → Other info | Yes | App functionality (school, role, class, roll no., guardian name) | Required |
 | Audio → Voice or sound recordings | Yes, **processed ephemerally** (not stored) | App functionality (voice questions) | Optional |
+| Photos and videos → Photos | Yes, **processed ephemerally** (not stored) | App functionality (OMR answer-sheet scans) | Optional |
+| Files and docs → Files and docs | Yes, **processed ephemerally** (not stored) | App functionality (OMR answer sheets as PDF) | Optional |
 | App activity → Other user-generated content | Yes | App functionality (questions, chats, generated material) | Required |
 | App activity → Other actions | Yes | App functionality (attendance, marks, fee entries) | Required |
 | Device or other IDs | Yes | App functionality (notification token) | Optional |
 
-Not collected: location, contacts, photos/videos, files, calendar, health,
+Not collected: location, contacts, videos, calendar, health,
 financial/payment info, web browsing, analytics/crash logs.
 
 ## Microsoft Store (Partner Center)

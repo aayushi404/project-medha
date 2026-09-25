@@ -47,6 +47,10 @@ export default function PrivacyPage() {
           store the audio recording.
         </li>
         <li>
+          <strong>Answer sheets</strong> — photos or PDFs of OMR answer sheets a teacher uploads
+          are read on our server to calculate marks. We keep the marks, not the uploaded file.
+        </li>
+        <li>
           <strong>Absence calls</strong> — if a school turns on automated absence calls, we call
           the guardian&rsquo;s phone number and store the call status and a text transcript of the
           call.
