@@ -1,6 +1,6 @@
 {
   "packageId": "com.medha.education.medha_app",
-  "host": "project-medha.vercel.app",
+  "host": "www.projectmedha.online",
   "name": "Medha — AI Teaching Co-pilot",
   "launcherName": "Medha",
   "display": "standalone",
@@ -13,18 +13,18 @@
   "backgroundColor": "#FCF2E6",
   "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "https://project-medha.vercel.app/icons/icon-512.png",
-  "maskableIconUrl": "https://project-medha.vercel.app/icons/icon-maskable-512.png",
+  "iconUrl": "https://www.projectmedha.online/icons/icon-512.png",
+  "maskableIconUrl": "https://www.projectmedha.online/icons/icon-maskable-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./upload-keystore.jks",
     "alias": "upload"
   },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionName": "1.0.1",
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://project-medha.vercel.app/manifest.webmanifest",
+  "webManifestUrl": "https://www.projectmedha.online/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
   "alphaDependencies": {
@@ -33,7 +33,7 @@
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://project-medha.vercel.app/",
+  "fullScopeUrl": "https://www.projectmedha.online/",
   "minSdkVersion": 21,
   "orientation": "any",
   "fingerprints": [],
@@ -43,5 +43,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.0.0"
+  "appVersion": "1.0.1"
 }

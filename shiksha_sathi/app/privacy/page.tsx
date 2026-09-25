@@ -17,7 +17,7 @@ export default function PrivacyPage() {
     >
       <p>
         Medha (&ldquo;we&rdquo;) is an AI teaching assistant for schools in Bihar, available at
-        project-medha.vercel.app and as an app on Google Play and the Microsoft Store. This policy
+        www.projectmedha.online and as an app on Google Play and the Microsoft Store. This policy
         explains what we collect, why, and who we share it with.
       </p>
 

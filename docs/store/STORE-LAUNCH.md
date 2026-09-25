@@ -7,9 +7,9 @@ Images are in this folder. The Android app project is in `android-twa/`.
 
 | What | Link |
 | --- | --- |
-| Website / app | https://project-medha.vercel.app |
-| Privacy policy | https://project-medha.vercel.app/privacy |
-| Account deletion | https://project-medha.vercel.app/delete-account |
+| Website / app | https://www.projectmedha.online |
+| Privacy policy | https://www.projectmedha.online/privacy |
+| Account deletion | https://www.projectmedha.online/delete-account |
 | Contact email | homeofirstt@gmail.com |
 
 ## Store listing text
@@ -50,7 +50,7 @@ Built for low-cost phones and patchy networks. No ads.
 
 ## Play Console → App content
 
-**Privacy policy:** `https://project-medha.vercel.app/privacy`
+**Privacy policy:** `https://www.projectmedha.online/privacy`
 
 **App access:** "All or some functionality is restricted" → add a working demo
 teacher login (e.g. one from `backend/scripts/seed_demo_accounts.py`, if it
@@ -72,7 +72,7 @@ AI assistant; users do not message each other publicly.
 
 - Does your app collect or share user data? **Yes**
 - Is all data encrypted in transit? **Yes** (HTTPS)
-- Can users request data deletion? **Yes** → `https://project-medha.vercel.app/delete-account`
+- Can users request data deletion? **Yes** → `https://www.projectmedha.online/delete-account`
 - Data "shared" with third parties? **No** — Gemini, Claude, Sarvam, Twilio/Exotel,
   Firebase etc. act as *service providers* for Medha, which Google does not count as sharing.
 
@@ -96,7 +96,7 @@ financial/payment info, web browsing, analytics/crash logs.
 1. Apps and games → **New product → MSIX or PWA app** → reserve "Medha".
 2. Product management → **Product Identity** → copy *Package ID*, *Publisher ID*,
    *Publisher display name*.
-3. Go to https://www.pwabuilder.com → enter `https://project-medha.vercel.app` →
+3. Go to https://www.pwabuilder.com → enter `https://www.projectmedha.online` →
    **Package for stores → Windows** → paste the three values → download the zip.
 4. Start a submission → upload the `.msixbundle` **and** `.classic.appxbundle`
    from the zip. Reuse the texts, privacy link and images above (Windows needs
