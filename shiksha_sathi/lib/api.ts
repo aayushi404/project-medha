@@ -1,6 +1,14 @@
 import type { AnswerKey, GenerationType, ParamsFor } from "@/lib/generation-types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// In production the browser talks to the backend through this site's own
+// /api path (proxied to NEXT_PUBLIC_API_URL by a rewrite in next.config.ts).
+// Same-origin means the refresh cookie is first-party, so browsers that block
+// third-party cookies (Safari/iOS, privacy modes) no longer log people out on
+// every reload, and no CORS preflight is needed.
+const API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "/api"
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
 
 export type Role = "admin" | "principal" | "teacher" | "student";
 export type ApprovalStatus = "pending" | "approved" | "rejected";

@@ -18,6 +18,7 @@ from backend.auth.schemas import (
     TokenOut,
 )
 from backend.core import throttle
+from backend.core.api_prefix import api_prefix
 from backend.core.config import REFRESH_TOKEN_EXPIRE_DAYS, settings
 from backend.db.models import Student, Teacher
 from backend.db.session import get_db
@@ -28,7 +29,13 @@ _REFRESH_COOKIE_NAME = "refresh_token"
 _COOKIE_PATH = "/auth"
 
 
-def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+def _cookie_path(request: Request) -> str:
+    # "/api/auth" when reached through the website's /api proxy, so the
+    # browser sends the cookie back on the same prefixed path.
+    return api_prefix(request) + _COOKIE_PATH
+
+
+def _set_refresh_cookie(request: Request, response: Response, refresh_token: str) -> None:
     response.set_cookie(
         key=_REFRESH_COOKIE_NAME,
         value=refresh_token,
@@ -36,15 +43,15 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        path=_COOKIE_PATH,
+        path=_cookie_path(request),
     )
 
 
-def _clear_refresh_cookie(response: Response) -> None:
+def _clear_refresh_cookie(request: Request, response: Response) -> None:
     # match secure/samesite/path so the browser actually drops it cross-site
     response.delete_cookie(
         _REFRESH_COOKIE_NAME,
-        path=_COOKIE_PATH,
+        path=_cookie_path(request),
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
     )
@@ -98,7 +105,7 @@ def login(
         expected_role=payload.role,
         ip=throttle.client_ip(request),
     )
-    _set_refresh_cookie(response, refresh_token)
+    _set_refresh_cookie(request, response, refresh_token)
     return TokenOut(access_token=access_token, expires_in=expires_in)
 
 
@@ -113,7 +120,7 @@ def google_auth(
     access_token, refresh_token, expires_in = service.google_login(
         db, payload.id_token, request.headers.get("user-agent")
     )
-    _set_refresh_cookie(response, refresh_token)
+    _set_refresh_cookie(request, response, refresh_token)
     return TokenOut(access_token=access_token, expires_in=expires_in)
 
 
@@ -128,7 +135,7 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
     access_token, refresh_token, expires_in = service.refresh_session(
         db, raw_refresh_token, request.headers.get("user-agent")
     )
-    _set_refresh_cookie(response, refresh_token)
+    _set_refresh_cookie(request, response, refresh_token)
     return TokenOut(access_token=access_token, expires_in=expires_in)
 
 
@@ -137,17 +144,18 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)) 
     _require_browser_client(request)
     raw_refresh_token = request.cookies.get(_REFRESH_COOKIE_NAME)
     service.logout_session(db, raw_refresh_token)
-    _clear_refresh_cookie(response)
+    _clear_refresh_cookie(request, response)
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
 def logout_all(
+    request: Request,
     response: Response,
     current_actor: Teacher | Student = Depends(get_current_actor),
     db: Session = Depends(get_db),
 ) -> None:
     service.logout_all(db, current_actor)
-    _clear_refresh_cookie(response)
+    _clear_refresh_cookie(request, response)
 
 
 @router.post("/verify-email", response_model=MessageOut)
@@ -196,7 +204,7 @@ def change_password(
     access_token, refresh_token, expires_in = service.change_password(
         db, current_actor, payload.current_password, payload.new_password, request.headers.get("user-agent")
     )
-    _set_refresh_cookie(response, refresh_token)
+    _set_refresh_cookie(request, response, refresh_token)
     return TokenOut(access_token=access_token, expires_in=expires_in)
 
 

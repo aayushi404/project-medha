@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { AuthProvider } from "@/lib/auth-context";
 import { LocaleHtmlLang } from "@/components/app/locale-html-lang";
+import { ServiceWorkerRegister } from "@/components/app/service-worker-register";
 import { Toaster } from "@/components/ui/sonner";
 
 // Manrope carries body copy; Fraunces sets every heading. Both are exposed as
@@ -27,6 +28,9 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "Medha",
   description: "Your AI teaching co-pilot",
+  applicationName: "Medha",
+  appleWebApp: { capable: true, title: "Medha", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
@@ -43,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <LocaleHtmlLang />
+        <ServiceWorkerRegister />
         <AuthProvider>{children}</AuthProvider>
         <Toaster position="top-center" />
       </body>

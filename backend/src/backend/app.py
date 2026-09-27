@@ -9,6 +9,7 @@ from backend.admin.router import router as admin_router
 from backend.ask.router import router as ask_router
 from backend.attendance.router import router as attendance_router
 from backend.auth.router import router as auth_router
+from backend.core.api_prefix import ApiPrefixMiddleware
 from backend.core.config import settings
 from backend.core.context import request_id_ctx
 from backend.core.errors import install_error_handlers
@@ -139,6 +140,9 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Request-ID"],
 )
+# Outermost: strips an optional "/api" prefix before anything routes on the
+# path (see core/api_prefix.py).
+app.add_middleware(ApiPrefixMiddleware)
 
 if settings.allowed_hosts.strip():
     from starlette.middleware.trustedhost import TrustedHostMiddleware
