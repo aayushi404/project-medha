@@ -195,6 +195,12 @@ def seed_demo_data():
         ]
 
         seeded_teachers = []
+        # A teacher may be class_teacher of at most one section
+        # (idx_one_section_per_class_teacher) -- track who's already got one
+        # so a teacher touching several grades doesn't collide across sections.
+        class_teacher_assigned = {
+            s.class_teacher_id for s in class_sections.values() if s.class_teacher_id is not None
+        }
         for cfg in teacher_configs:
             t_obj, created = get_or_create(
                 db,
@@ -251,10 +257,12 @@ def seed_demo_data():
 
                 # First teacher assigned to a grade becomes that section's
                 # class_teacher, so the homeroom bypass has something to
-                # exercise in testing.
+                # exercise in testing -- unless they're already class_teacher
+                # of a different section (one-section-per-teacher rule).
                 section = class_sections[glabel]
-                if section.class_teacher_id is None:
+                if section.class_teacher_id is None and t_obj.id not in class_teacher_assigned:
                     section.class_teacher_id = t_obj.id
+                    class_teacher_assigned.add(t_obj.id)
                     db.flush()
             print(f"✓ Teacher: {t_obj.full_name} ({t_obj.email})")
 
