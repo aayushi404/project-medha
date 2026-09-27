@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Manrope } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 
 import { AuthProvider } from "@/lib/auth-context";
@@ -39,7 +40,13 @@ export const viewport: Viewport = {
   themeColor: "#f8f4ea",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // proxy.ts sets a fresh CSP nonce on every request; Next only threads it
+  // into the actual <script> tags for dynamically rendered pages, so every
+  // page must opt out of static optimization (docs/01-app/02-guides/
+  // content-security-policy.md -- "Forcing dynamic rendering").
+  await connection();
+
   return (
     <html
       lang="en"
