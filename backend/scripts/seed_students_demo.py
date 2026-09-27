@@ -17,7 +17,7 @@ Usage:
 from datetime import datetime, timezone
 
 from backend.auth.hashing import hash_password
-from backend.db.models import Grade, School, Teacher
+from backend.db.models import Grade, School, Student
 from backend.db.session import SessionLocal, engine
 
 _ACTIVE_EMAIL = "demo.student@medha.app"
@@ -38,12 +38,11 @@ def main() -> None:
 
         def ensure(roll: str, **fields) -> None:
             row = (
-                db.query(Teacher)
+                db.query(Student)
                 .filter(
-                    Teacher.role == "student",
-                    Teacher.school_id == school.id,
-                    Teacher.grade_id == grade8.id,
-                    Teacher.roll_number == roll,
+                    Student.school_id == school.id,
+                    Student.grade_id == grade8.id,
+                    Student.roll_number == roll,
                 )
                 .one_or_none()
             )
@@ -51,8 +50,7 @@ def main() -> None:
                 print(f"exists   student    roll {roll} -- unchanged")
                 return
             db.add(
-                Teacher(
-                    role="student",
+                Student(
                     school_id=school.id,
                     grade_id=grade8.id,
                     roll_number=roll,

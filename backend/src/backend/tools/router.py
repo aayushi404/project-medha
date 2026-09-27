@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 
+from backend.core.rate_limits import by_actor, by_ip
 from backend.auth.dependencies import require_teacher
 from backend.db.models import Teacher
 from backend.tools import service
@@ -8,7 +9,7 @@ from backend.tools.schemas import TranslateIn, TranslateOut
 router = APIRouter(prefix="/tools", tags=["tools"], dependencies=[Depends(require_teacher)])
 
 
-@router.post("/translate", response_model=TranslateOut)
+@router.post("/translate", response_model=TranslateOut, dependencies=[by_actor("translate", limit=30, window_seconds=600)])
 async def translate_text(
     payload: TranslateIn,
     teacher: Teacher = Depends(require_teacher),

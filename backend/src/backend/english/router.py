@@ -13,8 +13,10 @@ from fastapi import (
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
+from backend.core.rate_limits import by_actor, by_ip
+from backend.core.uploads import read_limited, require_kind
 from backend.auth.dependencies import require_student
-from backend.db.models import Teacher
+from backend.db.models import Student
 from backend.db.session import get_db
 from backend.english import pronunciation, service
 from backend.english.pronunciation_schemas import PronunciationOut
@@ -44,7 +46,7 @@ _MAX_AUDIO_BYTES = 10 * 1024 * 1024
 )
 def create_session(
     payload: EnglishSessionCreateIn,
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> EnglishSessionOut:
     session, topic = service.create_session(db, student, payload)
@@ -60,7 +62,7 @@ def create_session(
 @router.get("/sessions/{session_id}", response_model=EnglishSessionDetailOut)
 def get_session(
     session_id: uuid.UUID,
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> EnglishSessionDetailOut:
     from backend.db.models import ChatMessage
@@ -88,7 +90,7 @@ def get_session(
 async def post_message(
     session_id: uuid.UUID,
     payload: EnglishMessageCreateIn,
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> EventSourceResponse:
     session = service.load_owned_session(db, student, session_id)
@@ -103,7 +105,7 @@ async def post_message(
 async def converse(
     session_id: uuid.UUID,
     payload: SpokenTurnIn,
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> EventSourceResponse:
     """One spoken English-tutor turn. SSE: `token`* -> `audio` (base64 WAV) ->
@@ -122,7 +124,7 @@ async def converse(
 def list_voice_turns(
     session_id: uuid.UUID,
     limit: int = Query(default=20, ge=1, le=100),
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> list[VoiceTurnOut]:
     """Recent completed spoken turns for a session, oldest first -- replayed when
@@ -132,19 +134,16 @@ def list_voice_turns(
     return [VoiceTurnOut.model_validate(t) for t in turns]
 
 
-@router.post("/pronunciation-check", response_model=PronunciationOut)
+@router.post("/pronunciation-check", response_model=PronunciationOut, dependencies=[by_actor("pronunciation", limit=40, window_seconds=600)])
 async def pronunciation_check(
     file: UploadFile = File(...),
-    expected_text: str = Form(...),
-    student: Teacher = Depends(require_student),
+    expected_text: str = Form(..., min_length=1, max_length=300),
+    student: Student = Depends(require_student),
 ) -> PronunciationOut:
     """Score spoken English against an expected phrase."""
     _ = student
-    data = await file.read()
-    if not data:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty audio file.")
-    if len(data) > _MAX_AUDIO_BYTES:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Audio file too large.")
+    data = await read_limited(file, _MAX_AUDIO_BYTES)
+    require_kind(data, {"wav", "webm", "ogg", "mp3", "mp4"}, "Unsupported audio format.")
 
     try:
         return await pronunciation.check_pronunciation(

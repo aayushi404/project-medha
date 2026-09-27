@@ -2,12 +2,14 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.db.models import District, Grade, School, Subject, Teacher, TeacherSubject
+from backend.db.models import District, Grade, School, Student, Subject, Teacher, TeacherSubject
 from backend.profile.schemas import (
     ProfileOut,
     ProfileSubjectOut,
     ProfileUpdateIn,
     SchoolOut,
+    StudentSelfProfileOut,
+    StudentSelfProfileUpdateIn,
 )
 
 
@@ -52,6 +54,7 @@ def _build_profile(db: Session, teacher: Teacher) -> ProfileOut:
         email=teacher.email,
         phone_number=teacher.phone_number,
         preferred_language=teacher.preferred_language,
+        photo_url=teacher.photo_url,
         onboarded_at=teacher.onboarded_at,
         school=school_out,
         subjects=subjects,
@@ -92,3 +95,41 @@ def update_profile(db: Session, teacher: Teacher, payload: ProfileUpdateIn) -> P
     db.commit()
     db.refresh(teacher)
     return _build_profile(db, teacher)
+
+
+def _build_student_profile(student: Student) -> StudentSelfProfileOut:
+    return StudentSelfProfileOut(
+        id=student.id,
+        full_name=student.full_name,
+        email=student.email,
+        phone_number=student.phone_number,
+        preferred_language=student.preferred_language,
+        photo_url=student.photo_url,
+    )
+
+
+def get_student_self_profile(student: Student) -> StudentSelfProfileOut:
+    return _build_student_profile(student)
+
+
+def update_student_self_profile(
+    db: Session, student: Student, payload: StudentSelfProfileUpdateIn
+) -> StudentSelfProfileOut:
+    if payload.full_name is not None:
+        student.full_name = payload.full_name
+    if payload.preferred_language is not None:
+        student.preferred_language = payload.preferred_language
+    student.updated_at = func.now()
+    db.commit()
+    db.refresh(student)
+    return _build_student_profile(student)
+
+
+def set_photo(db: Session, actor: Teacher | Student, photo_url: str) -> None:
+    actor.photo_url = photo_url
+    db.commit()
+
+
+def clear_photo(db: Session, actor: Teacher | Student) -> None:
+    actor.photo_url = None
+    db.commit()

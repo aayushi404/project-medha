@@ -12,12 +12,20 @@ from backend.teacher.schemas import (
     PendingStudent,
     RejectIn,
     StudentRosterItem,
+    TeacherSectionOut,
     TeacherStudentStats,
 )
 
 router = APIRouter(
     prefix="/teacher", tags=["teacher"], dependencies=[Depends(require_teacher)]
 )
+
+
+@router.get("/sections", response_model=list[TeacherSectionOut])
+def my_sections(
+    teacher: Teacher = Depends(require_teacher), db: Session = Depends(get_db)
+) -> list[TeacherSectionOut]:
+    return service.list_my_sections(db, teacher)
 
 
 @router.get("/students/stats", response_model=TeacherStudentStats)

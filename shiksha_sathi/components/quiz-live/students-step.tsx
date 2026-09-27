@@ -64,7 +64,9 @@ export function StudentsStep({
     const q = query.trim().toLowerCase();
     if (!q) return students;
     return students.filter(
-      (s) => s.full_name.toLowerCase().includes(q) || (s.roll_number ?? "").toLowerCase().includes(q),
+      (s) =>
+        s.full_name.toLowerCase().includes(q) ||
+        String(s.roll_number ?? "").toLowerCase().includes(q),
     );
   }, [students, query]);
 

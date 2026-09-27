@@ -27,6 +27,7 @@ from backend.db.models import (
     CurriculumChapter,
     CurriculumTopic,
     Grade,
+    Student,
     Subject,
     Teacher,
     VoiceTurn,
@@ -139,7 +140,7 @@ def list_recent_turns(
 
 async def stream_converse(
     db: Session,
-    user: Teacher,
+    user: Teacher | Student,
     session: ChatSession,
     transcript: str,
     language: str | None,

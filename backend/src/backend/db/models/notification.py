@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Index, UniqueConstraint, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,15 +23,38 @@ class Notification(Base):
             "recipient_id",
             postgresql_where=text("read_at IS NULL"),
         ),
+        Index(
+            "idx_notifications_recipient_student", "recipient_student_id", text("created_at DESC")
+        ),
+        Index(
+            "idx_notifications_unread_student",
+            "recipient_student_id",
+            postgresql_where=text("read_at IS NULL"),
+        ),
+        CheckConstraint(
+            "num_nonnulls(recipient_id, recipient_student_id) = 1",
+            name="chk_notifications_recipient",
+        ),
+        CheckConstraint(
+            "num_nonnulls(sender_id, sender_student_id) <= 1", name="chk_notifications_sender"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    recipient_id: Mapped[uuid.UUID] = mapped_column(
+    # exactly one of recipient_id/recipient_student_id is set
+    recipient_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
     )
+    recipient_student_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
+    )
+    # sender may legitimately be neither (a system notification)
     sender_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("teachers.id"))
+    sender_student_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id")
+    )
     type: Mapped[str]
     title: Mapped[str]
     body: Mapped[str]
@@ -47,12 +70,22 @@ class DeviceToken(Base):
     reinstalled app); tokens are pruned when FCM reports one dead."""
 
     __tablename__ = "device_tokens"
-    __table_args__ = (UniqueConstraint("token", name="uq_device_tokens_token"),)
+    __table_args__ = (
+        UniqueConstraint("token", name="uq_device_tokens_token"),
+        CheckConstraint(
+            "num_nonnulls(user_id, student_id) = 1", name="chk_device_tokens_actor"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+    )
+    student_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
+    )
     token: Mapped[str]
     platform: Mapped[str]  # android | ios | web
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))

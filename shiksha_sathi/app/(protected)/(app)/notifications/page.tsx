@@ -5,11 +5,11 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  getProfile,
+  getMySections,
   listNotifications,
   markNotificationRead,
   type AppNotification,
-  type Profile,
+  type TeacherSection,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
@@ -20,14 +20,14 @@ export default function TeacherNotificationsPage() {
   const { accessToken } = useAuth();
   const copy = useCopy();
   const [items, setItems] = useState<AppNotification[]>([]);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [sections, setSections] = useState<TeacherSection[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(() => {
-    return Promise.all([listNotifications(accessToken), getProfile(accessToken)])
-      .then(([n, p]) => {
+    return Promise.all([listNotifications(accessToken), getMySections(accessToken)])
+      .then(([n, s]) => {
         setItems(n);
-        setProfile(p);
+        setSections(s);
       })
       .catch((e: unknown) => {
         toast.error(e instanceof Error ? e.message : "Could not load notifications.");
@@ -55,9 +55,10 @@ export default function TeacherNotificationsPage() {
     }
   }
 
-  const grades = Array.from(
-    new Map((profile?.subjects ?? []).map((s) => [s.grade_id, s.grade_label])).entries(),
-  ).map(([value, label]) => ({ value, label }));
+  const sectionOptions = sections.map((s) => ({
+    value: s.id,
+    label: `${s.grade_label} · ${s.section}`,
+  }));
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
@@ -73,7 +74,7 @@ export default function TeacherNotificationsPage() {
             </div>
           ) : (
             <>
-              <AnnounceForm target={{ kind: "grade", grades }} onSent={() => void reload()} />
+              <AnnounceForm target={{ kind: "section", sections: sectionOptions }} onSent={() => void reload()} />
               <NotificationList items={items} onOpen={(n) => void onOpen(n)} />
             </>
           )}

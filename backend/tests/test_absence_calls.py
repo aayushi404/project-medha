@@ -8,7 +8,7 @@ from datetime import date
 # Ensure src is on python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from backend.absence_calls.service import DEFAULT_GUARDIAN_PHONE, queue_call_for_absence
+from backend.absence_calls.service import queue_call_for_absence
 from backend.absence_calls.telephony import TelephonyNotConfigured, PlacedCall
 from backend.app import app
 from backend.auth.service import create_access_token
@@ -20,10 +20,6 @@ from fastapi.testclient import TestClient
 client = TestClient(app)
 
 class TestAbsenceCalls(unittest.TestCase):
-
-    def test_default_guardian_phone_value(self):
-        """Verify the hardcoded default fallback number is updated to +917050020815."""
-        self.assertEqual(DEFAULT_GUARDIAN_PHONE, "+917050020815")
 
     def test_queue_call_for_absence_disabled(self):
         """Test queue_call_for_absence when ABSENCE_CALLING_ENABLED=false."""
@@ -62,8 +58,10 @@ class TestAbsenceCalls(unittest.TestCase):
 
             call = db.query(AbsenceCall).filter(AbsenceCall.attendance_record_id == record.id).first()
             self.assertIsNotNone(call)
-            self.assertEqual(call.status, "completed")
-            self.assertIn("High Fever", call.reason_text)
+            # never fabricates a guardian answer: a missing number or switched-off
+            # calling is recorded as such
+            self.assertIn(call.status, ("not_configured", "no_guardian_phone"))
+            self.assertIsNone(call.reason_text)
 
             # Cleanup
             db.delete(call)
@@ -85,7 +83,7 @@ class TestAbsenceCalls(unittest.TestCase):
                 self.skipTest("Database missing seed student/teacher records")
 
             original_phone = student.guardian_phone
-            student.guardian_phone = None
+            student.guardian_phone = "+919800000001"
             db.commit()
 
             # Clean up previous test attendance record for today if present
@@ -121,7 +119,7 @@ class TestAbsenceCalls(unittest.TestCase):
             self.assertIsNotNone(call)
             self.assertEqual(call.status, "dialing")
             self.assertEqual(call.provider_call_sid, "test_sid_12345")
-            self.assertEqual(call.guardian_phone, "+917050020815")
+            self.assertEqual(call.guardian_phone, "+919800000001")
 
             # Restore & Cleanup
             student.guardian_phone = original_phone

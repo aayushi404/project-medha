@@ -1,7 +1,8 @@
+from urllib.parse import urlparse
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import field_validator, BaseModel, Field
 
 
 class LibraryPresentationItem(BaseModel):
@@ -28,6 +29,17 @@ class LibraryItemIn(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=1000)
     url: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("url")
+    @classmethod
+    def _http_only(cls, v: str) -> str:
+        # links are rendered as clickable anchors for every student and teacher:
+        # javascript:/data: URLs would be stored XSS
+        v = v.strip()
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("Enter a full web address starting with http:// or https://")
+        return v
     grade_id: uuid.UUID | None = None
     subject_id: uuid.UUID | None = None
 

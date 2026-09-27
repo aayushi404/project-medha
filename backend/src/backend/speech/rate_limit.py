@@ -7,15 +7,17 @@ from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_teacher, require_student
 from backend.core.config import settings
-from backend.db.models import ChatSession, Teacher, VoiceTurn
+from backend.db.models import ChatSession, Student, Teacher, VoiceTurn
 from backend.db.session import get_db
 
 
-def _enforce_voice_rate(db: Session, user_id: uuid.UUID) -> None:
+def _enforce_voice_rate(db: Session, user_id: uuid.UUID, *, actor_column) -> None:
     """Cap /speech converse turns (LLM + TTS spend) for one user in two trailing
     windows -- same DB-count approach as chat_rate_limit; a Redis token bucket
     can replace it later on the same config keys. Teacher and student voice
-    turns both land in `voice_turns` keyed by the owning `chat_sessions` row."""
+    turns both land in `voice_turns` keyed by the owning `chat_sessions` row,
+    but a teacher session's owner column is `teacher_id` and a student
+    session's is `student_id` -- `actor_column` picks the right one."""
     now = datetime.now(timezone.utc)
 
     def count_since(delta: timedelta) -> int:
@@ -23,7 +25,7 @@ def _enforce_voice_rate(db: Session, user_id: uuid.UUID) -> None:
             db.query(func.count(VoiceTurn.id))
             .join(ChatSession, VoiceTurn.session_id == ChatSession.id)
             .filter(
-                ChatSession.teacher_id == user_id,
+                actor_column == user_id,
                 VoiceTurn.created_at >= now - delta,
             )
             .scalar()
@@ -46,12 +48,12 @@ def voice_rate_limit(
     db: Session = Depends(get_db),
 ) -> None:
     """Per-teacher cap on /speech/converse."""
-    _enforce_voice_rate(db, teacher.id)
+    _enforce_voice_rate(db, teacher.id, actor_column=ChatSession.teacher_id)
 
 
 def voice_rate_limit_student(
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> None:
     """Per-student cap on the /tutor and /english converse routes."""
-    _enforce_voice_rate(db, student.id)
+    _enforce_voice_rate(db, student.id, actor_column=ChatSession.student_id)

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Index, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,13 +15,22 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
     __table_args__ = (
         Index("idx_chat_sessions_teacher", "teacher_id", text("updated_at DESC")),
+        Index("idx_chat_sessions_student", "student_id", text("updated_at DESC")),
+        CheckConstraint(
+            "num_nonnulls(teacher_id, student_id) = 1", name="chk_chat_sessions_actor"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    teacher_id: Mapped[uuid.UUID] = mapped_column(
+    # exactly one of teacher_id/student_id is set -- a teacher "Ask Medha"
+    # session or a student `/tutor` doubt-chat session (see backend.tutor).
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+    )
+    student_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
     )
     grade_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("grades.id"))
     subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("subjects.id"))

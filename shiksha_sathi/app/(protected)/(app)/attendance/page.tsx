@@ -1,12 +1,14 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { CheckCheck, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AttendanceSheet } from "@/components/attendance/attendance-sheet";
 import { GuardianCallsPanel } from "@/components/attendance/guardian-calls-panel";
 import { LiveCallModal } from "@/components/attendance/live-call-modal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
   type AbsenceCall,
@@ -14,21 +16,25 @@ import {
   type AttendanceStatus,
   getAbsenceCalls,
   getAttendance,
-  getProfile,
+  getMySections,
   markAttendance,
-  type Profile,
+  type TeacherSection,
 } from "@/lib/api";
 import { todayISO } from "@/lib/attendance-store";
 import { useAuth } from "@/lib/auth-context";
 
+const DEMO_CALLS = process.env.NEXT_PUBLIC_DEMO_CALLS === "true";
+
 export default function AttendancePage() {
   const { accessToken } = useAuth();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [gradeId, setGradeId] = useState<string | null>(null);
+  const [sections, setSections] = useState<TeacherSection[] | null>(null);
+  const [classSectionId, setClassSectionId] = useState<string | null>(null);
   const [date, setDate] = useState(todayISO());
   const [day, setDay] = useState<AttendanceDay | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, AttendanceStatus>>({});
+  const [saving, setSaving] = useState(false);
+  const [savedSummary, setSavedSummary] = useState<{ present: number; total: number } | null>(null);
   const [calls, setCalls] = useState<AbsenceCall[]>([]);
   const [activeCallStudent, setActiveCallStudent] = useState<{
     id: string;
@@ -37,14 +43,24 @@ export default function AttendancePage() {
   } | null>(null);
   const requestKeyRef = useRef<string | null>(null);
 
+  // Only the sections this teacher is the homeroom/class teacher of --
+  // marking attendance is class-teacher-exclusive (see backend
+  // assert_is_class_teacher_of_section), so a subject-only assignment has no
+  // business showing up as an option to "take" on this page.
+  const classTeacherSections = useMemo(
+    () => (sections ?? []).filter((s) => s.is_class_teacher),
+    [sections],
+  );
+
   useEffect(() => {
     if (!accessToken) return;
     let active = true;
-    getProfile(accessToken)
-      .then((p) => {
+    getMySections(accessToken)
+      .then((rows) => {
         if (!active) return;
-        setProfile(p);
-        setGradeId((cur) => cur ?? p.subjects[0]?.grade_id ?? null);
+        setSections(rows);
+        const mine = rows.filter((s) => s.is_class_teacher);
+        setClassSectionId((cur) => cur ?? mine[0]?.id ?? null);
       })
       .catch((e: unknown) => {
         toast.error(e instanceof Error ? e.message : "Could not load your classes.");
@@ -55,30 +71,37 @@ export default function AttendancePage() {
   }, [accessToken]);
 
   useEffect(() => {
-    if (!accessToken || !gradeId) return;
-    const key = `${gradeId}:${date}`;
+    if (!accessToken || !classSectionId) return;
+    const key = `${classSectionId}:${date}`;
     requestKeyRef.current = key;
-    getAttendance(accessToken, gradeId, date)
+    getAttendance(accessToken, classSectionId, date)
       .then((result) => {
-        if (requestKeyRef.current === key) setDay(result);
+        if (requestKeyRef.current !== key) return;
+        setDay(result);
+        setSavedSummary(null);
+        const seeded: Record<string, AttendanceStatus> = {};
+        for (const s of result.students) {
+          if (s.status) seeded[s.student_id] = s.status;
+        }
+        setDrafts(seeded);
       })
       .catch((e: unknown) => {
         toast.error(e instanceof Error ? e.message : "Could not load attendance.");
       });
-  }, [accessToken, gradeId, date]);
+  }, [accessToken, classSectionId, date]);
 
-  const loading = !day || day.grade_id !== gradeId || day.date !== date;
+  const loading = !day || day.class_section_id !== classSectionId || day.date !== date;
 
   // Guardian calls only ever fire for today's absences (see
   // attendance/service.py::mark_day) -- polling on other dates would just
   // show an empty list forever, so skip it entirely there.
   useEffect(() => {
-    if (!accessToken || !gradeId || date !== todayISO()) {
+    if (!accessToken || !classSectionId || date !== todayISO()) {
       return;
     }
     let active = true;
     const load = () => {
-      getAbsenceCalls(accessToken, gradeId)
+      getAbsenceCalls(accessToken, classSectionId)
         .then((rows) => {
           if (active) setCalls(rows.filter((c) => c.attendance_date === date));
         })
@@ -92,35 +115,64 @@ export default function AttendancePage() {
       active = false;
       clearInterval(interval);
     };
-  }, [accessToken, gradeId, date]);
+  }, [accessToken, classSectionId, date]);
 
-  const grades = Array.from(
-    new Map((profile?.subjects ?? []).map((s) => [s.grade_id, s.grade_label])).entries(),
-  ).map(([value, label]) => ({ value, label }));
+  const sectionOptions = classTeacherSections.map((s) => ({
+    value: s.id,
+    label: `${s.grade_label} · ${s.section}`,
+  }));
 
-  async function mark(studentId: string, status: AttendanceStatus) {
-    if (!gradeId) return;
-    setBusyId(studentId);
+  function toggle(studentId: string, status: AttendanceStatus) {
+    setDrafts((prev) => ({ ...prev, [studentId]: status }));
+    setSavedSummary(null);
+  }
+
+  function markAllPresent() {
+    if (!day) return;
+    const next: Record<string, AttendanceStatus> = {};
+    for (const s of day.students) next[s.student_id] = "present";
+    setDrafts(next);
+    setSavedSummary(null);
+  }
+
+  const allMarked = !!day && day.students.length > 0 && day.students.every((s) => drafts[s.student_id]);
+
+  async function save() {
+    if (!classSectionId || !day || !allMarked) return;
+    setSaving(true);
+    // Only a student who's *newly* absent (wasn't already, before this save)
+    // gets the simulated-call demo -- matches the real backend's own
+    // newly_absent rule, so the demo never fires louder than reality would.
+    const newlyAbsentId = day.students.find(
+      (s) => drafts[s.student_id] === "absent" && s.status !== "absent",
+    )?.student_id;
     try {
-      const studentObj = day?.students.find((s) => s.student_id === studentId);
+      const records = day.students.map((s) => ({
+        student_id: s.student_id,
+        status: drafts[s.student_id],
+      }));
       const updated = await markAttendance(accessToken, {
-        grade_id: gradeId,
+        class_section_id: classSectionId,
         date,
-        records: [{ student_id: studentId, status }],
+        records,
       });
       setDay(updated);
+      const present = updated.students.filter((s) => s.status === "present").length;
+      setSavedSummary({ present, total: updated.students.length });
+      toast.success(
+        `Attendance saved — ${present}/${updated.students.length} present (${Math.round((present / updated.students.length) * 100)}%).`,
+      );
 
-      if (status === "absent") {
-        setActiveCallStudent({
-          id: studentId,
-          name: studentObj?.full_name || "Student",
-          phone: "+917050020815",
-        });
+      if (DEMO_CALLS && newlyAbsentId) {
+        const student = updated.students.find((s) => s.student_id === newlyAbsentId);
+        if (student) {
+          setActiveCallStudent({ id: student.student_id, name: student.full_name, phone: null });
+        }
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not save attendance.");
     } finally {
-      setBusyId(null);
+      setSaving(false);
     }
   }
 
@@ -130,7 +182,7 @@ export default function AttendancePage() {
       id: `sim-${activeCallStudent.id}-${Date.now()}`,
       student_id: activeCallStudent.id,
       student_name: activeCallStudent.name,
-      guardian_phone: activeCallStudent.phone || "+917050020815",
+      guardian_phone: activeCallStudent.phone ?? null,
       status: "completed",
       reason_text: reasonText,
       failure_reason: null,
@@ -148,23 +200,24 @@ export default function AttendancePage() {
       <div className="border-b border-border px-5 py-4">
         <h1 className="text-[15px]">Attendance</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Mark today&apos;s attendance for a class.
+          Mark today&apos;s attendance for your class.
         </p>
-        {grades.length > 0 && (
+        {sectionOptions.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Select
               ariaLabel="Class"
-              value={gradeId}
-              onValueChange={setGradeId}
-              options={grades}
+              value={classSectionId}
+              onValueChange={setClassSectionId}
+              options={sectionOptions}
               className="h-8"
             />
-            <input
+            <Input
               type="date"
               value={date}
               max={todayISO()}
               onChange={(e) => setDate(e.target.value || todayISO())}
-              className="h-8 rounded-lg border border-border bg-background px-2 text-xs outline-none focus-visible:border-ring"
+              className="w-auto text-xs"
+              aria-label="Date"
             />
           </div>
         )}
@@ -172,9 +225,15 @@ export default function AttendancePage() {
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
         <div className="mx-auto w-full max-w-2xl">
-          {grades.length === 0 ? (
+          {sections === null ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : classTeacherSections.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              No classes assigned to you yet.
+              You aren&apos;t the class teacher of any section yet. Attendance is taken by
+              each class&apos;s homeroom teacher — ask your principal if you should be
+              assigned one.
             </p>
           ) : loading || !day ? (
             <div className="flex justify-center py-16">
@@ -182,8 +241,27 @@ export default function AttendancePage() {
             </div>
           ) : (
             <>
-              <AttendanceSheet students={day.students} busyId={busyId} onMark={mark} />
-              <GuardianCallsPanel calls={date === todayISO() ? calls : []} />
+              {savedSummary && (
+                <div className="mb-3 rounded-xl bg-sage/10 px-4 py-2.5 text-sm font-medium text-sage">
+                  Saved — {savedSummary.present}/{savedSummary.total} present (
+                  {Math.round((savedSummary.present / savedSummary.total) * 100)}%)
+                </div>
+              )}
+
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <Button size="sm" variant="outline" onClick={markAllPresent} disabled={saving}>
+                  <CheckCheck className="size-3.5" /> Mark all present
+                </Button>
+                <Button size="sm" onClick={() => void save()} disabled={saving || !allMarked}>
+                  {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                  Save Attendance
+                </Button>
+              </div>
+
+              <AttendanceSheet students={day.students} drafts={drafts} onToggle={toggle} />
+              <div className="mt-3">
+                <GuardianCallsPanel calls={date === todayISO() ? calls : []} />
+              </div>
             </>
           )}
         </div>

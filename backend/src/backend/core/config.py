@@ -1,8 +1,12 @@
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_WEAK_SECRETS = {"changeme", "change-me", "secret", "dev", "development", "password"}
 
 # Backend project root is four levels up from this file (core/config.py ->
 # backend/src/backend/core -> backend/). Point at this exact .env so an
@@ -25,6 +29,8 @@ class Settings(BaseSettings):
     # JWT (access tokens)
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
+    jwt_issuer: str = "medha-api"
+    jwt_audience: str = "medha-web"
     access_token_expire_minutes: int = 15
 
     # Refresh tokens (opaque, stored hashed in auth_sessions)
@@ -35,8 +41,25 @@ class Settings(BaseSettings):
     cookie_secure: bool = True
     cookie_samesite: str = "lax"  # set to "none" in production
 
+    # Comma-separated Host headers this API answers to (e.g. "api.medha.gov.in").
+    # Empty = any host (development only; required in production).
+    allowed_hosts: str = ""
+    # Largest request body accepted anywhere (bytes). Uploads have their own,
+    # tighter per-endpoint limits.
+    max_body_bytes: int = 12 * 1024 * 1024
+
     # Logging
     log_level: str = "INFO"
+
+    # Outbound email (verification + password reset). "console" just logs the
+    # message -- for local development only; production must use "smtp".
+    mail_backend: str = "console"  # console | smtp
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""  # e.g. "Medha <no-reply@medha.gov.in>"
+    smtp_starttls: bool = True
 
     # --- Phase 1 ---
     # LLM -- provider is swappable behind backend.llm.client.LLMClient
@@ -98,6 +121,12 @@ class Settings(BaseSettings):
     # (notifications table) always works regardless.
     firebase_credentials_path: str = ""
 
+    # Cloudinary — profile photo storage (backend.core.images). Unset means
+    # /profile/photo returns 503 rather than crashing; required in production.
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+
     # Sarvam AI — speech (STT/TTS) for voice input and conversational mode
     sarvam_api_key: str = ""
     sarvam_stt_model: str = "saaras:v3"
@@ -125,10 +154,6 @@ class Settings(BaseSettings):
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_caller_number: str = ""  # E.164, e.g. +14155551234
-    # Shared secret this server checks on Twilio's status-callback webhook
-    # (?token=...) -- distinct from Twilio's own request signature, which
-    # isn't verified here yet.
-    twilio_webhook_token: str = ""
     # Exotel (Indian cloud telephony) -- see backend/src/backend/absence_calls/telephony.py
     exotel_sid: str = ""
     exotel_api_key: str = ""
@@ -139,9 +164,6 @@ class Settings(BaseSettings):
     # this server's /absence-calls/exotel/voicebot websocket -- see Exotel's
     # dashboard (App Bazaar). Not creatable via API; one-time manual setup.
     exotel_app_id: str = ""
-    # Shared secret this server checks on Exotel's status-callback webhook
-    # (?token=...), since Exotel doesn't sign these by default.
-    exotel_webhook_token: str = ""
     # This server's own publicly reachable origin (e.g. the Render URL), used
     # to build the webhook/websocket URLs the telephony provider calls back
     # (e.g. https://medha-backend.onrender.com, no trailing slash).
@@ -169,6 +191,45 @@ class Settings(BaseSettings):
     # Per-teacher caps on this LLM+TTS-spending endpoint (DB-count, like chat).
     voice_rate_limit_per_min: int = 20
     voice_rate_limit_per_day: int = 400
+
+    @model_validator(mode="after")
+    def _security_guard(self) -> "Settings":
+        # Always-on checks: these are wrong in every environment.
+        if self.jwt_algorithm != "HS256":
+            raise ValueError("JWT_ALGORITHM must be HS256.")
+        if self.cookie_samesite.lower() not in {"lax", "strict", "none"}:
+            raise ValueError("COOKIE_SAMESITE must be lax, strict or none.")
+        if self.cookie_samesite.lower() == "none" and not self.cookie_secure:
+            raise ValueError("COOKIE_SAMESITE=none requires COOKIE_SECURE=true.")
+        origin = urlparse(self.frontend_origin)
+        if (
+            origin.scheme not in {"http", "https"}
+            or not origin.netloc
+            or origin.path != ""
+        ):
+            raise ValueError(
+                "FRONTEND_ORIGIN must be a bare origin like https://app.example.gov.in (no path, no trailing slash)."
+            )
+
+        # Production-only checks: fail fast instead of running insecurely.
+        if self.environment.lower() == "production":
+            if len(self.jwt_secret_key) < 32 or self.jwt_secret_key.lower() in _WEAK_SECRETS:
+                raise ValueError("JWT_SECRET_KEY must be at least 32 characters and not a placeholder in production.")
+            if not self.cookie_secure:
+                raise ValueError("COOKIE_SECURE must be true in production.")
+            if origin.scheme != "https":
+                raise ValueError("FRONTEND_ORIGIN must be https in production.")
+            if not self.allowed_hosts.strip():
+                raise ValueError("ALLOWED_HOSTS must list the API's hostname(s) in production.")
+            if self.mail_backend != "smtp" or not (self.smtp_host and self.smtp_from):
+                raise ValueError("MAIL_BACKEND=smtp with SMTP_HOST and SMTP_FROM is required in production.")
+            if not (self.cloudinary_cloud_name and self.cloudinary_api_key and self.cloudinary_api_secret):
+                raise ValueError(
+                    "CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET are required in production."
+                )
+            if self.absence_call_force_phone:
+                raise ValueError("ABSENCE_CALL_FORCE_PHONE is a demo-only override and must be empty in production.")
+        return self
 
 
 @lru_cache

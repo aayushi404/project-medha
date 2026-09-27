@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowRight, Check, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +14,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { PendingScreen } from "@/components/auth/pending-screen";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { loginSchema, type LoginFormValues } from "@/lib/validation/auth";
 
 type View = "form" | "pending" | "rejected";
 type RoleTab = "student" | "teacher" | "principal";
@@ -28,8 +32,6 @@ export default function LoginPage() {
   const { status, teacher, login } = useAuth();
 
   const [activeRole, setActiveRole] = useState<RoleTab>("student");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [view, setView] = useState<View>("form");
@@ -38,6 +40,13 @@ export default function LoginPage() {
   // hold on the "signed in as ..." card briefly instead of redirecting the
   // instant the session is established.
   const [cameFromForm, setCameFromForm] = useState(false);
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+    mode: "onTouched",
+    reValidateMode: "onChange",
+  });
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -50,21 +59,16 @@ export default function LoginPage() {
   // login whose account role doesn't match the picked tab (ROLE_MISMATCH).
   function selectRole(tab: RoleTab) {
     setActiveRole(tab);
-    setEmail("");
-    setPassword("");
     setShowPass(false);
     setView("form");
+    form.reset({ email: "", password: "" });
   }
 
-  const canSubmit = email.trim().length > 3 && password.length >= 1 && !submitting;
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!canSubmit) return;
+  async function onSubmit(values: LoginFormValues) {
     setCameFromForm(true);
     setSubmitting(true);
     try {
-      await login(email.trim(), password, activeRole);
+      await login(values.email.trim(), values.password, activeRole);
       // the authenticated effect above shows the role confirmation, then routes
     } catch (err) {
       setCameFromForm(false);
@@ -176,79 +180,100 @@ export default function LoginPage() {
           )}
 
           {!signedIn && view === "form" && (
-            <motion.form
-              key={activeRole}
-              onSubmit={handleSubmit}
-              className="mlogin-form"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.18 }}
-            >
-              <div className="mlogin-field">
-                <input
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={activeTab.placeholder}
-                  autoFocus
+            <Form {...form}>
+              <motion.form
+                key={activeRole}
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="mlogin-form"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.18 }}
+                noValidate
+              >
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="mlogin-field">
+                        <FormControl>
+                          <input
+                            {...field}
+                            type="email"
+                            autoComplete="email"
+                            placeholder={activeTab.placeholder}
+                            autoFocus
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="mlogin-field mlogin-field--pass">
-                <input
-                  type={showPass ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={copy.login.password}
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="mlogin-field mlogin-field--pass">
+                        <FormControl>
+                          <input
+                            {...field}
+                            type={showPass ? "text" : "password"}
+                            autoComplete="current-password"
+                            placeholder={copy.login.password}
+                          />
+                        </FormControl>
+                        <button
+                          type="button"
+                          className="mlogin-eye"
+                          onClick={() => setShowPass((v) => !v)}
+                          tabIndex={-1}
+                        >
+                          {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <button
-                  type="button"
-                  className="mlogin-eye"
-                  onClick={() => setShowPass((v) => !v)}
-                  tabIndex={-1}
-                >
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+
+                <Link href="/forgot-password" className="mlogin-link-muted self-end text-xs">
+                  Forgot password?
+                </Link>
+
+                <button type="submit" disabled={submitting} className="mlogin-submit">
+                  {submitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> {copy.login.submitting}
+                    </>
+                  ) : (
+                    <>
+                      {copy.login.submit} <ArrowRight size={16} />
+                    </>
+                  )}
                 </button>
-              </div>
 
-              <button type="submit" disabled={!canSubmit} className="mlogin-submit">
-                {submitting ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" /> {copy.login.submitting}
-                  </>
-                ) : (
-                  <>
-                    {copy.login.submit} <ArrowRight size={16} />
-                  </>
-                )}
-              </button>
-
-              <div className="mlogin-register-hint flex flex-col items-center gap-1">
-                <span>
-                  {copy.login.newToMedha} {copy.login.registerAsPrefix}{" "}
-                  <Link href="/register?role=principal" className="mlogin-link">
-                    {copy.login.rolePrincipal}
-                  </Link>
-                  ,{" "}
-                  <Link href="/register?role=teacher" className="mlogin-link">
-                    {copy.login.roleTeacher}
-                  </Link>{" "}
-                  {copy.login.or}{" "}
-                  <Link href="/register?role=student" className="mlogin-link">
-                    {copy.login.roleStudent}
-                  </Link>
-                </span>
-                <span>
-                  {copy.login.studentApproved}{" "}
-                  <Link href="/student/activate" className="mlogin-link">
-                    {copy.login.activate}
-                  </Link>
-                </span>
-              </div>
-            </motion.form>
+                <div className="mlogin-register-hint flex flex-col items-center gap-1">
+                  <span>
+                    {copy.login.newToMedha} {copy.login.registerAsPrefix}{" "}
+                    <Link href="/register?role=principal" className="mlogin-link">
+                      {copy.login.rolePrincipal}
+                    </Link>
+                    ,{" "}
+                    <Link href="/register?role=teacher" className="mlogin-link">
+                      {copy.login.roleTeacher}
+                    </Link>{" "}
+                    {copy.login.or}{" "}
+                    <Link href="/register?role=student" className="mlogin-link">
+                      {copy.login.roleStudent}
+                    </Link>
+                  </span>
+                </div>
+              </motion.form>
+            </Form>
           )}
         </AnimatePresence>
       </motion.div>

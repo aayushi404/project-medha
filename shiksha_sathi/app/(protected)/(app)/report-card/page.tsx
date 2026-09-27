@@ -5,7 +5,12 @@ import Link from "next/link";
 import { Loader2, Plus, Search, Users, Award, BookCheck, Filter, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 
-import { getProfile, getStudentRoster, type Profile, type StudentRosterItem } from "@/lib/api";
+import {
+  getMySections,
+  getStudentRoster,
+  type StudentRosterItem,
+  type TeacherSection,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
@@ -20,35 +25,24 @@ export default function TeacherReportCardPage() {
   const copy = useCopy();
   const t = copy.reportCardPage;
 
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [sections, setSections] = useState<TeacherSection[]>([]);
   const [roster, setRoster] = useState<StudentRosterItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedGradeId, setSelectedGradeId] = useState<string | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
 
-  // Load teacher profile and roster from DB APIs
   useEffect(() => {
     if (!accessToken) return;
     let active = true;
 
-    Promise.all([getProfile(accessToken), getStudentRoster(accessToken)])
-      .then(([p, r]) => {
+    Promise.all([getMySections(accessToken), getStudentRoster(accessToken)])
+      .then(([s, r]) => {
         if (!active) return;
-        setProfile(p);
+        setSections(s);
         setRoster(r);
-
-        // Deduplicate grades assigned to this teacher
-        const assignedGrades = Array.from(
-          new Map(p.subjects.map((s) => [s.grade_id, { id: s.grade_id, label: s.grade_label }])).values()
-        );
-
-        if (assignedGrades.length > 0) {
-          setSelectedGradeId(assignedGrades[0].id);
-        } else if (r.length > 0) {
-          setSelectedGradeId(r[0].grade_id);
-        }
+        setSelectedSectionId((cur) => cur ?? s[0]?.id ?? null);
       })
       .catch((err: unknown) => {
         toast.error(err instanceof Error ? err.message : "Failed to load class roster");
@@ -62,42 +56,20 @@ export default function TeacherReportCardPage() {
     };
   }, [accessToken]);
 
-  // Extract unique grades assigned to this teacher from profile.subjects
-  const gradeOptions: SelectOption[] = useMemo(() => {
-    if (!profile?.subjects) return [];
-    const map = new Map<string, string>();
-    profile.subjects.forEach((s) => {
-      if (s.grade_id && s.grade_label) {
-        map.set(s.grade_id, s.grade_label);
-      }
-    });
+  const sectionOptions: SelectOption[] = useMemo(
+    () => sections.map((s) => ({ value: s.id, label: `${s.grade_label} · ${s.section}` })),
+    [sections],
+  );
 
-    const options: SelectOption[] = Array.from(map.entries()).map(([id, label]) => ({
-      value: id,
-      label: label,
-    }));
-
-    // If teacher has no assigned subjects in profile, fallback to grades found in roster
-    if (options.length === 0 && roster.length > 0) {
-      const rosterMap = new Map<string, string>();
-      roster.forEach((st) => {
-        if (st.grade_id && st.grade_label) rosterMap.set(st.grade_id, st.grade_label);
-      });
-      return Array.from(rosterMap.entries()).map(([id, label]) => ({ value: id, label }));
-    }
-
-    return options;
-  }, [profile, roster]);
-
-  // Filter students by selected class grade ID
+  // Filter students by selected class_section
   const studentsInSelectedGrade = useMemo(() => {
-    if (!selectedGradeId) return roster;
-    return roster.filter((s) => s.grade_id === selectedGradeId);
-  }, [roster, selectedGradeId]);
+    if (!selectedSectionId) return roster;
+    return roster.filter((s) => s.class_section_id === selectedSectionId);
+  }, [roster, selectedSectionId]);
 
   const selectedGradeLabel = useMemo(() => {
-    return gradeOptions.find((g) => g.value === selectedGradeId)?.label || "Class";
-  }, [gradeOptions, selectedGradeId]);
+    return sectionOptions.find((g) => g.value === selectedSectionId)?.label || "Class";
+  }, [sectionOptions, selectedSectionId]);
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden bg-background">
@@ -149,9 +121,9 @@ export default function TeacherReportCardPage() {
                       {t.selectClass}:
                     </div>
                     <Select
-                      value={selectedGradeId}
-                      onValueChange={(val) => setSelectedGradeId(val)}
-                      options={gradeOptions}
+                      value={selectedSectionId}
+                      onValueChange={(val) => setSelectedSectionId(val)}
+                      options={sectionOptions}
                       placeholder={t.selectClass}
                       className="min-w-44 h-9 font-medium"
                     />
@@ -240,8 +212,8 @@ export default function TeacherReportCardPage() {
       <CreateExamModal
         open={isExamModalOpen}
         onOpenChange={setIsExamModalOpen}
-        grades={gradeOptions.map((g) => ({ id: g.value, label: g.label }))}
-        defaultGradeId={selectedGradeId || undefined}
+        grades={sectionOptions.map((g) => ({ id: g.value, label: g.label }))}
+        defaultGradeId={selectedSectionId || undefined}
         onExamCreated={(exam) => {
           // Add exam feedback if needed
         }}

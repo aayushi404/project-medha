@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   BookOpen,
@@ -12,55 +12,48 @@ import {
   Users,
 } from "lucide-react";
 
-import { useAttendance } from "@/lib/attendance-store";
+import { getPrincipalAttendanceSummary, type SchoolAttendanceSummary } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { useWorkUpdates } from "@/lib/work-update-store";
 
 export function PrincipalAnalyticsHub() {
-  const att = useAttendance();
+  const { accessToken } = useAuth();
   const { updates } = useWorkUpdates();
+  const [summary, setSummary] = useState<SchoolAttendanceSummary | null>(null);
 
-  // Compute school attendance metrics
-  const attendanceStats = useMemo(() => {
-    const classes = att.data.classes;
-    if (!classes || classes.length === 0) {
-      return {
-        totalStudents: 120,
-        presentCount: 104,
-        attendanceRate: 86.6,
-        classesCount: 4,
-        classBreakdown: [
-          { name: "Class 9 - A", total: 42, present: 38, rate: 90 },
-          { name: "Class 9 - B", total: 38, present: 32, rate: 84 },
-          { name: "Class 10 - A", total: 45, present: 40, rate: 88 },
-          { name: "Class 10 - B", total: 40, present: 34, rate: 85 },
-        ],
-      };
-    }
-
-    let total = 0;
-    let present = 0;
-    const breakdown = classes.map((c) => {
-      const cTotal = c.students.length || 35;
-      const todayISO = new Date().toISOString().slice(0, 10);
-      const dayRec = att.data.records[c.id]?.[todayISO] || {};
-      let cPres = Object.values(dayRec).filter((s) => s === "present" || s === "late").length;
-      if (cPres === 0) cPres = Math.round(cTotal * 0.86); // realistic demo fallback
-      total += cTotal;
-      present += cPres;
-      const rate = Math.round((cPres / cTotal) * 100);
-      return { name: c.name, total: cTotal, present: cPres, rate };
-    });
-
-    const overallRate = total > 0 ? Math.round((present / total) * 100) : 87;
-
-    return {
-      totalStudents: total,
-      presentCount: present,
-      attendanceRate: overallRate,
-      classesCount: classes.length,
-      classBreakdown: breakdown,
+  // Today's real numbers -- see /principal/attendance for any-day, full detail.
+  useEffect(() => {
+    if (!accessToken) return;
+    let active = true;
+    getPrincipalAttendanceSummary(accessToken)
+      .then((result) => {
+        if (active) setSummary(result);
+      })
+      .catch(() => {
+        // quiet -- this is a glance card, the dedicated Attendance page is
+        // where a real failure should be surfaced
+      });
+    return () => {
+      active = false;
     };
-  }, [att.data]);
+  }, [accessToken]);
+
+  const attendanceStats = useMemo(() => {
+    if (!summary) return null;
+    return {
+      totalStudents: summary.total_students,
+      presentCount: summary.present_count,
+      attendanceRate: summary.percentage ?? 0,
+      classBreakdown: summary.classes
+        .filter((c) => c.total_students > 0)
+        .map((c) => ({
+          name: `${c.grade_label} - ${c.section}`,
+          total: c.total_students,
+          present: c.present_count,
+          rate: c.percentage ?? 0,
+        })),
+    };
+  }, [summary]);
 
   // Compute Syllabus Coverage & AI Adoption Metrics
   const syllabusData = useMemo(() => {
@@ -100,10 +93,14 @@ export function PrincipalAnalyticsHub() {
               Overall Student Attendance
             </div>
             <div className="mt-0.5 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-foreground">{attendanceStats.attendanceRate}%</span>
-              <span className="text-xs text-emerald-600 font-medium dark:text-emerald-400">
-                {attendanceStats.presentCount}/{attendanceStats.totalStudents} Present
+              <span className="text-2xl font-bold text-foreground">
+                {attendanceStats ? `${attendanceStats.attendanceRate}%` : "…"}
               </span>
+              {attendanceStats && (
+                <span className="text-xs text-emerald-600 font-medium dark:text-emerald-400">
+                  {attendanceStats.presentCount}/{attendanceStats.totalStudents} Present
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -158,28 +155,34 @@ export function PrincipalAnalyticsHub() {
           </div>
 
           <div className="mt-4 space-y-3">
-            {attendanceStats.classBreakdown.map((item) => (
-              <div key={item.name} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="font-medium text-foreground">{item.name}</span>
-                  <span className="text-muted-foreground">
-                    <strong className="text-foreground">{item.present}</strong> / {item.total} students ({item.rate}%)
-                  </span>
+            {!attendanceStats ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">Loading…</p>
+            ) : attendanceStats.classBreakdown.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">No classes set up yet.</p>
+            ) : (
+              attendanceStats.classBreakdown.map((item) => (
+                <div key={item.name} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium text-foreground">{item.name}</span>
+                    <span className="text-muted-foreground">
+                      <strong className="text-foreground">{item.present}</strong> / {item.total} students ({item.rate}%)
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        item.rate >= 85
+                          ? "bg-emerald-500"
+                          : item.rate >= 75
+                          ? "bg-blue-500"
+                          : "bg-rose-500"
+                      }`}
+                      style={{ width: `${item.rate}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      item.rate >= 85
-                        ? "bg-emerald-500"
-                        : item.rate >= 75
-                        ? "bg-blue-500"
-                        : "bg-rose-500"
-                    }`}
-                    style={{ width: `${item.rate}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

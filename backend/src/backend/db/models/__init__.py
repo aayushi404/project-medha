@@ -28,11 +28,14 @@ from backend.db.models.school_records import (
     ClassSection,
     Student,
     StudentEnrollment,
+    TeachingAssignment,
 )
-from backend.db.models.teacher import ApprovalEvent, AuthSession, Teacher
+from backend.db.models.teacher import ApprovalEvent, AuthSession, AuthThrottle, AuthToken, Teacher
 from backend.db.models.timetable import TimetableEntry
 
 __all__ = [
+    "AuthThrottle",
+    "AuthToken",
     "District",
     "Block",
     "School",
@@ -71,4 +74,5 @@ __all__ = [
     "ClassSection",
     "Student",
     "StudentEnrollment",
+    "TeachingAssignment",
 ]

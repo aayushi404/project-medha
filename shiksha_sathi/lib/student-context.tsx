@@ -30,7 +30,7 @@ const StudentDataContext = createContext<StudentDataValue | null>(null);
  */
 export function StudentDataProvider({ children }: { children: ReactNode }) {
   const { teacher } = useAuth();
-  const gradeId = teacher?.grade_id ?? null;
+  const gradeId = teacher?.role === "student" ? teacher.grade_id : null;
   const firstName = teacher?.full_name?.trim().split(/\s+/)[0] ?? "";
 
   const [gradeLabel, setGradeLabel] = useState<string | null>(null);

@@ -21,13 +21,13 @@ import {
   bulkUpsertReportCardMarks,
   evaluateOMRSheet,
   getClassReportCardMarks,
-  getProfile,
+  getMySections,
   getStudentRoster,
   uploadOMRSheet,
   type OMREvaluationResult,
-  type Profile,
   type ReportCardMark,
   type StudentRosterItem,
+  type TeacherSection,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
@@ -51,12 +51,12 @@ export default function UpdateMarksPage() {
   const router = useRouter();
 
   // Primary data states
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [sections, setSections] = useState<TeacherSection[]>([]);
   const [roster, setRoster] = useState<StudentRosterItem[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
 
   // Form selection states
-  const [selectedGradeId, setSelectedGradeId] = useState<string | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [examName, setExamName] = useState("Mid Term Examination");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [maxMarks, setMaxMarks] = useState("100");
@@ -83,27 +83,17 @@ export default function UpdateMarksPage() {
   // Input focus refs for fast keyboard navigation
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  // 1. Initial Load: Fetch teacher profile and roster
+  // 1. Initial Load: Fetch teacher's sections and roster
   useEffect(() => {
     if (!accessToken) return;
     let active = true;
 
-    Promise.all([getProfile(accessToken), getStudentRoster(accessToken)])
-      .then(([p, r]) => {
+    Promise.all([getMySections(accessToken), getStudentRoster(accessToken)])
+      .then(([s, r]) => {
         if (!active) return;
-        setProfile(p);
+        setSections(s);
         setRoster(r);
-
-        // Deduplicate grades assigned to this teacher
-        const assignedGrades = Array.from(
-          new Map(p.subjects.map((s) => [s.grade_id, { id: s.grade_id, label: s.grade_label }])).values()
-        );
-
-        if (assignedGrades.length > 0) {
-          setSelectedGradeId(assignedGrades[0].id);
-        } else if (r.length > 0) {
-          setSelectedGradeId(r[0].grade_id);
-        }
+        setSelectedSectionId((cur) => cur ?? s[0]?.id ?? null);
       })
       .catch((err: unknown) => {
         toast.error(err instanceof Error ? err.message : "Failed to load class information");
@@ -117,46 +107,19 @@ export default function UpdateMarksPage() {
     };
   }, [accessToken]);
 
-  // Derived Grade options for teacher
-  const gradeOptions: SelectOption[] = useMemo(() => {
-    if (!profile?.subjects) return [];
-    const map = new Map<string, string>();
-    profile.subjects.forEach((s) => {
-      if (s.grade_id && s.grade_label) {
-        map.set(s.grade_id, s.grade_label);
-      }
-    });
+  // Derived class_section options for teacher
+  const gradeOptions: SelectOption[] = useMemo(
+    () => sections.map((s) => ({ value: s.id, label: `${s.grade_label} · ${s.section}` })),
+    [sections],
+  );
 
-    const options: SelectOption[] = Array.from(map.entries()).map(([id, label]) => ({
-      value: id,
-      label: label,
-    }));
-
-    if (options.length === 0 && roster.length > 0) {
-      const rosterMap = new Map<string, string>();
-      roster.forEach((st) => {
-        if (st.grade_id && st.grade_label) rosterMap.set(st.grade_id, st.grade_label);
-      });
-      return Array.from(rosterMap.entries()).map(([id, label]) => ({ value: id, label }));
-    }
-
-    return options;
-  }, [profile, roster]);
-
-  // Derived Subject options for selected grade
+  // Derived Subject options for selected class_section (from that section's
+  // teaching_assignments, so only subjects this teacher may grade here)
   const subjectOptions: SelectOption[] = useMemo(() => {
-    if (!profile?.subjects || !selectedGradeId) return [];
-    const filtered = profile.subjects.filter((s) => s.grade_id === selectedGradeId);
-    const map = new Map<string, string>();
-    filtered.forEach((s) => {
-      map.set(s.subject_id, s.subject_name);
-    });
-
-    return Array.from(map.entries()).map(([id, name]) => ({
-      value: id,
-      label: name,
-    }));
-  }, [profile, selectedGradeId]);
+    const section = sections.find((s) => s.id === selectedSectionId);
+    if (!section) return [];
+    return section.subjects.map((s) => ({ value: s.id, label: s.name }));
+  }, [sections, selectedSectionId]);
 
   // Set default subject when options change
   useEffect(() => {
@@ -170,15 +133,15 @@ export default function UpdateMarksPage() {
     }
   }, [subjectOptions, selectedSubjectId]);
 
-  // Filter students in selected grade
+  // Filter students in selected class_section
   const studentsInClass = useMemo(() => {
-    if (!selectedGradeId) return [];
-    return roster.filter((s) => s.grade_id === selectedGradeId);
-  }, [roster, selectedGradeId]);
+    if (!selectedSectionId) return [];
+    return roster.filter((s) => s.class_section_id === selectedSectionId);
+  }, [roster, selectedSectionId]);
 
   const selectedGradeLabel = useMemo(() => {
-    return gradeOptions.find((g) => g.value === selectedGradeId)?.label || "Class";
-  }, [gradeOptions, selectedGradeId]);
+    return gradeOptions.find((g) => g.value === selectedSectionId)?.label || "Class";
+  }, [gradeOptions, selectedSectionId]);
 
   const selectedSubjectName = useMemo(() => {
     return subjectOptions.find((s) => s.value === selectedSubjectId)?.label || "Subject";
@@ -197,11 +160,11 @@ export default function UpdateMarksPage() {
 
   // Load existing marks safely from backend when Class + Subject + Exam change
   useEffect(() => {
-    if (!accessToken || !selectedGradeId || !selectedSubjectId || !examName.trim()) return;
+    if (!accessToken || !selectedSectionId || !selectedSubjectId || !examName.trim()) return;
     let active = true;
     setLoadingMarks(true);
 
-    getClassReportCardMarks(accessToken, selectedGradeId, selectedSubjectId, examName.trim())
+    getClassReportCardMarks(accessToken, selectedSectionId, selectedSubjectId, examName.trim())
       .then((existingMarks: ReportCardMark[]) => {
         if (!active) return;
         if (Array.isArray(existingMarks) && existingMarks.length > 0) {
@@ -222,7 +185,7 @@ export default function UpdateMarksPage() {
       .finally(() => {
         if (active) setLoadingMarks(false);
       });
-  }, [accessToken, selectedGradeId, selectedSubjectId, examName]);
+  }, [accessToken, selectedSectionId, selectedSubjectId, examName]);
 
   // Handlers for marks input
   const handleMarkChange = (studentId: string, value: string) => {
@@ -313,14 +276,14 @@ export default function UpdateMarksPage() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   const handleEvaluateOmr = async () => {
-    if (!accessToken || !omrFile || !selectedGradeId) {
+    if (!accessToken || !omrFile || !selectedSectionId) {
       toast.error("Please select a class and an OMR file before evaluating.");
       return;
     }
 
     setEvaluatingOmr(true);
     try {
-      const res = await evaluateOMRSheet(accessToken, omrFile, selectedGradeId, parsedMaxMarks);
+      const res = await evaluateOMRSheet(accessToken, omrFile, selectedSectionId, parsedMaxMarks);
       setOmrResult(res);
       setIsReviewModalOpen(true);
       toast.success(res.message || "OMR sheet evaluated successfully.");
@@ -382,7 +345,7 @@ export default function UpdateMarksPage() {
   // Batch Save Handler
   const handleSaveMarks = async () => {
     if (!accessToken) return;
-    if (!selectedGradeId || !selectedSubjectId || !examName.trim()) {
+    if (!selectedSectionId || !selectedSubjectId || !examName.trim()) {
       toast.error("Please complete the examination configuration before saving.");
       return;
     }
@@ -415,7 +378,7 @@ export default function UpdateMarksPage() {
     setSaving(true);
     try {
       const res = await bulkUpsertReportCardMarks(accessToken, {
-        grade_id: selectedGradeId,
+        class_section_id: selectedSectionId,
         subject_id: selectedSubjectId,
         term: examName.trim(),
         max_marks: parsedMaxMarks,
@@ -433,7 +396,7 @@ export default function UpdateMarksPage() {
     }
   };
 
-  const isConfigComplete = Boolean(selectedGradeId && selectedSubjectId && examName.trim() && isMaxMarksValid);
+  const isConfigComplete = Boolean(selectedSectionId && selectedSubjectId && examName.trim() && isMaxMarksValid);
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden bg-background">
@@ -498,8 +461,8 @@ export default function UpdateMarksPage() {
                         Class <span className="text-rose-500">*</span>
                       </Label>
                       <Select
-                        value={selectedGradeId}
-                        onValueChange={(val) => setSelectedGradeId(val)}
+                        value={selectedSectionId}
+                        onValueChange={(val) => setSelectedSectionId(val)}
                         options={gradeOptions}
                         placeholder="Select Class"
                         className="w-full h-9 font-medium"

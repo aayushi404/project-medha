@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 
 
 class HomeworkCreateIn(BaseModel):
-    grade_id: uuid.UUID
-    subject_id: uuid.UUID | None = None
+    class_section_id: uuid.UUID
+    subject_id: uuid.UUID
     title: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=4000)
     due_date: date_ | None = None
@@ -17,6 +17,7 @@ class HomeworkListItem(BaseModel):
     id: uuid.UUID
     title: str
     grade_label: str
+    section: str
     subject_name: str | None
     due_date: date_ | None
     created_at: datetime
@@ -29,6 +30,7 @@ class HomeworkDetailOut(BaseModel):
     title: str
     description: str | None
     grade_label: str
+    section: str
     subject_name: str | None
     due_date: date_ | None
     created_at: datetime

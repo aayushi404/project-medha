@@ -1,10 +1,10 @@
 """Two halves of the live call, plus the teacher-facing log.
 
 `status-callback`, `twiml`, and the `voicebot` websockets are hit by the
-telephony provider, not by our own frontend -- they're unauthenticated
-(Exotel/Twilio can't send our JWTs), guarded instead by a shared-secret
-token / by only ever acting on calls our own `AbsenceCall` rows already
-know about.
+telephony provider, not by our own frontend, so they can't use our JWTs.
+Each is instead guarded by a per-call HMAC token bound to that call's id
+(see security.py), plus Twilio's request signature where available. They
+fail closed.
 
 Exotel and Twilio speak genuinely different wire protocols for the
 bidirectional audio stream (field names, event shapes, and -- crucially --
@@ -16,6 +16,7 @@ https://docs.exotel.com/exotel-agentstream/voicebot-applet and
 https://www.twilio.com/docs/voice/media-streams/websocket-messages.
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -40,9 +41,10 @@ from backend.absence_calls.audio import (
 )
 from backend.absence_calls.conversation import ConversationState, next_reply, opening_line, summarize_reason
 from backend.absence_calls.schemas import AbsenceCallOut
+from backend.absence_calls.security import verify_call_token, verify_twilio_signature
 from backend.auth.dependencies import require_teacher
 from backend.core.config import settings
-from backend.db.models import AbsenceCall, Teacher
+from backend.db.models import AbsenceCall, Student, Teacher
 from backend.db.session import SessionLocal, get_db
 from backend.llm.client import LLMError, Message
 from backend.speech.client import SpeechError, synthesize, transcribe
@@ -61,16 +63,24 @@ _MIN_UTTERANCE_BYTES = 3200  # ~200ms @ 8kHz/16-bit mono PCM; below this, treat 
 # a guardian who keeps talking shouldn't be able to run the call (and its
 # LLM/TTS/STT cost) past this regardless of turn count.
 _MAX_CALL_SECONDS = 120.0
+# Hardening limits for the (provider-facing, unauthenticated-by-JWT) websocket:
+# the first frame must arrive fast and prove itself, frames and buffered audio
+# are capped, and a silent socket is dropped.
+_START_TIMEOUT_SECONDS = 10.0
+_IDLE_TIMEOUT_SECONDS = 30.0
+_MAX_FRAME_CHARS = 64 * 1024
+_MAX_AUDIO_BUFFER_BYTES = 2 * 1024 * 1024
+_LIVE_STATUSES = ("queued", "dialing", "ringing")
 _TIME_UP_CLOSING_LINE = "माफ़ कीजिए, समय हो गया है। जानकारी देने के लिए धन्यवाद। नमस्ते।"
 
 
 @router.get("", response_model=list[AbsenceCallOut])
 def list_absence_calls(
-    grade_id: uuid.UUID | None = Query(default=None),
+    class_section_id: uuid.UUID | None = Query(default=None),
     teacher: Teacher = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> list[AbsenceCallOut]:
-    rows = service.list_recent_for_teacher(db, teacher, grade_id=grade_id)
+    rows = service.list_recent_for_teacher(db, teacher, class_section_id=class_section_id)
     return [
         AbsenceCallOut(
             id=call.id,
@@ -95,48 +105,96 @@ def _find_call_by_sid(db: Session, call_sid: str | None) -> AbsenceCall | None:
     return db.query(AbsenceCall).filter(AbsenceCall.provider_call_sid == call_sid).first()
 
 
+def _authenticated_call(
+    db: Session, cid: str | None, token: str | None, purpose: str, call_sid: str | None = None
+) -> AbsenceCall:
+    """Resolve the AbsenceCall a provider-facing request claims to be about,
+    only if the per-call token checks out for `purpose`. 403 otherwise -- the
+    same answer for "no such call" and "bad token" so it isn't an oracle."""
+    try:
+        call_uuid = uuid.UUID(cid) if cid else None
+    except ValueError:
+        call_uuid = None
+    if call_uuid is None or not verify_call_token(token, str(call_uuid), purpose):
+        raise HTTPException(403, "Forbidden.")
+    call = db.get(AbsenceCall, call_uuid)
+    if call is None or (call_sid and call.provider_call_sid and call.provider_call_sid != call_sid):
+        raise HTTPException(403, "Forbidden.")
+    return call
+
+
+def _public_url(request: Request) -> str:
+    # The URL Twilio signed is the one it was given, i.e. our configured public
+    # origin -- not whatever Host header a proxy forwarded.
+    query = f"?{request.url.query}" if request.url.query else ""
+    return f"{settings.public_base_url}{request.url.path}{query}"
+
+
 # --------------------------------------------------------------------------
-# Exotel: status callback (webhook) + TwiML has no Exotel equivalent -- the
-# Voicebot Applet is wired to our websocket URL once, manually, in Exotel's
-# dashboard (see telephony.py's ExotelProvider docstring).
+# Exotel: status callback (webhook). Exotel has no request signature, so the
+# per-call HMAC token (security.py) is the credential; the Voicebot Applet is
+# wired to our websocket URL once, manually, in Exotel's dashboard (see
+# telephony.py's ExotelProvider docstring).
 # --------------------------------------------------------------------------
 
 
 @router.post("/exotel/status-callback")
 async def exotel_status_callback(
     request: Request,
-    token: str | None = Query(default=None),
+    cid: str | None = Query(default=None),
+    t: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> dict:
     """Exotel's call-progress webhook. Field names (CallSid/Status) match
     Exotel's documented StatusCallback params as of writing -- verify against
     a live account, provider webhook payloads are the part most likely to
     have drifted from docs."""
-    if settings.exotel_webhook_token and token != settings.exotel_webhook_token:
-        raise HTTPException(403, "Invalid webhook token.")
-
     form = await request.form()
-    call_sid = form.get("CallSid") or form.get("Sid")
+    call_sid = str(form.get("CallSid") or form.get("Sid") or "") or None
     provider_status = form.get("Status") or form.get("DialCallStatus")
-    if call_sid and provider_status:
-        call = _find_call_by_sid(db, str(call_sid))
-        if call is not None:
-            service.update_status_from_provider_status(db, call, str(provider_status))
+    call = _authenticated_call(db, cid, t, "status", call_sid)
+    if provider_status:
+        service.update_status_from_provider_status(db, call, str(provider_status))
     return {"ok": True}
 
 
 # --------------------------------------------------------------------------
 # Twilio: unlike Exotel, the TwiML that starts the stream is generated by us
 # on every call (no dashboard flow needed) -- see TwilioProvider.place_call.
+# Twilio requests carry X-Twilio-Signature (verified) on top of our per-call
+# token.
 # --------------------------------------------------------------------------
 
 
+async def _verify_twilio_request(request: Request) -> dict[str, str]:
+    form = await request.form()
+    params = {k: str(v) for k, v in form.items()}
+    if not verify_twilio_signature(_public_url(request), params, request.headers.get("x-twilio-signature")):
+        raise HTTPException(403, "Forbidden.")
+    return params
+
+
 @router.api_route("/twilio/twiml", methods=["GET", "POST"])
-async def twilio_twiml() -> Response:
+async def twilio_twiml(
+    request: Request,
+    cid: str | None = Query(default=None),
+    t: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> Response:
+    await _verify_twilio_request(request)
+    call = _authenticated_call(db, cid, t, "twiml")
+    from xml.sax.saxutils import quoteattr
+
+    from backend.absence_calls.security import sign_call_token
+
     ws_url = settings.public_base_url.replace("https://", "wss://").replace("http://", "ws://")
+    stream_token = sign_call_token(str(call.id), "stream")
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
-        f'<Response><Connect><Stream url="{ws_url}/absence-calls/twilio/voicebot" /></Connect></Response>'
+        f"<Response><Connect><Stream url={quoteattr(ws_url + '/absence-calls/twilio/voicebot')}>"
+        f"<Parameter name=\"cid\" value={quoteattr(str(call.id))} />"
+        f"<Parameter name=\"t\" value={quoteattr(stream_token)} />"
+        "</Stream></Connect></Response>"
     )
     return Response(content=xml, media_type="text/xml")
 
@@ -144,21 +202,17 @@ async def twilio_twiml() -> Response:
 @router.post("/twilio/status-callback")
 async def twilio_status_callback(
     request: Request,
-    token: str | None = Query(default=None),
+    cid: str | None = Query(default=None),
+    t: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> dict:
     """Twilio's call-progress webhook. CallSid/CallStatus are Twilio's
     documented StatusCallback field names (https://www.twilio.com/docs/voice/twiml)."""
-    if settings.twilio_webhook_token and token != settings.twilio_webhook_token:
-        raise HTTPException(403, "Invalid webhook token.")
-
-    form = await request.form()
-    call_sid = form.get("CallSid")
-    provider_status = form.get("CallStatus")
-    if call_sid and provider_status:
-        call = _find_call_by_sid(db, str(call_sid))
-        if call is not None:
-            service.update_status_from_provider_status(db, call, str(provider_status))
+    params = await _verify_twilio_request(request)
+    call = _authenticated_call(db, cid, t, "status", params.get("CallSid"))
+    provider_status = params.get("CallStatus")
+    if provider_status:
+        service.update_status_from_provider_status(db, call, provider_status)
     return {"ok": True}
 
 
@@ -174,6 +228,7 @@ class _Wire(Protocol):
     def encode(self, pcm: bytes) -> bytes: ...  # PCM16 -> this provider's wire codec
     def decode(self, wire_bytes: bytes) -> bytes: ...  # wire codec -> PCM16
     def parse_start(self, evt: dict) -> tuple[str | None, str | None]: ...  # -> (stream_sid, call_sid)
+    def parse_credentials(self, evt: dict) -> tuple[str | None, str | None]: ...  # -> (call id, stream token)
     def parse_media_payload(self, evt: dict) -> str: ...  # -> base64 payload
     def build_media(self, stream_sid: str, seq: int, chunk_idx: int, payload_b64: str) -> dict: ...
     def build_mark(self, stream_sid: str, seq: int, name: str) -> dict: ...
@@ -193,6 +248,18 @@ class _ExotelWire:
     def parse_start(self, evt: dict) -> tuple[str | None, str | None]:
         start_info = evt.get("start", {})
         return evt.get("stream_sid") or start_info.get("stream_sid"), start_info.get("call_sid")
+
+    def parse_credentials(self, evt: dict) -> tuple[str | None, str | None]:
+        # Exotel echoes our CustomField (`<call id>|<stream token>`) back as a
+        # custom parameter on the start event -- its exact container shape
+        # isn't firmly documented, so accept a bare string or a dict of them.
+        custom = evt.get("start", {}).get("custom_parameters")
+        if isinstance(custom, dict):
+            custom = next((v for v in custom.values() if isinstance(v, str) and "|" in v), None)
+        if not isinstance(custom, str) or "|" not in custom:
+            return None, None
+        cid, _, token = custom.partition("|")
+        return cid, token
 
     def parse_media_payload(self, evt: dict) -> str:
         return evt.get("media", {}).get("payload", "")
@@ -227,6 +294,13 @@ class _TwilioWire:
     def parse_start(self, evt: dict) -> tuple[str | None, str | None]:
         start_info = evt.get("start", {})
         return evt.get("streamSid") or start_info.get("streamSid"), start_info.get("callSid")
+
+    def parse_credentials(self, evt: dict) -> tuple[str | None, str | None]:
+        params = evt.get("start", {}).get("customParameters") or {}
+        if not isinstance(params, dict):
+            return None, None
+        cid, token = params.get("cid"), params.get("t")
+        return (cid if isinstance(cid, str) else None), (token if isinstance(token, str) else None)
 
     def parse_media_payload(self, evt: dict) -> str:
         return evt.get("media", {}).get("payload", "")
@@ -292,9 +366,22 @@ async def _safe_summarize(conv: ConversationState) -> str:
         return "कॉल हुई, लेकिन वजह अपने आप summarise नहीं हो पाई -- ट्रांसक्रिप्ट देखें।"
 
 
+async def _recv_json(websocket: WebSocket, timeout: float) -> dict | None:
+    """One bounded frame: times out if the peer goes silent, and rejects
+    oversized or non-JSON frames instead of buffering/parsing them."""
+    raw = await asyncio.wait_for(websocket.receive_text(), timeout=timeout)
+    if len(raw) > _MAX_FRAME_CHARS:
+        return None
+    try:
+        evt = json.loads(raw)
+    except ValueError:
+        return None
+    return evt if isinstance(evt, dict) else None
+
+
 async def _run_voicebot(websocket: WebSocket, wire: _Wire) -> None:
     await websocket.accept()
-    db = SessionLocal()
+    db = None  # opened only after the caller proves it owns this call
     call: AbsenceCall | None = None
     conv: ConversationState | None = None
     stream_sid: str | None = None
@@ -306,25 +393,55 @@ async def _run_voicebot(websocket: WebSocket, wire: _Wire) -> None:
 
     try:
         while True:
-            raw = await websocket.receive_text()
-            evt = json.loads(raw)
+            timeout = _IDLE_TIMEOUT_SECONDS if call is not None else _START_TIMEOUT_SECONDS
+            evt = await _recv_json(websocket, timeout)
+            if evt is None:
+                await websocket.close(code=1008)
+                return
             event = evt.get("event")
 
-            if event == "start":
+            if call is None:
+                # Until a valid `start` frame authenticates us, ignore everything else
+                # (Twilio sends `connected` first) but never hold resources.
+                if event == "connected":
+                    continue
+                if event != "start":
+                    await websocket.close(code=1008)
+                    return
                 stream_sid, call_sid = wire.parse_start(evt)
-                call = _find_call_by_sid(db, call_sid)
-                if call is None:
-                    logger.warning(
-                        "absence_call_voicebot_unknown_call_sid provider=%s call_sid=%s", wire.name, call_sid
-                    )
-                    await websocket.close()
+                cid, token = wire.parse_credentials(evt)
+                try:
+                    call_uuid = uuid.UUID(cid) if cid else None
+                except ValueError:
+                    call_uuid = None
+                if (
+                    not stream_sid
+                    or not call_sid
+                    or call_uuid is None
+                    or not verify_call_token(token, str(call_uuid), "stream")
+                ):
+                    logger.warning("absence_call_voicebot_rejected provider=%s reason=bad_credentials", wire.name)
+                    await websocket.close(code=1008)
                     return
 
-                student = db.get(Teacher, call.student_id)
+                db = SessionLocal()
+                call = db.get(AbsenceCall, call_uuid)
+                # The SID must match what we stored when placing the call, and the
+                # call must still be live -- a finished call can't be re-driven.
+                if (
+                    call is None
+                    or call.provider_call_sid != call_sid
+                    or call.status not in _LIVE_STATUSES
+                ):
+                    logger.warning("absence_call_voicebot_rejected provider=%s reason=state", wire.name)
+                    call = None
+                    await websocket.close(code=1008)
+                    return
+
+                student = db.get(Student, call.student_id)
                 conv = ConversationState(student_name=(student.full_name if student else "बच्चे"))
                 service.update_status_from_provider_status(db, call, "in-progress")
 
-                assert stream_sid is not None
                 call_started = time.monotonic()
                 seq = await _speak(websocket, wire, stream_sid, seq, opening_line(conv.student_name))
                 audio_buffer.clear()
@@ -335,7 +452,14 @@ async def _run_voicebot(websocket: WebSocket, wire: _Wire) -> None:
             if event == "media" and listening and stream_sid:
                 payload = wire.parse_media_payload(evt)
                 if payload:
-                    audio_buffer.extend(wire.decode(base64.b64decode(payload)))
+                    if len(audio_buffer) > _MAX_AUDIO_BUFFER_BYTES:
+                        await websocket.close(code=1009)
+                        return
+                    try:
+                        audio_buffer.extend(wire.decode(base64.b64decode(payload, validate=True)))
+                    except ValueError:
+                        await websocket.close(code=1007)
+                        return
                 if time.monotonic() - listen_started < _LISTEN_WINDOW_SECONDS:
                     continue
 
@@ -376,12 +500,13 @@ async def _run_voicebot(websocket: WebSocket, wire: _Wire) -> None:
                     )
                     service.save_transcript_and_reason(db, call, transcript=transcript, reason_text=reason)
                 break
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, asyncio.TimeoutError):
         pass
     except Exception:
         logger.exception("absence_call_voicebot_error provider=%s call_id=%s", wire.name, call.id if call else None)
     finally:
-        db.close()
+        if db is not None:
+            db.close()
 
 
 @router.websocket("/exotel/voicebot")

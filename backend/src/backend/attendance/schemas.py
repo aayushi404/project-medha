@@ -10,13 +10,15 @@ AttendanceStatus = Literal["present", "absent"]
 class AttendanceStudentOut(BaseModel):
     student_id: uuid.UUID
     full_name: str
-    roll_number: str | None
+    roll_number: int | None
+    photo_url: str | None
     status: AttendanceStatus | None  # None = not yet marked for this date
 
 
 class AttendanceDayOut(BaseModel):
-    grade_id: uuid.UUID
+    class_section_id: uuid.UUID
     grade_label: str
+    section: str
     date: date_
     students: list[AttendanceStudentOut]
 
@@ -27,7 +29,7 @@ class AttendanceRecordIn(BaseModel):
 
 
 class AttendanceMarkIn(BaseModel):
-    grade_id: uuid.UUID
+    class_section_id: uuid.UUID
     date: date_
     records: list[AttendanceRecordIn] = Field(min_length=1)
 

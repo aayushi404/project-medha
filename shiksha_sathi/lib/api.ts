@@ -12,13 +12,30 @@ export type Teacher = {
   id: string;
   email: string | null;
   full_name: string;
-  role: Role;
+  role: "admin" | "principal" | "teacher";
   approval_status: ApprovalStatus;
   school_id: string | null;
+  onboarded_at: string | null;
+  photo_url: string | null;
+};
+
+/** A student's login identity -- a separate table/type from `Teacher`, with
+ * its own grade/roll placement. See lib/auth-context.tsx for the current-user
+ * shape this feeds into. */
+export type Student = {
+  id: string;
+  email: string | null;
+  full_name: string;
+  role: "student";
+  approval_status: ApprovalStatus;
+  school_id: string;
   grade_id: string | null;
   roll_number: string | null;
-  onboarded_at: string | null;
+  photo_url: string | null;
 };
+
+/** The logged-in user, whichever table they're a row of -- narrow on `role`. */
+export type CurrentUser = Teacher | Student;
 
 export type TokenOut = {
   access_token: string;
@@ -96,11 +113,40 @@ type ApiFetchOptions = {
  * cookie -- the backend's CORS middleware must echo back this exact origin
  * (not "*") with allow_credentials=True for that to work cross-origin.
  */
-export function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<Response> {
+/**
+ * Set by the AuthProvider: refreshes the session and resolves to the new
+ * access token (or null if the session is really gone). Lets apiFetch recover
+ * from a 401 caused by an expired token -- e.g. after the laptop slept and the
+ * proactive refresh timer never fired -- with one transparent retry.
+ */
+let tokenRefresher: (() => Promise<string | null>) | null = null;
+export function setTokenRefresher(fn: (() => Promise<string | null>) | null) {
+  tokenRefresher = fn;
+}
+
+export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<Response> {
+  const res = await rawFetch(path, options);
+  if (res.status === 401 && options.token && tokenRefresher && !path.startsWith("/auth/")) {
+    const fresh = await tokenRefresher();
+    if (fresh) return rawFetch(path, { ...options, token: fresh });
+  }
+  return res;
+}
+
+function rawFetch(path: string, options: ApiFetchOptions = {}): Promise<Response> {
   const { method = "GET", body, token, signal } = options;
+  // A FormData body (file uploads) must keep its own multipart Content-Type
+  // (with the boundary the browser generates) -- setting it ourselves or
+  // JSON.stringify-ing the body would corrupt the upload.
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
+  // The auth endpoints that rely on the httpOnly refresh cookie (refresh /
+  // logout) reject requests without this header. A cross-site attacker page
+  // can't add it without a CORS preflight that only this origin passes -- that
+  // is what makes the cookie-authenticated calls CSRF-safe.
+  if (path.startsWith("/auth/")) headers["X-Medha-Client"] = "web";
 
   return fetch(`${API_BASE_URL}${path}`, {
     method,
@@ -110,7 +156,7 @@ export function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<R
     // stale body (e.g. /auth/me after the profile changed server-side).
     cache: "no-store",
     signal,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
   });
 }
 
@@ -158,6 +204,7 @@ export type Profile = {
   email: string;
   phone_number: string | null;
   preferred_language: string;
+  photo_url: string | null;
   onboarded_at: string | null;
   school: { id: string; name: string; district_name: string } | null;
   subjects: ProfileSubject[];
@@ -292,16 +339,29 @@ export const patchProfile = (
   },
 ) => json<Profile>(apiFetch("/profile", { method: "PATCH", token, body }));
 
+/** Uploads (or replaces) the current user's profile photo -- works for a
+ * teacher/principal or a student token alike, since the backend resolves the
+ * actor from the token. Returns the updated profile (teacher shape); callers
+ * that only need the photo can just read `.photo_url` off the result. */
+export const uploadProfilePhoto = (token: string | null, file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return json<Profile>(apiFetch("/profile/photo", { method: "POST", token, body: formData }));
+};
+
+export const deleteProfilePhoto = (token: string | null) =>
+  json<Profile>(apiFetch("/profile/photo", { method: "DELETE", token }));
+
 export const getGrades = () => json<Grade[]>(apiFetch("/reference/grades"));
 export const getSubjects = () => json<Subject[]>(apiFetch("/reference/subjects"));
 
 export const getChapters = (gradeId: string, subjectId: string) =>
   json<Chapter[]>(
-    apiFetch(`/curriculum/chapters?grade_id=${gradeId}&subject_id=${subjectId}`),
+    apiFetch(`/curriculum/chapters?grade_id=${encodeURIComponent(gradeId)}&subject_id=${encodeURIComponent(subjectId)}`),
   );
 
 export const getTopics = (chapterId: string) =>
-  json<Topic[]>(apiFetch(`/curriculum/topics?chapter_id=${chapterId}`));
+  json<Topic[]>(apiFetch(`/curriculum/topics?chapter_id=${encodeURIComponent(chapterId)}`));
 
 export const createSession = (
   token: string | null,
@@ -509,6 +569,25 @@ export type TeacherRosterItem = {
   employee_code: string | null;
   years_of_experience: number | null;
   approved_at: string | null;
+  photo_url: string | null;
+  primary_subject_name: string | null;
+  classes_count: number;
+  class_teacher_of_section_id: string | null;
+  class_teacher_of_label: string | null;
+};
+
+export type TeacherProfile = {
+  id: string;
+  full_name: string;
+  email: string;
+  mobile_number: string | null;
+  employee_code: string | null;
+  years_of_experience: number | null;
+  qualification: string | null;
+  approval_status: ApprovalStatus;
+  approved_at: string | null;
+  photo_url: string | null;
+  sections_taught: string[];
 };
 
 export const getPrincipalStats = (token: string | null) =>
@@ -516,6 +595,9 @@ export const getPrincipalStats = (token: string | null) =>
 
 export const getPrincipalTeachers = (token: string | null) =>
   json<TeacherRosterItem[]>(apiFetch("/principal/teachers", { token }));
+
+export const getTeacherProfile = (token: string | null, teacherId: string) =>
+  json<TeacherProfile>(apiFetch(`/principal/teachers/${teacherId}`, { token }));
 
 export const getPendingTeachers = (token: string | null) =>
   json<PendingTeacher[]>(apiFetch("/principal/teachers/pending", { token }));
@@ -539,7 +621,9 @@ export type ClassSectionSummary = {
   id: string;
   grade_label: string;
   section: string;
+  academic_year_label: string;
   student_count: number;
+  class_teacher_id: string | null;
   class_teacher_name: string | null;
 };
 
@@ -548,6 +632,7 @@ export type RosterStudentItem = {
   roll_number: number | null;
   full_name: string;
   guardian_name: string | null;
+  photo_url: string | null;
 };
 
 export type StudentProfile = {
@@ -555,6 +640,7 @@ export type StudentProfile = {
   full_name: string;
   admission_number: string | null;
   status: string;
+  photo_url: string | null;
   grade_label: string | null;
   section: string | null;
   roll_number: number | null;
@@ -565,8 +651,16 @@ export type StudentProfile = {
   guardian_phone: string | null;
 };
 
-export const getClassSections = (token: string | null) =>
-  json<ClassSectionSummary[]>(apiFetch("/principal/sections", { token }));
+export const getClassSections = (token: string | null, academicYearId?: string | null) =>
+  json<ClassSectionSummary[]>(
+    apiFetch(
+      `/principal/sections${academicYearId ? `?academic_year_id=${encodeURIComponent(academicYearId)}` : ""}`,
+      { token },
+    ),
+  );
+
+export const getClassSection = (token: string | null, sectionId: string) =>
+  json<ClassSectionSummary>(apiFetch(`/principal/sections/${sectionId}`, { token }));
 
 export const getSectionRoster = (token: string | null, sectionId: string) =>
   json<RosterStudentItem[]>(apiFetch(`/principal/sections/${sectionId}/students`, { token }));
@@ -574,43 +668,141 @@ export const getSectionRoster = (token: string | null, sectionId: string) =>
 export const getStudentProfile = (token: string | null, studentId: string) =>
   json<StudentProfile>(apiFetch(`/principal/students/${studentId}`, { token }));
 
+// --- principal: school setup (academic years, class sections, teaching assignments) ---
+
+export type AcademicYear = {
+  id: string;
+  label: string;
+  starts_on: string;
+  ends_on: string;
+  is_current: boolean;
+};
+
+export type AcademicYearCreateInput = {
+  label: string;
+  starts_on: string;
+  ends_on: string;
+  set_current?: boolean;
+};
+
+export type ClassSectionCreateInput = {
+  grade_id: string;
+  section?: string;
+  academic_year_id?: string | null;
+};
+export type ClassSectionUpdateInput = { class_teacher_id: string | null };
+
+export type TeachingAssignment = {
+  id: string;
+  teacher_id: string;
+  teacher_name: string;
+  class_section_id: string;
+  grade_label: string;
+  section: string;
+  subject_id: string;
+  subject_name: string;
+};
+
+export type TeachingAssignmentInput = {
+  teacher_id: string;
+  class_section_id: string;
+  subject_id: string;
+};
+
+export const getAcademicYears = (token: string | null) =>
+  json<AcademicYear[]>(apiFetch("/principal/academic-years", { token }));
+
+export const createAcademicYear = (token: string | null, input: AcademicYearCreateInput) =>
+  json<AcademicYear>(
+    apiFetch("/principal/academic-years", { method: "POST", token, body: input }),
+  );
+
+export const createClassSection = (token: string | null, input: ClassSectionCreateInput) =>
+  json<ClassSectionSummary>(
+    apiFetch("/principal/sections", { method: "POST", token, body: input }),
+  );
+
+export const updateClassSection = (
+  token: string | null,
+  sectionId: string,
+  input: ClassSectionUpdateInput,
+) =>
+  json<ClassSectionSummary>(
+    apiFetch(`/principal/sections/${sectionId}`, { method: "PATCH", token, body: input }),
+  );
+
+export const getSectionTeachingAssignments = (token: string | null, sectionId: string) =>
+  json<TeachingAssignment[]>(
+    apiFetch(`/principal/sections/${sectionId}/teaching-assignments`, { token }),
+  );
+
+export const createTeachingAssignment = (token: string | null, input: TeachingAssignmentInput) =>
+  json<TeachingAssignment>(
+    apiFetch("/principal/teaching-assignments", { method: "POST", token, body: input }),
+  );
+
+export const deleteTeachingAssignment = async (token: string | null, assignmentId: string) => {
+  const res = await apiFetch(`/principal/teaching-assignments/${assignmentId}`, {
+    method: "DELETE",
+    token,
+  });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+};
+
+/** Assign, change, or clear (teacherId=null) the one teacher who teaches a
+ * subject in a class section -- one atomic call, returns the section's full
+ * updated assignment list. */
+export const setSubjectTeacher = (
+  token: string | null,
+  sectionId: string,
+  subjectId: string,
+  teacherId: string | null,
+) =>
+  json<TeachingAssignment[]>(
+    apiFetch(`/principal/sections/${sectionId}/subjects/${subjectId}/teacher`, {
+      method: "PUT",
+      token,
+      body: { teacher_id: teacherId },
+    }),
+  );
+
 // ---------------------------------------------------------------------------
-// Student role. Two-phase onboarding: register (class + roll number, no
-// credential) -> a teacher approves -> activate (set email + password) ->
-// log in through /auth/login. See docs/medha-student-role-plan.md.
+// Student self-registration. One step: pick school + grade + class_section +
+// roll number (for the current academic year), give guardian details, set a
+// login credential -- a teacher still has to approve the row, but there's no
+// separate "activate account" step anymore.
 // ---------------------------------------------------------------------------
+
+export type ClassSectionOption = { id: string; section: string };
+
+/** Unauthenticated -- used by the registration form before any login
+ * exists. Distinct from `getClassSections` above (principal-side, current
+ * user's own school). Empty result means the school hasn't set up this
+ * grade yet; the caller must block registration, not fall back. */
+export const getRegistrationClassSections = (schoolId: string, gradeId: string) =>
+  json<ClassSectionOption[]>(
+    apiFetch(`/reference/class-sections?school_id=${encodeURIComponent(schoolId)}&grade_id=${encodeURIComponent(gradeId)}`),
+  );
+
+export type GuardianRelation = "father" | "mother" | "guardian";
 
 export type StudentRegisterInput = {
   full_name: string;
   school_id: string;
-  grade_id: string;
-  roll_number: string;
-  // Optional: the number the absence-calling feature dials if this student
-  // is ever marked absent.
-  guardian_name?: string | null;
-  guardian_phone?: string | null;
-};
-
-export type StudentActivateInput = {
-  school_id: string;
-  grade_id: string;
-  roll_number: string;
-  full_name: string;
+  class_section_id: string;
+  roll_number: number;
+  guardian_name: string;
+  guardian_relation: GuardianRelation;
+  guardian_phone: string;
   email: string;
   password: string;
 };
 
 export type StudentRegisterResult = { status: "pending"; message: string };
-export type StudentActivateResult = { status: "activated"; message: string };
 
 export const registerStudent = (input: StudentRegisterInput) =>
   json<StudentRegisterResult>(
     apiFetch("/student/register", { method: "POST", body: input }),
-  );
-
-export const activateStudent = (input: StudentActivateInput) =>
-  json<StudentActivateResult>(
-    apiFetch("/student/activate", { method: "POST", body: input }),
   );
 
 // --- teacher-facing student approvals ---
@@ -620,22 +812,45 @@ export type TeacherStudentStats = { students: number; pending_students: number }
 export type PendingStudent = {
   id: string;
   full_name: string;
+  class_section_id: string;
   grade_id: string;
   grade_label: string;
-  roll_number: string | null;
+  section: string;
+  roll_number: number | null;
   applied_at: string;
 };
 
 export type StudentRosterItem = {
   id: string;
   full_name: string;
+  class_section_id: string;
   grade_id: string;
   grade_label: string;
-  roll_number: string | null;
+  section: string;
+  roll_number: number | null;
   email: string | null;
-  activated: boolean;
   approved_at: string | null;
+  photo_url: string | null;
 };
+
+/** A class_section the calling teacher can act on -- via a teaching
+ * assignment or being its class_teacher. Feeds the class picker on
+ * attendance/homework/report-card/OMR/notifications pages, replacing the
+ * old flat grade picker on each of those. */
+export type TeacherSectionSubject = { id: string; name: string };
+
+export type TeacherSection = {
+  id: string;
+  grade_id: string;
+  grade_label: string;
+  section: string;
+  academic_year_label: string;
+  is_class_teacher: boolean;
+  subjects: TeacherSectionSubject[];
+};
+
+export const getMySections = (token: string | null) =>
+  json<TeacherSection[]>(apiFetch("/teacher/sections", { token }));
 
 export const getTeacherStudentStats = (token: string | null) =>
   json<TeacherStudentStats>(apiFetch("/teacher/students/stats", { token }));
@@ -882,7 +1097,7 @@ export type AnnounceInput = {
   title: string;
   body: string;
   audience?: "teachers" | "students";
-  grade_id?: string;
+  class_section_id?: string;
 };
 
 export const listNotifications = (token: string | null) =>
@@ -900,7 +1115,7 @@ export const announce = (token: string | null, body: AnnounceInput) =>
   json<{ recipients: number }>(apiFetch("/notifications/announce", { method: "POST", token, body }));
 
 // ---------------------------------------------------------------------------
-// Homework: a teacher assigns to a grade (optionally tied to a subject);
+// Homework: a teacher assigns to a class_section they teach a subject in;
 // students see their own list and toggle done/not-done.
 // ---------------------------------------------------------------------------
 
@@ -908,6 +1123,7 @@ export type HomeworkListItem = {
   id: string;
   title: string;
   grade_label: string;
+  section: string;
   subject_name: string | null;
   due_date: string | null;
   created_at: string;
@@ -920,6 +1136,7 @@ export type HomeworkDetail = {
   title: string;
   description: string | null;
   grade_label: string;
+  section: string;
   subject_name: string | null;
   due_date: string | null;
   created_at: string;
@@ -936,8 +1153,8 @@ export type HomeworkStudentItem = {
 };
 
 export type HomeworkCreateInput = {
-  grade_id: string;
-  subject_id?: string | null;
+  class_section_id: string;
+  subject_id: string;
   title: string;
   description?: string | null;
   due_date?: string | null;
@@ -986,7 +1203,7 @@ export type TimetableSlotInput = {
 };
 
 export const getTimetable = (token: string | null, gradeId: string) =>
-  json<Timetable>(apiFetch(`/timetable?grade_id=${gradeId}`, { token }));
+  json<Timetable>(apiFetch(`/timetable?grade_id=${encodeURIComponent(gradeId)}`, { token }));
 
 export const setTimetable = (
   token: string | null,
@@ -1030,7 +1247,7 @@ export type StudentMarkItemInput = {
 };
 
 export type BulkReportCardMarksInput = {
-  grade_id: string;
+  class_section_id: string;
   subject_id: string;
   term: string;
   max_marks: number;
@@ -1111,13 +1328,13 @@ export const bulkUpsertReportCardMarks = (
 
 export const getClassReportCardMarks = (
   token: string | null,
-  gradeId: string,
+  classSectionId: string,
   subjectId: string,
   term: string
 ) =>
   json<ReportCardMark[]>(
     apiFetch(
-      `/report-card/class-marks?grade_id=${gradeId}&subject_id=${subjectId}&term=${encodeURIComponent(term)}`,
+      `/report-card/class-marks?class_section_id=${encodeURIComponent(classSectionId)}&subject_id=${encodeURIComponent(subjectId)}&term=${encodeURIComponent(term)}`,
       { token }
     )
   );
@@ -1137,13 +1354,13 @@ export const uploadOMRSheet = async (token: string | null, file: File): Promise<
 export const evaluateOMRSheet = async (
   token: string | null,
   file: File,
-  gradeId: string,
+  classSectionId: string,
   maxMarks: number = 100
 ): Promise<OMREvaluationResult> => {
   const formData = new FormData();
   formData.append("file", file);
   return json<OMREvaluationResult>(
-    apiFetch(`/report-card/omr/evaluate?grade_id=${gradeId}&max_marks=${maxMarks}`, {
+    apiFetch(`/report-card/omr/evaluate?class_section_id=${encodeURIComponent(classSectionId)}&max_marks=${encodeURIComponent(String(maxMarks))}`, {
       method: "POST",
       token,
       body: formData,
@@ -1267,7 +1484,7 @@ export type ChapterNoteInput = {
 };
 
 export const getChapterNotes = (token: string | null, chapterId: string) =>
-  json<ChapterNote | null>(apiFetch(`/notes?chapter_id=${chapterId}`, { token }));
+  json<ChapterNote | null>(apiFetch(`/notes?chapter_id=${encodeURIComponent(chapterId)}`, { token }));
 
 export const upsertChapterNote = (token: string | null, body: ChapterNoteInput) =>
   json<ChapterNote>(apiFetch("/notes", { method: "POST", token, body }));
@@ -1293,7 +1510,7 @@ export type PracticeQuestionInput = {
 };
 
 export const getPracticeQuestions = (token: string | null, chapterId: string) =>
-  json<PracticeQuestion[]>(apiFetch(`/practice?chapter_id=${chapterId}`, { token }));
+  json<PracticeQuestion[]>(apiFetch(`/practice?chapter_id=${encodeURIComponent(chapterId)}`, { token }));
 
 export const addPracticeQuestion = (token: string | null, body: PracticeQuestionInput) =>
   json<PracticeQuestion>(apiFetch("/practice", { method: "POST", token, body }));
@@ -1313,34 +1530,66 @@ export type AttendanceStatus = "present" | "absent";
 export type AttendanceStudent = {
   student_id: string;
   full_name: string;
-  roll_number: string | null;
+  roll_number: number | null;
+  photo_url: string | null;
   status: AttendanceStatus | null; // null = not yet marked for this date
 };
 
 export type AttendanceDay = {
-  grade_id: string;
+  class_section_id: string;
   grade_label: string;
+  section: string;
   date: string;
   students: AttendanceStudent[];
 };
 
 export type AttendanceRecordInput = { student_id: string; status: AttendanceStatus };
 
-export const getAttendance = (token: string | null, gradeId: string, date?: string) => {
-  const qs = new URLSearchParams({ grade_id: gradeId });
+export const getAttendance = (token: string | null, classSectionId: string, date?: string) => {
+  const qs = new URLSearchParams({ class_section_id: classSectionId });
   if (date) qs.set("date", date);
   return json<AttendanceDay>(apiFetch(`/attendance?${qs}`, { token }));
 };
 
 export const markAttendance = (
   token: string | null,
-  body: { grade_id: string; date: string; records: AttendanceRecordInput[] },
+  body: { class_section_id: string; date: string; records: AttendanceRecordInput[] },
 ) => json<AttendanceDay>(apiFetch("/attendance", { method: "POST", token, body }));
 
 export type AttendanceMineItem = { date: string; status: AttendanceStatus };
 
 export const getMyAttendance = (token: string | null) =>
   json<AttendanceMineItem[]>(apiFetch("/attendance/mine", { token }));
+
+// --- principal: real school-wide attendance stats (replaces the old
+// localStorage-mocked numbers on the dashboard) ---
+
+export type ClassAttendanceSummary = {
+  class_section_id: string;
+  grade_label: string;
+  section: string;
+  class_teacher_name: string | null;
+  total_students: number;
+  present_count: number;
+  absent_count: number;
+  unmarked_count: number;
+  percentage: number | null; // null when the section has no students
+};
+
+export type SchoolAttendanceSummary = {
+  date: string;
+  total_students: number;
+  present_count: number;
+  absent_count: number;
+  unmarked_count: number;
+  percentage: number | null;
+  classes: ClassAttendanceSummary[];
+};
+
+export const getPrincipalAttendanceSummary = (token: string | null, date?: string) => {
+  const qs = date ? `?date=${encodeURIComponent(date)}` : "";
+  return json<SchoolAttendanceSummary>(apiFetch(`/principal/attendance/summary${qs}`, { token }));
+};
 
 // ---------------------------------------------------------------------------
 // Absence calling: the instant an absent mark is saved, the backend queues an
@@ -1373,8 +1622,26 @@ export type AbsenceCall = {
   completed_at: string | null;
 };
 
-export const getAbsenceCalls = (token: string | null, gradeId?: string) => {
-  const qs = gradeId ? `?grade_id=${gradeId}` : "";
+export const getAbsenceCalls = (token: string | null, classSectionId?: string) => {
+  const qs = classSectionId ? `?class_section_id=${encodeURIComponent(classSectionId)}` : "";
   return json<AbsenceCall[]>(apiFetch(`/absence-calls${qs}`, { token }));
 };
 
+
+// ---------------------------------------------------------------------------
+// Account recovery + email verification (all public; the backend answers
+// forgot/resend identically whether or not the email exists).
+// ---------------------------------------------------------------------------
+
+async function postAuth(path: string, body: unknown): Promise<string> {
+  const res = await apiFetch(path, { method: "POST", body });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+  const data = (await res.json()) as { message?: string };
+  return data.message ?? "";
+}
+
+export const verifyEmail = (token: string) => postAuth("/auth/verify-email", { token });
+export const resendVerification = (email: string) => postAuth("/auth/resend-verification", { email });
+export const forgotPassword = (email: string) => postAuth("/auth/forgot-password", { email });
+export const resetPassword = (token: string, newPassword: string) =>
+  postAuth("/auth/reset-password", { token, new_password: newPassword });

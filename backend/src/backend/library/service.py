@@ -4,7 +4,15 @@ from fastapi import HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from backend.db.models import CurriculumChapter, Grade, LibraryItem, LibraryPresentation, Subject, Teacher
+from backend.db.models import (
+    CurriculumChapter,
+    Grade,
+    LibraryItem,
+    LibraryPresentation,
+    Student,
+    Subject,
+    Teacher,
+)
 from backend.library.schemas import (
     LibraryItemIn,
     LibraryItemOut,
@@ -132,7 +140,7 @@ def render_presentation_ppt(db: Session, pres_id: uuid.UUID) -> tuple[bytes, str
 
 
 def list_items(
-    db: Session, user: Teacher, *, grade_id: uuid.UUID | None, subject_id: uuid.UUID | None
+    db: Session, user: Teacher | Student, *, grade_id: uuid.UUID | None, subject_id: uuid.UUID | None
 ) -> list[LibraryItemOut]:
     q = (
         db.query(LibraryItem, Grade.label, Subject.name)
@@ -181,7 +189,9 @@ def add_item(db: Session, user: Teacher, payload: LibraryItemIn) -> LibraryItemO
 
 def delete_item(db: Session, user: Teacher, item_id: uuid.UUID) -> None:
     item = db.get(LibraryItem, item_id)
-    if item is None or (item.school_id != user.school_id and user.role != "admin"):
+    # a global (school_id NULL) item is never deletable by a teacher: without the
+    # explicit NULL check, `None != None` let school-less accounts delete it
+    if item is None or user.school_id is None or item.school_id != user.school_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Item not found.")
     db.delete(item)
     db.commit()

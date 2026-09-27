@@ -1,6 +1,7 @@
 import uuid
+from datetime import date as date_
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import require_principal
@@ -8,15 +9,24 @@ from backend.db.models import Teacher
 from backend.db.session import get_db
 from backend.principal import service
 from backend.principal.schemas import (
+    AcademicYearCreateIn,
+    AcademicYearOut,
     ApprovalResult,
+    ClassSectionCreateIn,
     ClassSectionSummary,
+    ClassSectionUpdateIn,
     PendingTeacher,
     PrincipalStats,
     RejectIn,
     RosterStudentItem,
+    SchoolAttendanceSummaryOut,
     StudentProfile,
     StudentRosterItem,
+    SubjectTeacherIn,
+    TeacherProfile,
     TeacherRosterItem,
+    TeachingAssignmentIn,
+    TeachingAssignmentOut,
 )
 
 router = APIRouter(
@@ -47,9 +57,20 @@ def students(
 
 @router.get("/sections", response_model=list[ClassSectionSummary])
 def class_sections(
-    principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
+    academic_year_id: uuid.UUID | None = Query(default=None),
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
 ) -> list[ClassSectionSummary]:
-    return service.list_class_sections(db, principal)
+    return service.list_class_sections(db, principal, academic_year_id)
+
+
+@router.get("/sections/{section_id}", response_model=ClassSectionSummary)
+def class_section_detail(
+    section_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> ClassSectionSummary:
+    return service.get_class_section(db, principal, section_id)
 
 
 @router.get("/sections/{section_id}/students", response_model=list[RosterStudentItem])
@@ -70,11 +91,100 @@ def student_profile(
     return service.get_student_profile(db, principal, student_id)
 
 
+@router.get("/academic-years", response_model=list[AcademicYearOut])
+def academic_years(
+    principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
+) -> list[AcademicYearOut]:
+    return service.list_academic_years(db, principal)
+
+
+@router.post("/academic-years", response_model=AcademicYearOut)
+def create_academic_year(
+    payload: AcademicYearCreateIn,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> AcademicYearOut:
+    return service.create_academic_year(db, principal, payload)
+
+
+@router.post("/sections", response_model=ClassSectionSummary)
+def create_class_section(
+    payload: ClassSectionCreateIn,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> ClassSectionSummary:
+    return service.create_class_section(db, principal, payload)
+
+
+@router.patch("/sections/{section_id}", response_model=ClassSectionSummary)
+def update_class_section(
+    section_id: uuid.UUID,
+    payload: ClassSectionUpdateIn,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> ClassSectionSummary:
+    return service.update_class_section(db, principal, section_id, payload)
+
+
+@router.get(
+    "/sections/{section_id}/teaching-assignments", response_model=list[TeachingAssignmentOut]
+)
+def section_teaching_assignments(
+    section_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> list[TeachingAssignmentOut]:
+    return service.list_section_teaching_assignments(db, principal, section_id)
+
+
+@router.post("/teaching-assignments", response_model=TeachingAssignmentOut)
+def create_teaching_assignment(
+    payload: TeachingAssignmentIn,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> TeachingAssignmentOut:
+    return service.create_teaching_assignment(db, principal, payload)
+
+
+@router.delete("/teaching-assignments/{assignment_id}", status_code=204)
+def delete_teaching_assignment(
+    assignment_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> None:
+    service.delete_teaching_assignment(db, principal, assignment_id)
+
+
+@router.put(
+    "/sections/{section_id}/subjects/{subject_id}/teacher",
+    response_model=list[TeachingAssignmentOut],
+)
+def set_subject_teacher(
+    section_id: uuid.UUID,
+    subject_id: uuid.UUID,
+    payload: SubjectTeacherIn,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> list[TeachingAssignmentOut]:
+    return service.set_subject_teacher(
+        db, principal, section_id, subject_id, payload.teacher_id
+    )
+
+
 @router.get("/teachers/pending", response_model=list[PendingTeacher])
 def pending_teachers(
     principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
 ) -> list[PendingTeacher]:
     return service.list_pending_teachers(db, principal)
+
+
+@router.get("/teachers/{teacher_id}", response_model=TeacherProfile)
+def teacher_profile(
+    teacher_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> TeacherProfile:
+    return service.get_teacher_profile(db, principal, teacher_id)
 
 
 @router.post("/teachers/{teacher_id}/approve", response_model=ApprovalResult)
@@ -94,3 +204,15 @@ def reject_teacher(
     db: Session = Depends(get_db),
 ) -> ApprovalResult:
     return service.reject_teacher(db, principal, teacher_id, payload.reason)
+
+
+@router.get("/attendance/summary", response_model=SchoolAttendanceSummaryOut)
+def attendance_summary(
+    date: date_ | None = Query(default=None, description="Defaults to today."),
+    academic_year_id: uuid.UUID | None = Query(default=None),
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> SchoolAttendanceSummaryOut:
+    return service.get_attendance_summary(
+        db, principal, date or date_.today(), academic_year_id
+    )

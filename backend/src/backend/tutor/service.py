@@ -1,7 +1,8 @@
-"""Student doubt chat. Reuses the `chat_sessions` / `chat_messages` tables (the
-`teacher_id` column is a plain user FK) and the retrieval grounding, but skips
-the Module/artifact machinery -- a student's doubt is just a conversation -- and
-uses a student-facing prompt.
+"""Student doubt chat. Reuses the `chat_sessions` / `chat_messages` tables (a
+session's `student_id` column identifies the owner, distinct from a teacher
+"Ask Medha" session's `teacher_id`) and the retrieval grounding, but skips
+the Module/artifact machinery -- a student's doubt is just a conversation --
+and uses a student-facing prompt.
 """
 import json
 import logging
@@ -13,14 +14,16 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.core.ownership import assert_owned
+from backend.core.section_access import current_enrollment
 from backend.db.models import (
     ChatMessage,
     ChatSession,
+    ClassSection,
     CurriculumChapter,
     CurriculumTopic,
     Grade,
+    Student,
     Subject,
-    Teacher,
 )
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.prompts import doubt as doubt_prompt
@@ -34,18 +37,23 @@ _ERR_EMPTY = "Got an empty answer. Please try again."
 _ERR_RATE_LIMIT = "AI service limit has been reached. Please contact the app developer."
 
 
-def _student_grade_id(student: Teacher) -> uuid.UUID:
-    if student.grade_id is None:
+def _student_grade_id(db: Session, student: Student) -> uuid.UUID:
+    """The student's curriculum grade, resolved via their current class
+    placement (`student_enrollments`) -- `Student.grade_id` is a deprecated,
+    no-longer-written column (see student/service.py:register)."""
+    enrollment = current_enrollment(db, student)
+    if enrollment is None:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Your account isn't linked to a class."
         )
-    return student.grade_id
+    section = db.get(ClassSection, enrollment.class_section_id)
+    return section.grade_id
 
 
 def create_session(
-    db: Session, student: Teacher, payload: TutorSessionCreateIn
+    db: Session, student: Student, payload: TutorSessionCreateIn
 ) -> ChatSession:
-    grade_id = _student_grade_id(student)
+    grade_id = _student_grade_id(db, student)
 
     if db.get(Subject, payload.subject_id) is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid subject.")
@@ -71,7 +79,7 @@ def create_session(
     topic_id = topics[0].id if len(topics) == 1 else None
 
     session = ChatSession(
-        teacher_id=student.id,
+        student_id=student.id,
         grade_id=grade_id,
         subject_id=payload.subject_id,
         chapter_id=chapter.id,
@@ -83,10 +91,10 @@ def create_session(
     return session
 
 
-def list_sessions(db: Session, student: Teacher, limit: int = 20) -> list[ChatSession]:
+def list_sessions(db: Session, student: Student, limit: int = 20) -> list[ChatSession]:
     return (
         db.query(ChatSession)
-        .filter(ChatSession.teacher_id == student.id)
+        .filter(ChatSession.student_id == student.id)
         .order_by(ChatSession.updated_at.desc())
         .limit(limit)
         .all()
@@ -94,15 +102,15 @@ def list_sessions(db: Session, student: Teacher, limit: int = 20) -> list[ChatSe
 
 
 def load_owned_session(
-    db: Session, student: Teacher, session_id: uuid.UUID
+    db: Session, student: Student, session_id: uuid.UUID
 ) -> ChatSession:
     session = db.get(ChatSession, session_id)
-    assert_owned(student.id, session)
+    assert_owned(student.id, session, attr="student_id")
     return session
 
 
 def get_session_detail(
-    db: Session, student: Teacher, session_id: uuid.UUID
+    db: Session, student: Student, session_id: uuid.UUID
 ) -> tuple[ChatSession, list[ChatMessage]]:
     session = load_owned_session(db, student, session_id)
     messages = (
@@ -137,7 +145,7 @@ def _sse(event: str, payload: dict) -> dict:
 
 
 async def stream_message(
-    db: Session, student: Teacher, session: ChatSession, content: str
+    db: Session, student: Student, session: ChatSession, content: str
 ) -> AsyncIterator[dict]:
     grade = db.get(Grade, session.grade_id)
     subject = db.get(Subject, session.subject_id)

@@ -1,22 +1,23 @@
-"""Student self-service: registration (phase 1) and account activation (phase 2).
+"""Student self-registration -- one step, unauthenticated. A student picks
+their school, grade+section, and a roll number for the current academic
+year, gives guardian details, and sets a login credential immediately.
+A teacher still has to approve the row (see teacher/service.py) before it
+can log in, but there's no separate "activate account" step.
 
-Neither endpoint is authenticated -- a student has no session until they have
-activated. Phase 1 creates a pending, credential-less row; a teacher approves it;
-phase 2 matches the approved row by school + class + roll number + name and
-attaches an email + password so the student can log in through /auth/login.
+Identity is keyed on email (a credential exists from the start, unlike the
+old two-phase flow) -- a previously-rejected applicant re-applying with the
+same email reuses and resets that row rather than creating a duplicate.
 """
-from fastapi import HTTPException, status
-from sqlalchemy import func
+from datetime import date
+
+from fastapi import BackgroundTasks, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from backend.auth import emails, tokens
 from backend.auth.hashing import hash_password
-from backend.db.models import Grade, School, Teacher
-from backend.student.schemas import (
-    StudentActivateIn,
-    StudentActivateOut,
-    StudentRegisterIn,
-    StudentRegisterOut,
-)
+from backend.db.models import AcademicYear, ClassSection, School, Student, StudentEnrollment, Teacher
+from backend.student.schemas import StudentRegisterIn, StudentRegisterOut
 
 
 def _school_has_approved_teacher(db: Session, school_id) -> bool:
@@ -32,11 +33,19 @@ def _school_has_approved_teacher(db: Session, school_id) -> bool:
     )
 
 
-def register(db: Session, payload: StudentRegisterIn) -> StudentRegisterOut:
+def register(db: Session, payload: StudentRegisterIn, background: BackgroundTasks) -> StudentRegisterOut:
     if db.get(School, payload.school_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That school wasn't found.")
-    if db.get(Grade, payload.grade_id) is None:
+
+    section = db.get(ClassSection, payload.class_section_id)
+    if section is None or section.school_id != payload.school_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That class wasn't found.")
+    year = db.get(AcademicYear, section.academic_year_id)
+    if year is None or not year.is_current:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This class is no longer open for registration. Ask your school to check its current academic year.",
+        )
 
     if not _school_has_approved_teacher(db, payload.school_id):
         raise HTTPException(
@@ -45,89 +54,62 @@ def register(db: Session, payload: StudentRegisterIn) -> StudentRegisterOut:
             "first, then try again.",
         )
 
-    existing = (
-        db.query(Teacher)
-        .filter(
-            Teacher.role == "student",
-            Teacher.school_id == payload.school_id,
-            Teacher.grade_id == payload.grade_id,
-            Teacher.roll_number == payload.roll_number,
-        )
-        .first()
+    ok_message = (
+        "Registration received. Check your email to verify your address; your "
+        "account will then be pending approval from a teacher at your school. "
+        "Once approved, log in with the email and password you just set."
     )
-    if existing is not None and existing.approval_status != "rejected":
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "A student with this roll number is already registered for this "
-            "class. If this is you, activate your account instead.",
-        )
+    existing = db.query(Student).filter(Student.email == payload.email).first()
+    if existing is not None and (
+        existing.approval_status != "rejected" or existing.school_id != payload.school_id
+    ):
+        # Same response as a fresh registration: the owner of the address is told
+        # by email, and nobody can use this form to find out who has an account.
+        emails.already_registered(background, payload.email, payload.full_name)
+        return StudentRegisterOut(message=ok_message)
 
-    # a rejected roll number may re-apply: reuse the row so the partial unique
-    # index on (school, class, roll) doesn't block them
-    student = existing or Teacher()
-    student.role = "student"
+    student = existing or Student()
     student.full_name = payload.full_name
     student.school_id = payload.school_id
-    student.grade_id = payload.grade_id
-    student.roll_number = payload.roll_number
     student.guardian_name = payload.guardian_name
+    student.guardian_relation = payload.guardian_relation
     student.guardian_phone = payload.guardian_phone
-    student.email = None
-    student.password_hash = None
+    student.email = payload.email
+    student.password_hash = hash_password(payload.password)
+    student.email_verified_at = None
     student.approval_status = "pending"
     student.approved_by = None
     student.approved_at = None
     student.rejection_reason = None
     if existing is None:
         db.add(student)
+        db.flush()
 
-    db.commit()
-    return StudentRegisterOut(
-        message="Registration received. Your account is pending approval from a "
-        "teacher at your school.",
-    )
-
-
-def activate(db: Session, payload: StudentActivateIn) -> StudentActivateOut:
-    matches = (
-        db.query(Teacher)
+    enrollment = (
+        db.query(StudentEnrollment)
         .filter(
-            Teacher.role == "student",
-            Teacher.approval_status == "approved",
-            Teacher.email.is_(None),
-            Teacher.school_id == payload.school_id,
-            Teacher.grade_id == payload.grade_id,
-            Teacher.roll_number == payload.roll_number,
-            func.lower(Teacher.full_name) == payload.full_name.lower(),
+            StudentEnrollment.student_id == student.id,
+            StudentEnrollment.academic_year_id == year.id,
         )
-        .all()
-    )
-    if not matches:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            "We couldn't find an approved registration matching those details. "
-            "Check the class, roll number and name, or ask your teacher.",
-        )
-    if len(matches) > 1:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "More than one registration matches. Please contact your teacher.",
-        )
-    student = matches[0]
-
-    email_taken = (
-        db.query(Teacher.id)
-        .filter(Teacher.email == payload.email, Teacher.id != student.id)
         .first()
     )
-    if email_taken is not None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "That email is already in use."
+    if enrollment is None:
+        enrollment = StudentEnrollment(
+            student_id=student.id, academic_year_id=year.id, enrolled_on=date.today()
         )
+        db.add(enrollment)
+    enrollment.class_section_id = section.id
+    enrollment.roll_number = payload.roll_number
 
-    student.email = payload.email
-    student.password_hash = hash_password(payload.password)
-    db.commit()
-    return StudentActivateOut(
-        message="Your account is ready. You can log in now.",
-    )
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "A student with this roll number is already registered for this class.",
+        ) from exc
+
+    db.refresh(student)
+    emails.verification(background, student.email, student.full_name, tokens.issue(db, student, tokens.VERIFY_EMAIL))
+    return StudentRegisterOut(message=ok_message)

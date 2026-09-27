@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { SubjectsEditor, type SubjectSelection } from "@/components/profile/subjects-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,6 +122,14 @@ export default function ProfilePage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-sm px-4 py-8">
           <div className="flex flex-col gap-6">
+            {profile && (
+              <AvatarUploader
+                name={profile.full_name}
+                photoUrl={profile.photo_url}
+                onChange={refresh}
+              />
+            )}
+
             <div className="flex flex-col gap-2">
               <Label htmlFor="full-name">Your name</Label>
               <Input

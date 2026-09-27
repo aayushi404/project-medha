@@ -36,7 +36,7 @@ class StudentMarkItem(BaseModel):
 
 
 class BulkReportCardMarksIn(BaseModel):
-    grade_id: uuid.UUID
+    class_section_id: uuid.UUID
     subject_id: uuid.UUID
     term: str = Field(min_length=1, max_length=100)
     max_marks: float = Field(gt=0, default=100)

@@ -44,7 +44,9 @@ export default function OnboardingPage() {
   // Already-onboarded teachers land here only via direct navigation -- bounce
   // them to the dashboard instead of letting them redo the wizard.
   useEffect(() => {
-    if (teacher?.onboarded_at) {
+    if (teacher?.role === "student") {
+      router.replace("/home"); // students have no onboarding step
+    } else if (teacher && teacher.onboarded_at) {
       router.replace("/dashboard");
     }
   }, [teacher, router]);
@@ -114,7 +116,7 @@ export default function OnboardingPage() {
     }
   }
 
-  if (teacher?.onboarded_at) return null;
+  if (teacher && teacher.role !== "student" && teacher.onboarded_at) return null;
 
   return (
     <main className="sun-wash flex flex-1 flex-col items-center px-4 py-10">

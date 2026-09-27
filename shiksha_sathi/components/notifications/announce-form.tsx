@@ -13,14 +13,14 @@ import type { SelectOption } from "@/components/ui/select";
 import { Select } from "@/components/ui/select";
 
 type Target =
-  | { kind: "grade"; grades: SelectOption[] }
+  | { kind: "section"; sections: SelectOption[] }
   | { kind: "audience" };
 
 export function AnnounceForm({ target, onSent }: { target: Target; onSent?: () => void }) {
   const { accessToken } = useAuth();
   const copy = useCopy();
-  const [gradeId, setGradeId] = useState<string | null>(
-    target.kind === "grade" ? (target.grades[0]?.value ?? null) : null,
+  const [sectionId, setSectionId] = useState<string | null>(
+    target.kind === "section" ? (target.sections[0]?.value ?? null) : null,
   );
   const [audience, setAudience] = useState<"teachers" | "students">("students");
   const [title, setTitle] = useState("");
@@ -30,7 +30,7 @@ export function AnnounceForm({ target, onSent }: { target: Target; onSent?: () =
   const canSend =
     title.trim().length > 0 &&
     body.trim().length > 0 &&
-    (target.kind === "audience" || gradeId != null);
+    (target.kind === "audience" || sectionId != null);
 
   async function submit() {
     if (!canSend) return;
@@ -39,7 +39,7 @@ export function AnnounceForm({ target, onSent }: { target: Target; onSent?: () =
       const result = await announce(accessToken, {
         title: title.trim(),
         body: body.trim(),
-        ...(target.kind === "grade" ? { grade_id: gradeId ?? undefined } : { audience }),
+        ...(target.kind === "section" ? { class_section_id: sectionId ?? undefined } : { audience }),
       });
       toast.success(copy.notifications.sentToast(result.recipients));
       setTitle("");
@@ -59,12 +59,12 @@ export function AnnounceForm({ target, onSent }: { target: Target; onSent?: () =
         <p className="text-xs text-muted-foreground">{copy.notifications.announceSub}</p>
       </div>
 
-      {target.kind === "grade" ? (
-        target.grades.length > 0 && (
+      {target.kind === "section" ? (
+        target.sections.length > 0 && (
           <Select
-            value={gradeId}
-            onValueChange={setGradeId}
-            options={target.grades}
+            value={sectionId}
+            onValueChange={setSectionId}
+            options={target.sections}
             className="w-full"
           />
         )

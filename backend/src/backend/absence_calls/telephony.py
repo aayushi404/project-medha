@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 import httpx
 
+from backend.absence_calls.security import sign_call_token
 from backend.core.config import settings
 
 logger = logging.getLogger("backend.absence_calls")
@@ -30,15 +31,13 @@ class PlacedCall:
     provider_call_sid: str
 
 
-def _status_callback_url(path: str, token: str) -> str:
-    """Build a `{PUBLIC_BASE_URL}/absence-calls/{path}/status-callback` URL,
-    with the shared-secret token appended when set. Registering this with
-    the provider on every outbound call is what makes ringing/no-answer/busy/
-    failed actually reach us -- without it, a call that's never answered (so
-    the voicebot websocket never even connects) stays stuck at whatever
-    status place_call() set, forever."""
-    url = f"{settings.public_base_url}/absence-calls/{path}/status-callback"
-    return f"{url}?token={token}" if token else url
+def _webhook_url(path: str, call_id: str, purpose: str) -> str:
+    """`{PUBLIC_BASE_URL}/absence-calls/{path}?cid=<call>&t=<token>` where the
+    token is a short-lived HMAC bound to this one call and purpose (see
+    absence_calls/security.py). Registering the status URL on every outbound
+    call is what makes ringing/no-answer/busy/failed reach us -- without it a
+    call that's never answered stays stuck at whatever status place_call() set."""
+    return f"{settings.public_base_url}/absence-calls/{path}?cid={call_id}&t={sign_call_token(call_id, purpose)}"
 
 
 class TelephonyProvider(ABC):
@@ -76,10 +75,9 @@ class ExotelProvider(TelephonyProvider):
                 "Exotel isn't configured (EXOTEL_SID / EXOTEL_API_KEY / "
                 "EXOTEL_API_TOKEN / EXOTEL_CALLER_ID / EXOTEL_APP_ID / PUBLIC_BASE_URL)."
             )
-        self._base = (
-            f"https://{settings.exotel_api_key}:{settings.exotel_api_token}"
-            f"@{settings.exotel_subdomain}/v1/Accounts/{settings.exotel_sid}"
-        )
+        # credentials go through httpx's auth= (never embedded in the URL),
+        # so no exception message or log line can ever print them
+        self._base = f"https://{settings.exotel_subdomain}/v1/Accounts/{settings.exotel_sid}"
 
     async def place_call(self, *, to_number: str, correlation_id: str) -> PlacedCall:
         # Exotel's own naming: "From" is the number that gets dialed first
@@ -93,14 +91,20 @@ class ExotelProvider(TelephonyProvider):
             "Url": f"http://my.exotel.in/exoml/start/{settings.exotel_app_id}",
             # surfaced to the voicebot websocket as a custom_parameter on
             # the `start` event (max 3 custom params, ≤256 chars total)
-            "CustomField": correlation_id,
+            # (`<call id>|<stream token>` -- the websocket verifies the token
+            # before doing anything, since the call SID alone isn't a secret)
+            "CustomField": f"{correlation_id}|{sign_call_token(correlation_id, 'stream')}",
             # fires on call completion (ringing/answered/etc are best-effort
             # -- Exotel's docs only firmly document the completion callback)
-            "StatusCallback": _status_callback_url("exotel", settings.exotel_webhook_token),
+            "StatusCallback": _webhook_url("exotel/status-callback", correlation_id, "status"),
         }
         async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=10.0)) as client:
             try:
-                resp = await client.post(f"{self._base}/Calls/connect.json", data=data)
+                resp = await client.post(
+                    f"{self._base}/Calls/connect.json",
+                    data=data,
+                    auth=(settings.exotel_api_key, settings.exotel_api_token),
+                )
             except httpx.HTTPError as exc:
                 logger.warning("exotel_network_error: %s", exc)
                 raise TelephonyError("Could not reach Exotel.") from exc
@@ -146,14 +150,11 @@ class TwilioProvider(TelephonyProvider):
             )
 
     async def place_call(self, *, to_number: str, correlation_id: str) -> PlacedCall:
-        # `correlation_id` isn't needed in the TwiML URL -- the voicebot
-        # websocket correlates by call_sid, which Twilio sends in every
-        # `start` event regardless (see router.py's `_TwilioWire`).
         data = {
             "To": to_number,
             "From": settings.twilio_caller_number,
-            "Url": f"{settings.public_base_url}/absence-calls/twilio/twiml",
-            "StatusCallback": _status_callback_url("twilio", settings.twilio_webhook_token),
+            "Url": _webhook_url("twilio/twiml", correlation_id, "twiml"),
+            "StatusCallback": _webhook_url("twilio/status-callback", correlation_id, "status"),
         }
         async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=10.0)) as client:
             try:

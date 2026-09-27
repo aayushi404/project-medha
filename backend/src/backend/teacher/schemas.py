@@ -9,6 +9,7 @@ __all__ = [
     "TeacherStudentStats",
     "PendingStudent",
     "StudentRosterItem",
+    "TeacherSectionOut",
     "RejectIn",
     "ApprovalResult",
 ]
@@ -22,18 +23,44 @@ class TeacherStudentStats(BaseModel):
 class PendingStudent(BaseModel):
     id: uuid.UUID
     full_name: str
+    class_section_id: uuid.UUID
     grade_id: uuid.UUID
     grade_label: str
-    roll_number: str | None
+    section: str
+    roll_number: int | None
     applied_at: datetime
 
 
 class StudentRosterItem(BaseModel):
     id: uuid.UUID
     full_name: str
+    class_section_id: uuid.UUID
     grade_id: uuid.UUID
     grade_label: str
-    roll_number: str | None
+    section: str
+    roll_number: int | None
     email: str | None
-    activated: bool  # has set a login credential
     approved_at: datetime | None
+    photo_url: str | None = None
+
+
+class TeacherSectionSubjectOut(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class TeacherSectionOut(BaseModel):
+    """A class_section the calling teacher can act on -- via a
+    `teaching_assignments` row or being its class_teacher. Feeds the class
+    picker on attendance/homework/report-card/OMR/notifications pages.
+    `subjects` is specifically the teacher's `teaching_assignments` for this
+    section -- needed (with ids, not just names) for the subject picker on
+    homework/report-card, which require an exact assignment match."""
+
+    id: uuid.UUID
+    grade_id: uuid.UUID
+    grade_label: str
+    section: str
+    academic_year_label: str
+    is_class_teacher: bool
+    subjects: list[TeacherSectionSubjectOut]

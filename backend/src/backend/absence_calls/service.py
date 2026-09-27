@@ -17,16 +17,12 @@ from backend.absence_calls.telephony import (
     get_telephony_provider,
 )
 from backend.core.config import settings
-from backend.db.models import AbsenceCall, AttendanceRecord, Teacher
+from backend.db.models import AbsenceCall, AttendanceRecord, Student, Teacher
 from backend.db.session import SessionLocal
 
 logger = logging.getLogger("backend.absence_calls")
 
-# Fallback guardian number, used whenever a student has no guardian_phone on
-# file, so the calling pipeline can actually be exercised before every
-# student has a real number recorded. Remove once guardian numbers are
-# collected for the whole roster.
-DEFAULT_GUARDIAN_PHONE = "+917050020815"
+_TERMINAL_STATUSES = ("completed", "no_answer", "failed", "no_guardian_phone", "not_configured")
 
 # Call-status values from both providers -- Exotel
 # (https://developer.exotel.com/api/make-a-call-api) and Twilio
@@ -49,19 +45,21 @@ _PROVIDER_STATUS_MAP = {
 async def queue_call_for_absence(record_id: uuid.UUID) -> None:
     """The BackgroundTasks entrypoint -- see attendance/service.py::mark_day.
     Runs after the HTTP response has already gone back to the teacher, on its
-    own DB session (the request's session is closed by then)."""
+    own DB session (the request's session is closed by then).
+
+    Every outcome is recorded truthfully: a student with no guardian number
+    gets `no_guardian_phone`, calling switched off/unconfigured gets
+    `not_configured`, a provider failure gets `failed` with a reason. Nothing
+    here ever invents a guardian statement."""
     db = SessionLocal()
     try:
         record = db.get(AttendanceRecord, record_id)
         if record is None or record.status != "absent":
             return  # marked back to present before we got to it
 
-        student = db.get(Teacher, record.student_id)
-        guardian_phone = (
-            settings.absence_call_force_phone
-            or (student.guardian_phone if student else None)
-            or DEFAULT_GUARDIAN_PHONE
-        )
+        student = db.get(Student, record.student_id)
+        # ABSENCE_CALL_FORCE_PHONE is a demo-only override (config refuses it in production)
+        guardian_phone = settings.absence_call_force_phone or (student.guardian_phone if student else None)
         call = AbsenceCall(
             attendance_record_id=record.id,
             student_id=record.student_id,
@@ -71,48 +69,30 @@ async def queue_call_for_absence(record_id: uuid.UUID) -> None:
         db.commit()
         db.refresh(call)
 
-        if not settings.absence_calling_enabled:
-            call.status = "completed"
-            call.reason_text = "Reason for absence: High Fever"
-            call.transcript = (
-                "assistant: नमस्ते, विद्यार्थी आज स्कूल क्यों नहीं आया?\n"
-                "user: नमस्ते मैडम, उसको तेज बुखार (High Fever) है इसलिए आज स्कूल नहीं आ सकेगा।\n"
-                "assistant: ठीक है, ध्यान रखें। धन्यवाद।"
-            )
-            call.completed_at = datetime.now(timezone.utc)
+        if not guardian_phone:
+            call.status = "no_guardian_phone"
+            call.failure_reason = "No guardian phone number on file."
             db.commit()
             return
 
-        if student is None:
-            call.status = "no_guardian_phone"
+        if not settings.absence_calling_enabled:
+            call.status = "not_configured"
+            call.failure_reason = "Automated guardian calling is switched off."
             db.commit()
             return
 
         try:
             provider = get_telephony_provider()
-            placed = await provider.place_call(
-                to_number=guardian_phone, correlation_id=str(call.id)
-            )
-        except TelephonyNotConfigured as exc:
-            call.status = "completed"
-            call.reason_text = "Reason for absence: High Fever"
-            call.transcript = (
-                "assistant: नमस्ते, विद्यार्थी आज स्कूल क्यों नहीं आया?\n"
-                "user: नमस्ते मैडम, उसको तेज बुखार (High Fever) है इसलिए आज स्कूल नहीं आ सकेगा।\n"
-                "assistant: ठीक है, ध्यान रखें। धन्यवाद।"
-            )
-            call.completed_at = datetime.now(timezone.utc)
+            placed = await provider.place_call(to_number=guardian_phone, correlation_id=str(call.id))
+        except TelephonyNotConfigured:
+            call.status = "not_configured"
+            call.failure_reason = "Telephony provider is not configured."
             db.commit()
             return
         except TelephonyError as exc:
-            logger.info("absence_call_fallback_demo call_id=%s error=%s", call.id, exc)
-            call.status = "completed"
-            call.reason_text = "Reason for absence: High Fever"
-            call.transcript = (
-                "assistant: नमस्ते, विद्यार्थी आज स्कूल क्यों नहीं आया?\n"
-                "user: नमस्ते मैडम, उसको तेज बुखार (High Fever) है इसलिए आज स्कूल नहीं आ सकेगा।\n"
-                "assistant: ठीक है, ध्यान रखें। धन्यवाद।"
-            )
+            logger.info("absence_call_failed call_id=%s error=%s", call.id, exc)
+            call.status = "failed"
+            call.failure_reason = "The call could not be placed."
             call.completed_at = datetime.now(timezone.utc)
             db.commit()
             return
@@ -135,6 +115,9 @@ def update_status_from_provider_status(db, call: AbsenceCall, provider_status: s
     mapped = _PROVIDER_STATUS_MAP.get(provider_status.lower())
     if mapped is None:
         return
+    # A finished call never goes backwards (a late or replayed webhook can't reopen it)
+    if call.status in _TERMINAL_STATUSES:
+        return
     call.status = mapped
     call.updated_at = datetime.now(timezone.utc)
     if mapped in ("completed", "no_answer", "failed"):
@@ -145,6 +128,11 @@ def update_status_from_provider_status(db, call: AbsenceCall, provider_status: s
 def save_transcript_and_reason(
     db, call: AbsenceCall, *, transcript: str, reason_text: str
 ) -> None:
+    # The transcript is write-once: a replayed/late stream can't overwrite it. (A
+    # webhook may already have marked the call `completed` just before the
+    # voicebot finishes summarizing, so a terminal status alone isn't a reason to skip.)
+    if call.transcript is not None or call.status in ("no_guardian_phone", "not_configured"):
+        return
     call.transcript = transcript
     call.reason_text = reason_text
     call.status = "completed"
@@ -153,16 +141,38 @@ def save_transcript_and_reason(
 
 
 def list_recent_for_teacher(
-    db, teacher: Teacher, *, grade_id: uuid.UUID | None = None, limit: int = 50
-) -> list[tuple[AbsenceCall, Teacher, AttendanceRecord]]:
+    db, teacher: Teacher, *, class_section_id: uuid.UUID | None = None, limit: int = 50
+) -> list[tuple[AbsenceCall, Student, AttendanceRecord]]:
+    from backend.core.section_access import assert_can_act_on_section, teacher_section_ids
+    from backend.db.models import StudentEnrollment
+
     query = (
-        db.query(AbsenceCall, Teacher, AttendanceRecord)
-        .join(Teacher, Teacher.id == AbsenceCall.student_id)
+        db.query(AbsenceCall, Student, AttendanceRecord)
+        .join(Student, Student.id == AbsenceCall.student_id)
         .join(AttendanceRecord, AttendanceRecord.id == AbsenceCall.attendance_record_id)
-        .filter(Teacher.school_id == teacher.school_id, Teacher.role == "student")
+        .filter(Student.school_id == teacher.school_id)
     )
-    if grade_id is not None:
-        query = query.filter(Teacher.grade_id == grade_id)
+    if class_section_id is not None:
+        assert_can_act_on_section(db, teacher, class_section_id)
+        query = query.join(
+            StudentEnrollment,
+            (StudentEnrollment.student_id == Student.id)
+            & (StudentEnrollment.left_on.is_(None))
+            & (StudentEnrollment.class_section_id == class_section_id),
+        )
+    elif teacher.role != "principal":
+        # no section chosen: a teacher sees only calls about their own classes'
+        # students (guardian phones and transcripts are sensitive); a principal
+        # sees the whole school
+        section_ids = teacher_section_ids(db, teacher)
+        if not section_ids:
+            return []
+        query = query.join(
+            StudentEnrollment,
+            (StudentEnrollment.student_id == Student.id)
+            & (StudentEnrollment.left_on.is_(None))
+            & (StudentEnrollment.class_section_id.in_(section_ids)),
+        )
     return (
         query.order_by(AbsenceCall.created_at.desc()).limit(limit).all()
     )

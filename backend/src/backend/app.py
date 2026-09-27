@@ -1,3 +1,4 @@
+import re
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -36,7 +37,18 @@ from backend.tutor.router import router as tutor_router
 
 configure_logging()
 
-app = FastAPI(title="Medha API")
+_IS_DEV = settings.environment.lower() == "development"
+
+# Interactive docs/schema are a map of every endpoint -- development only.
+app = FastAPI(
+    title="Medha API",
+    docs_url="/docs" if _IS_DEV else None,
+    redoc_url="/redoc" if _IS_DEV else None,
+    openapi_url="/openapi.json" if _IS_DEV else None,
+)
+
+
+_SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{8,64}")
 
 
 @app.middleware("http")
@@ -44,13 +56,73 @@ async def request_id_middleware(request: Request, call_next):
     """Give every request an id: honour an inbound X-Request-ID (from a proxy)
     or mint one, expose it on the ContextVar for logging/error bodies, and
     echo it back on the response."""
-    rid = request.headers.get("x-request-id") or uuid4().hex
+    inbound = request.headers.get("x-request-id", "")
+    # only trust a short, log-safe id from a proxy; anything else (newlines,
+    # huge values) could forge log lines or poison caches keyed on the header
+    rid = inbound if _SAFE_REQUEST_ID.fullmatch(inbound) else uuid4().hex
     token = request_id_ctx.set(rid)
     try:
         response = await call_next(request)
     finally:
         request_id_ctx.reset(token)
     response.headers["X-Request-ID"] = rid
+    return response
+
+
+class _BodyLimitMiddleware:
+    """Reject request bodies over `max_body_bytes` -- by Content-Length up
+    front, and by counting streamed bytes for chunked uploads that lie or omit
+    it -- before any route code buffers them."""
+
+    def __init__(self, app, max_bytes: int) -> None:
+        self.app, self.max_bytes = app, max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        declared = dict(scope["headers"]).get(b"content-length")
+        if declared and declared.isdigit() and int(declared) > self.max_bytes:
+            return await _too_large(send)
+
+        seen = 0
+
+        async def limited_receive():
+            nonlocal seen
+            message = await receive()
+            if message["type"] == "http.request":
+                seen += len(message.get("body", b""))
+                if seen > self.max_bytes:
+                    raise _BodyTooLarge()
+            return message
+
+        try:
+            await self.app(scope, limited_receive, send)
+        except _BodyTooLarge:
+            await _too_large(send)
+
+
+class _BodyTooLarge(Exception):
+    pass
+
+
+async def _too_large(send) -> None:
+    body = b'{"error":{"code":"payload_too_large","message":"Request body is too large."}}'
+    await send({"type": "http.response.start", "status": 413, "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]})
+    await send({"type": "http.response.body", "body": body})
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Defensive headers on every API response. (The frontend sets its own
+    CSP; these cover the API origin, e.g. if a response is ever opened directly.)"""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+    response.headers.setdefault("Cache-Control", "no-store")
+    if not _IS_DEV:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
     return response
 
 
@@ -67,6 +139,12 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Request-ID"],
 )
+
+if settings.allowed_hosts.strip():
+    from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in settings.allowed_hosts.split(",") if h.strip()])
+app.add_middleware(_BodyLimitMiddleware, max_bytes=settings.max_body_bytes)
 
 install_error_handlers(app)
 

@@ -371,8 +371,6 @@ export const hi: Copy = {
     roleTeacher: "शिक्षक",
     roleStudent: "छात्र",
     or: "या",
-    studentApproved: "छात्र स्वीकृत हो गए?",
-    activate: "अपना खाता सक्रिय करें",
     welcomeBack: (name: string) => `वापसी पर स्वागत है, ${name}`,
     signedIn: "साइन इन हो गए",
     signedInAsPre: "आप",

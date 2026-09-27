@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import require_student, require_teacher
-from backend.db.models import Teacher
+from backend.db.models import Student, Teacher
 from backend.db.session import get_db
 from backend.homework import service
 from backend.homework.schemas import (
@@ -30,19 +30,19 @@ def list_homework(teacher: Teacher = Depends(require_teacher), db: Session = Dep
 
 
 @router.get("/mine", response_model=list[HomeworkStudentOut])
-def my_homework(student: Teacher = Depends(require_student), db: Session = Depends(get_db)) -> list[HomeworkStudentOut]:
+def my_homework(student: Student = Depends(require_student), db: Session = Depends(get_db)) -> list[HomeworkStudentOut]:
     return service.list_for_student(db, student)
 
 
 @router.post("/{homework_id}/done", response_model=HomeworkStudentOut)
 def mark_done(
-    homework_id: uuid.UUID, student: Teacher = Depends(require_student), db: Session = Depends(get_db)
+    homework_id: uuid.UUID, student: Student = Depends(require_student), db: Session = Depends(get_db)
 ) -> HomeworkStudentOut:
     return service.set_done(db, student, homework_id, True)
 
 
 @router.post("/{homework_id}/undone", response_model=HomeworkStudentOut)
 def mark_undone(
-    homework_id: uuid.UUID, student: Teacher = Depends(require_student), db: Session = Depends(get_db)
+    homework_id: uuid.UUID, student: Student = Depends(require_student), db: Session = Depends(get_db)
 ) -> HomeworkStudentOut:
     return service.set_done(db, student, homework_id, False)

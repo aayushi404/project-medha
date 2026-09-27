@@ -9,4 +9,9 @@ if [[ ! -x ".venv/bin/python" ]]; then
   exit 1
 fi
 
-exec .venv/bin/python -m uvicorn backend.app:app --host 0.0.0.0 --port "${PORT:?}"
+# Render terminates TLS at its proxy and forwards the real client address in
+# X-Forwarded-For; trust it so per-IP throttling sees the caller, not the proxy.
+# Restrict FORWARDED_ALLOW_IPS to the proxy's address range if the service is
+# ever reachable without going through that proxy.
+exec .venv/bin/python -m uvicorn backend.app:app --host 0.0.0.0 --port "${PORT:?}" \
+  --proxy-headers --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}"

@@ -26,19 +26,19 @@ class DeviceTokenIn(BaseModel):
 
 class AnnounceIn(BaseModel):
     """A principal announces to `audience` (their whole school); a teacher
-    announces to one `grade_id` (their class). Exactly one of the two must
-    be set -- which one is valid depends on the caller's role, checked in
-    `service.announce`."""
+    announces to one `class_section_id` (a class they're assigned to).
+    Exactly one of the two must be set -- which one is valid depends on the
+    caller's role, checked in `service.announce`."""
 
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(min_length=1, max_length=2000)
     audience: Literal["teachers", "students"] | None = None
-    grade_id: uuid.UUID | None = None
+    class_section_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def _one_target(self) -> "AnnounceIn":
-        if (self.audience is None) == (self.grade_id is None):
-            raise ValueError("Set exactly one of audience (principal) or grade_id (teacher).")
+        if (self.audience is None) == (self.class_section_id is None):
+            raise ValueError("Set exactly one of audience (principal) or class_section_id (teacher).")
         return self
 
 

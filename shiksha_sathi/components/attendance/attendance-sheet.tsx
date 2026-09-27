@@ -1,23 +1,27 @@
 "use client";
 
-import { Check, Loader2, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 import type { AttendanceStatus, AttendanceStudent } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ProfileImage } from "@/components/ui/profile-image";
 
 const OPTIONS: { value: AttendanceStatus; icon: typeof Check; active: string }[] = [
   { value: "present", icon: Check, active: "bg-sage/15 text-sage border-sage/40" },
   { value: "absent", icon: X, active: "bg-destructive/10 text-destructive border-destructive/40" },
 ];
 
+/** A day's roster with local, unsaved marks (`drafts`) -- toggling a row only
+ * updates the draft in the parent; nothing hits the network until the
+ * parent's "Save" fires one batched `markAttendance` call. */
 export function AttendanceSheet({
   students,
-  busyId,
-  onMark,
+  drafts,
+  onToggle,
 }: {
   students: AttendanceStudent[];
-  busyId: string | null;
-  onMark: (studentId: string, status: AttendanceStatus) => void;
+  drafts: Record<string, AttendanceStatus>;
+  onToggle: (studentId: string, status: AttendanceStatus) => void;
 }) {
   if (students.length === 0) {
     return (
@@ -27,8 +31,8 @@ export function AttendanceSheet({
     );
   }
 
-  const present = students.filter((s) => s.status === "present").length;
-  const absent = students.filter((s) => s.status === "absent").length;
+  const present = students.filter((s) => drafts[s.student_id] === "present").length;
+  const absent = students.filter((s) => drafts[s.student_id] === "absent").length;
   const marked = present + absent;
 
   return (
@@ -42,33 +46,27 @@ export function AttendanceSheet({
       </div>
 
       <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-        {students.map((s, i) => {
-          const busy = busyId === s.student_id;
+        {students.map((s) => {
+          const status = drafts[s.student_id];
           return (
             <li key={s.student_id} className="flex items-center gap-3 bg-card px-3 py-2.5">
               <span className="w-5 shrink-0 text-xs text-muted-foreground tabular-nums">
-                {i + 1}
+                {s.roll_number ?? ""}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm">
-                {s.full_name}
-                {s.roll_number ? (
-                  <span className="ml-1.5 text-xs text-muted-foreground">#{s.roll_number}</span>
-                ) : null}
-              </span>
+              <ProfileImage url={s.photo_url} name={s.full_name} size="sm" />
+              <span className="min-w-0 flex-1 truncate text-sm">{s.full_name}</span>
               <div className="flex shrink-0 items-center gap-1">
-                {busy && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
                 {OPTIONS.map((o) => {
-                  const on = s.status === o.value;
+                  const on = status === o.value;
                   const Icon = o.icon;
                   return (
                     <button
                       key={o.value}
                       type="button"
                       aria-pressed={on}
-                      disabled={busy}
-                      onClick={() => onMark(s.student_id, o.value)}
+                      onClick={() => onToggle(s.student_id, o.value)}
                       className={cn(
-                        "flex size-8 items-center justify-center rounded-lg border text-xs font-medium transition-colors disabled:opacity-50",
+                        "flex size-8 items-center justify-center rounded-lg border text-xs font-medium transition-colors",
                         on
                           ? o.active
                           : "border-border text-muted-foreground hover:bg-muted",

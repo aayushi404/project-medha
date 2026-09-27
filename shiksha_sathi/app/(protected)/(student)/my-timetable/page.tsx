@@ -13,7 +13,7 @@ export default function StudentTimetablePage() {
   const { accessToken, teacher } = useAuth();
   const copy = useCopy();
   const t = copy.timetablePage;
-  const gradeId = teacher?.grade_id ?? null;
+  const gradeId = teacher?.role === "student" ? teacher.grade_id : null;
 
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
   const [loading, setLoading] = useState(gradeId != null);

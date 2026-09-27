@@ -10,7 +10,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.core.ownership import assert_owned
-from backend.db.models import ChatMessage, ChatSession, Grade, Subject, Teacher
+from backend.core.section_access import current_enrollment
+from backend.db.models import ChatMessage, ChatSession, ClassSection, Grade, Student, Subject
 from backend.english.schemas import EnglishSessionCreateIn
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.prompts import english as english_prompt
@@ -22,12 +23,17 @@ _ERR_EMPTY = "Got an empty answer. Please try again."
 _ERR_RATE_LIMIT = "AI service limit has been reached. Please contact the app developer."
 
 
-def _student_grade_id(student: Teacher) -> uuid.UUID:
-    if student.grade_id is None:
+def _student_grade_id(db: Session, student: Student) -> uuid.UUID:
+    """The student's curriculum grade, resolved via their current class
+    placement (`student_enrollments`) -- `Student.grade_id` is a deprecated,
+    no-longer-written column (see student/service.py:register)."""
+    enrollment = current_enrollment(db, student)
+    if enrollment is None:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Your account isn't linked to a class."
         )
-    return student.grade_id
+    section = db.get(ClassSection, enrollment.class_section_id)
+    return section.grade_id
 
 
 def _english_subject(db: Session) -> Subject:
@@ -45,14 +51,14 @@ def _english_subject(db: Session) -> Subject:
 
 
 def create_session(
-    db: Session, student: Teacher, payload: EnglishSessionCreateIn
+    db: Session, student: Student, payload: EnglishSessionCreateIn
 ) -> tuple[ChatSession, str | None]:
-    grade_id = _student_grade_id(student)
+    grade_id = _student_grade_id(db, student)
     subject = _english_subject(db)
     topic = (payload.lesson_topic or "").strip() or None
 
     session = ChatSession(
-        teacher_id=student.id,
+        student_id=student.id,
         grade_id=grade_id,
         subject_id=subject.id,
         chapter_id=None,
@@ -66,10 +72,10 @@ def create_session(
 
 
 def load_owned_session(
-    db: Session, student: Teacher, session_id: uuid.UUID
+    db: Session, student: Student, session_id: uuid.UUID
 ) -> ChatSession:
     session = db.get(ChatSession, session_id)
-    assert_owned(student.id, session)
+    assert_owned(student.id, session, attr="student_id")
     return session
 
 
@@ -91,7 +97,7 @@ def _sse(event: str, payload: dict) -> dict:
 
 
 async def stream_message(
-    db: Session, student: Teacher, session: ChatSession, content: str
+    db: Session, student: Student, session: ChatSession, content: str
 ) -> AsyncIterator[dict]:
     grade = db.get(Grade, session.grade_id)
     lesson_topic = session.title

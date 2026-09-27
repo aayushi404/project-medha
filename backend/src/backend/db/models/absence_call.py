@@ -35,7 +35,7 @@ class AbsenceCall(Base):
         UUID(as_uuid=True), ForeignKey("attendance_records.id", ondelete="CASCADE")
     )
     student_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
     )
     # snapshot at call time -- a later guardian_phone edit shouldn't rewrite history
     guardian_phone: Mapped[str | None]

@@ -7,7 +7,7 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.db.models import ChapterNote, Teacher
+from backend.db.models import ChapterNote, Student, Teacher
 from backend.notes.schemas import ChapterNoteIn, ChapterNoteOut
 
 
@@ -22,7 +22,7 @@ def _out(row: ChapterNote) -> ChapterNoteOut:
     )
 
 
-def get_note(db: Session, user: Teacher, chapter_id: uuid.UUID) -> ChapterNoteOut | None:
+def get_note(db: Session, user: Teacher | Student, chapter_id: uuid.UUID) -> ChapterNoteOut | None:
     own = (
         db.query(ChapterNote)
         .filter(ChapterNote.chapter_id == chapter_id, ChapterNote.school_id == user.school_id)
@@ -46,6 +46,8 @@ def upsert_note(db: Session, user: Teacher, payload: ChapterNoteIn) -> ChapterNo
         .filter(ChapterNote.chapter_id == payload.chapter_id, ChapterNote.school_id == user.school_id)
         .first()
     )
+    if row is not None and user.role != "principal" and row.created_by not in (None, user.id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the author or your principal can edit this note.")
     if row is None:
         row = ChapterNote(chapter_id=payload.chapter_id, school_id=user.school_id, created_by=user.id, summary="")
         db.add(row)
@@ -60,7 +62,9 @@ def upsert_note(db: Session, user: Teacher, payload: ChapterNoteIn) -> ChapterNo
 
 def delete_note(db: Session, user: Teacher, note_id: uuid.UUID) -> None:
     row = db.get(ChapterNote, note_id)
-    if row is None or (row.school_id != user.school_id and user.role != "admin"):
+    if row is None or user.school_id is None or row.school_id != user.school_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Note not found.")
+    if user.role != "principal" and row.created_by not in (None, user.id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the author or your principal can delete this note.")
     db.delete(row)
     db.commit()

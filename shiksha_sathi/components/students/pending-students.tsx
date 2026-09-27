@@ -43,7 +43,9 @@ export function PendingStudents({ students, busyId, onApprove, onReject }: Props
             <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
               <span className="text-foreground">
                 <span className="text-muted-foreground">Class </span>
-                <span className="font-medium">{s.grade_label}</span>
+                <span className="font-medium">
+                  {s.grade_label} · {s.section}
+                </span>
               </span>
               <span className="text-foreground">
                 <span className="text-muted-foreground">Roll no. </span>
