@@ -104,7 +104,7 @@ function PresentationsView() {
   const copy = useCopy();
   const { locale } = useLocale();
   const { accessToken, teacher } = useAuth();
-  const gradeId = teacher?.grade_id ?? undefined;
+  const gradeId = teacher?.role === "student" ? teacher.grade_id ?? undefined : undefined;
   const key = `${gradeId ?? ""}|${locale}`;
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<

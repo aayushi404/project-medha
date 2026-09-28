@@ -375,8 +375,6 @@ export const en = {
     roleTeacher: "teacher",
     roleStudent: "student",
     or: "or",
-    studentApproved: "Student approved?",
-    activate: "Activate your account",
     welcomeBack: (name: string) => `Welcome back, ${name}`,
     signedIn: "Signed in",
     signedInAsPre: "You're signed in as",

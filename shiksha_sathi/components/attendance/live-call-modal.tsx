@@ -25,7 +25,7 @@ interface LiveCallModalProps {
   onCompleteCall?: (reasonText: string, transcriptText: string) => void;
 }
 
-const DEFAULT_PHONE = "+917050020815";
+const DEFAULT_PHONE = "the guardian's number";  // demo only; no real number is ever shown
 const FEVER_REASON = "Reason for absence: High Fever";
 
 function getMockTranscript(studentName: string, phone: string) {

@@ -9,11 +9,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from backend.db.models import PracticeQuestion, Teacher
+from backend.db.models import PracticeQuestion, Student, Teacher
 from backend.practice.schemas import PracticeQuestionIn, PracticeQuestionOut
 
 
-def list_questions(db: Session, user: Teacher, chapter_id: uuid.UUID) -> list[PracticeQuestionOut]:
+def list_questions(db: Session, user: Teacher | Student, chapter_id: uuid.UUID) -> list[PracticeQuestionOut]:
     rows = (
         db.query(PracticeQuestion)
         .filter(
@@ -56,7 +56,9 @@ def add_question(db: Session, user: Teacher, payload: PracticeQuestionIn) -> Pra
 
 def delete_question(db: Session, user: Teacher, question_id: uuid.UUID) -> None:
     row = db.get(PracticeQuestion, question_id)
-    if row is None or (row.school_id != user.school_id and user.role != "admin"):
+    if row is None or user.school_id is None or row.school_id != user.school_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Question not found.")
+    if user.role != "principal" and row.created_by not in (None, user.id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the author or your principal can delete this question.")
     db.delete(row)
     db.commit()

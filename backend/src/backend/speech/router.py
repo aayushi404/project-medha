@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
+from backend.core.rate_limits import by_actor, by_ip
+from backend.core.uploads import read_limited, require_kind
 from backend.ask.service import load_owned_session
 from backend.auth.dependencies import get_current_teacher, get_current_user
 from backend.db.models import Teacher
@@ -21,10 +23,11 @@ from backend.speech.schemas import (
 router = APIRouter(prefix="/speech", tags=["speech"])
 
 _MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB
+_AUDIO_KINDS = {"wav", "webm", "ogg", "mp3", "mp4"}
 _SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
-@router.post("/transcribe", response_model=TranscribeOut)
+@router.post("/transcribe", response_model=TranscribeOut, dependencies=[by_actor("speech_stt", limit=60, window_seconds=600)])
 async def transcribe_audio(
     file: UploadFile = File(...),
     language: str | None = Form(default=None),
@@ -32,11 +35,8 @@ async def transcribe_audio(
 ) -> TranscribeOut:
     """Speech-to-text via Sarvam Saaras. Accepts short audio clips (<30s)."""
     _ = user  # auth gate — any approved user may transcribe
-    data = await file.read()
-    if not data:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty audio file.")
-    if len(data) > _MAX_AUDIO_BYTES:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Audio file too large.")
+    data = await read_limited(file, _MAX_AUDIO_BYTES)
+    require_kind(data, _AUDIO_KINDS, "Unsupported audio format.")
 
     content_type = file.content_type or "audio/webm"
     filename = file.filename or "audio.webm"
@@ -56,7 +56,7 @@ async def transcribe_audio(
     return TranscribeOut(transcript=result.transcript, language_code=result.language_code)
 
 
-@router.post("/synthesize", response_model=SynthesizeOut)
+@router.post("/synthesize", response_model=SynthesizeOut, dependencies=[by_actor("speech_tts", limit=60, window_seconds=600)])
 async def synthesize_speech(
     payload: SynthesizeIn,
     user: Teacher = Depends(get_current_user),

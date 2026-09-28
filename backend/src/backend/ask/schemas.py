@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import Field, BaseModel, ConfigDict, field_validator
 
 
 class SessionCreateIn(BaseModel):
@@ -51,7 +51,7 @@ class SessionDetailOut(SessionOut):
 
 
 class MessageCreateIn(BaseModel):
-    content: str
+    content: str = Field(max_length=4000)  # bounds LLM cost and abuse
 
     @field_validator("content")
     @classmethod

@@ -1,5 +1,6 @@
 "use client";
 
+import { safeHttpUrl } from "@/lib/safe-url";
 import { ExternalLink, Trash2 } from "lucide-react";
 
 import type { LibraryItem } from "@/lib/api";
@@ -47,7 +48,8 @@ export function ResourceList({
             <Button
               variant="outline"
               size="sm"
-              render={<a href={item.url} target="_blank" rel="noopener noreferrer" />}
+              render={<a href={safeHttpUrl(item.url) ?? "#"} target="_blank" rel="noopener noreferrer" aria-disabled={!safeHttpUrl(item.url)} />}
+              disabled={!safeHttpUrl(item.url)}
             >
               <ExternalLink className="size-3.5" />
               {t.openLink}

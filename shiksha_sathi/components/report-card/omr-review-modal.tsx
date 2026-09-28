@@ -64,7 +64,9 @@ export function OMRReviewModal({
       const valStr = editedResults[res.roll_number] ?? "";
       // Match by student_id or roll number in roster
       const studentMatch = classRoster.find(
-        (s) => String(s.roll_number || "").replace(/^0+/, "") === String(res.roll_number) || s.roll_number === String(res.roll_number) || s.id === res.student_id
+        (s) =>
+          String(s.roll_number ?? "").replace(/^0+/, "") === String(res.roll_number) ||
+          s.id === res.student_id
       );
 
       const targetId = studentMatch?.id || res.student_id;

@@ -15,6 +15,9 @@ type SelectProps = {
   ariaLabel?: string;
   disabled?: boolean;
   className?: string;
+  id?: string;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
 };
 
 function Select({
@@ -25,6 +28,9 @@ function Select({
   ariaLabel,
   disabled,
   className,
+  id,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
 }: SelectProps) {
   return (
     <SelectPrimitive.Root
@@ -39,9 +45,12 @@ function Select({
     >
       <SelectPrimitive.Trigger
         data-slot="select-trigger"
+        id={id}
         aria-label={ariaLabel}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
         className={cn(
-          "inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm whitespace-nowrap outline-none transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[popup-open]:bg-muted",
+          "inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm whitespace-nowrap outline-none transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[popup-open]:bg-muted aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
           className,
         )}
       >

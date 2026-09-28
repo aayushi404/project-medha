@@ -169,7 +169,7 @@ function StudentMenu({ collapsed }: { collapsed?: boolean }) {
   const name = teacher?.full_name ?? "";
   const subtitle = [
     t.grade(gradeLabel),
-    teacher?.roll_number ? `Roll ${teacher.roll_number}` : null,
+    teacher?.role === "student" && teacher.roll_number ? `Roll ${teacher.roll_number}` : null,
   ]
     .filter(Boolean)
     .join(" · ");

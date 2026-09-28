@@ -37,6 +37,14 @@ class ClassSection(Base):
     __table_args__ = (
         UniqueConstraint("school_id", "academic_year_id", "grade_id", "section"),
         Index("idx_sections_school_year", "school_id", "academic_year_id"),
+        # A teacher may be class_teacher of at most one section -- see
+        # 0030_class_teacher_exclusivity.py.
+        Index(
+            "idx_one_section_per_class_teacher",
+            "class_teacher_id",
+            unique=True,
+            postgresql_where=text("class_teacher_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -57,17 +65,38 @@ class ClassSection(Base):
 
 
 class Student(Base):
-    """A student directory record, deliberately minimal and separate from
-    login credentials -- see docs/phase-2/Medha-principal-dashboard.md #3.
-    Independent of whether this student (or anyone) has a Medha account."""
+    """The single source of truth for a student: school-records identity
+    (admission no., guardian contact) AND login credential AND grade/roll
+    placement, all on one row. Originally built deliberately login-less (see
+    docs/phase-2/Medha-principal-dashboard.md #3) -- that changed once student
+    login moved off `teachers` onto this table; keeping them apart would have
+    just recreated the same "two disconnected guardian-data stores" problem
+    in reverse."""
 
     __tablename__ = "students"
     __table_args__ = (
         UniqueConstraint("school_id", "admission_number"),
         Index("idx_students_school", "school_id"),
+        Index(
+            "idx_students_pending",
+            "school_id",
+            "approval_status",
+            postgresql_where=text("approval_status = 'pending'"),
+        ),
+        Index("uq_students_email", "email", unique=True, postgresql_where=text("email IS NOT NULL")),
+        Index(
+            "uq_students_google_sub",
+            "google_sub",
+            unique=True,
+            postgresql_where=text("google_sub IS NOT NULL"),
+        ),
         CheckConstraint(
             "status IN ('active','transferred','dropped_out','graduated')",
             name="chk_student_status",
+        ),
+        CheckConstraint(
+            "approval_status IN ('pending','approved','rejected')",
+            name="chk_students_approval_status",
         ),
     )
 
@@ -83,8 +112,69 @@ class Student(Base):
     guardian_relation: Mapped[str | None]  # father | mother | guardian
     guardian_phone: Mapped[str | None]
     status: Mapped[str] = mapped_column(server_default=text("'active'"))
+    # Cloudinary secure_url, set only via core/images.py's upload/delete flow --
+    # never accepted as raw client input.
+    photo_url: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
     updated_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+
+    # --- login credential (moved here from `teachers`) ---
+    email: Mapped[str | None]
+    password_hash: Mapped[str | None]
+    google_sub: Mapped[str | None]
+    phone_number: Mapped[str | None] = mapped_column(unique=True)
+    preferred_language: Mapped[str] = mapped_column(server_default="hi-BiharBoli")
+    email_verified_at: Mapped[datetime | None]
+    mfa_secret: Mapped[str | None]
+    mfa_enabled: Mapped[bool] = mapped_column(server_default=text("false"))
+
+    # class placement lives in `student_enrollments`/`class_sections` (see
+    # below), not denormalized here -- attendance, homework, report cards,
+    # tutor, OMR, and notifications all resolve it via that join.
+
+    # --- registration/approval workflow (moved here from `teachers`) ---
+    approval_status: Mapped[str] = mapped_column(server_default="pending")
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id")
+    )
+    approved_at: Mapped[datetime | None]
+    rejection_reason: Mapped[str | None]
+    is_active: Mapped[bool] = mapped_column(server_default=text("true"))
+
+    @property
+    def role(self) -> str:
+        """Python-only convenience, NOT a database column -- lets code written
+        against a generic `Teacher`-shaped actor (`.role == "student"`,
+        `.role != "teacher"`) keep working unchanged when the actor is
+        actually a `Student`. Never filter on this in SQL; it doesn't exist
+        as a queryable column."""
+        return "student"
+
+
+class TeachingAssignment(Base):
+    """A teacher's link to a real class: teaches `subject_id` to
+    `class_section_id`. Additive alongside `teacher_subjects` (curriculum
+    grade-level, used by onboarding + report-card `_assert_teaches`) -- this
+    is the school-level "teaches Science to 8A and 8B" answer proposed in
+    docs/phase-2/Medha-principal-dashboard.md, previously unbuilt."""
+
+    __tablename__ = "teaching_assignments"
+    __table_args__ = (
+        UniqueConstraint("teacher_id", "class_section_id", "subject_id"),
+        Index("idx_assignments_section", "class_section_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    teacher_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+    )
+    class_section_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("class_sections.id", ondelete="CASCADE")
+    )
+    subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("subjects.id"))
+    created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
 
 
 class StudentEnrollment(Base):

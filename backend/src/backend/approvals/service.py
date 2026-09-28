@@ -1,9 +1,11 @@
-"""Shared approve / reject transaction used by both the admin (approves
-principals) and principal (approves teachers) endpoints.
+"""Shared approve / reject transaction used by admin (approves principals),
+principal (approves teachers), and teacher (approves students) endpoints.
 
 Each decision is one transaction: flip `approval_status`, stamp the actor and
 time, and append an `approval_events` row so there's a permanent record of who
-admitted or turned away whom.
+admitted or turned away whom. The actor is always a teacher/principal/admin
+row; the subject can be either -- `ApprovalEvent` carries a nullable column
+pair for the subject (`subject_user_id`/`subject_student_id`), exactly one set.
 """
 import logging
 from datetime import datetime, timezone
@@ -12,17 +14,19 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.db.models import ApprovalEvent, AuthSession, Teacher
+from backend.db.models import ApprovalEvent, AuthSession, Student, Teacher
 from backend.notifications import service as notifications
 
 logger = logging.getLogger("backend.approvals")
+
+Subject = Teacher | Student
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _notify_decision(db: Session, *, actor: Teacher, subject: Teacher, approved: bool, reason: str | None) -> None:
+def _notify_decision(db: Session, *, actor: Teacher, subject: Subject, approved: bool, reason: str | None) -> None:
     title = "आपका रजिस्ट्रेशन स्वीकृत हो गया" if approved else "रजिस्ट्रेशन अस्वीकृत"
     body = (
         "बधाई हो! अब आप मेधा में लॉग इन कर सकते हैं।"
@@ -34,8 +38,8 @@ def _notify_decision(db: Session, *, actor: Teacher, subject: Teacher, approved:
     try:
         notifications.notify_one(
             db,
-            recipient_id=subject.id,
-            sender_id=actor.id,
+            recipient=subject,
+            sender=actor,
             type="approval_approved" if approved else "approval_rejected",
             title=title,
             body=body,
@@ -44,10 +48,18 @@ def _notify_decision(db: Session, *, actor: Teacher, subject: Teacher, approved:
         logger.warning("approval_notification_failed", exc_info=True)
 
 
-def approve(db: Session, *, actor: Teacher, subject: Teacher) -> Teacher:
+def approve(db: Session, *, actor: Teacher, subject: Subject, note: str | None = None) -> Subject:
     if subject.approval_status == "approved":
         raise HTTPException(
             status.HTTP_409_CONFLICT, "This account is already approved."
+        )
+    # An account can only be admitted once its owner has proven they control
+    # the email address -- otherwise a pending row could be approved on behalf of
+    # someone else's mailbox.
+    if subject.email_verified_at is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This person hasn't verified their email address yet. Ask them to open the verification link we emailed.",
         )
 
     subject.approval_status = "approved"
@@ -56,7 +68,11 @@ def approve(db: Session, *, actor: Teacher, subject: Teacher) -> Teacher:
     subject.rejection_reason = None
     db.add(
         ApprovalEvent(
-            subject_user_id=subject.id, actor_user_id=actor.id, action="approved"
+            subject_user_id=subject.id if isinstance(subject, Teacher) else None,
+            subject_student_id=subject.id if isinstance(subject, Student) else None,
+            actor_user_id=actor.id,
+            action="approved",
+            reason=(note or None) and note[:500],
         )
     )
     try:
@@ -73,7 +89,7 @@ def approve(db: Session, *, actor: Teacher, subject: Teacher) -> Teacher:
     return subject
 
 
-def reject(db: Session, *, actor: Teacher, subject: Teacher, reason: str) -> Teacher:
+def reject(db: Session, *, actor: Teacher, subject: Subject, reason: str) -> Subject:
     if subject.approval_status == "rejected":
         raise HTTPException(
             status.HTTP_409_CONFLICT, "This account is already rejected."
@@ -85,16 +101,22 @@ def reject(db: Session, *, actor: Teacher, subject: Teacher, reason: str) -> Tea
     subject.approved_at = None
     db.add(
         ApprovalEvent(
-            subject_user_id=subject.id,
+            subject_user_id=subject.id if isinstance(subject, Teacher) else None,
+            subject_student_id=subject.id if isinstance(subject, Student) else None,
             actor_user_id=actor.id,
             action="rejected",
             reason=reason,
         )
     )
     # a rejected account must not keep a live session
-    db.query(AuthSession).filter(
-        AuthSession.teacher_id == subject.id, AuthSession.revoked_at.is_(None)
-    ).update({AuthSession.revoked_at: _now()}, synchronize_session=False)
+    if isinstance(subject, Student):
+        db.query(AuthSession).filter(
+            AuthSession.student_id == subject.id, AuthSession.revoked_at.is_(None)
+        ).update({AuthSession.revoked_at: _now()}, synchronize_session=False)
+    else:
+        db.query(AuthSession).filter(
+            AuthSession.teacher_id == subject.id, AuthSession.revoked_at.is_(None)
+        ).update({AuthSession.revoked_at: _now()}, synchronize_session=False)
     db.commit()
     db.refresh(subject)
     _notify_decision(db, actor=actor, subject=subject, approved=False, reason=reason)

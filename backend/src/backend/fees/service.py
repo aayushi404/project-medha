@@ -7,13 +7,14 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, aliased
 
-from backend.db.models import FeePayment, Teacher
+from backend.core.section_access import assert_can_view_student
+from backend.db.models import FeePayment, Student, Teacher
 from backend.fees.schemas import FeePaymentIn, FeePaymentOut
 
 
 def log_payment(db: Session, principal: Teacher, payload: FeePaymentIn) -> FeePaymentOut:
-    student = db.get(Teacher, payload.student_id)
-    if student is None or student.role != "student" or student.school_id != principal.school_id:
+    student = db.get(Student, payload.student_id)
+    if student is None or student.school_id != principal.school_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
 
     row = FeePayment(
@@ -34,15 +35,17 @@ def log_payment(db: Session, principal: Teacher, payload: FeePaymentIn) -> FeePa
     )
 
 
-def list_for_student(db: Session, viewer: Teacher, student_id: uuid.UUID) -> list[FeePaymentOut]:
-    student = db.get(Teacher, student_id)
-    if student is None or student.role != "student":
+def list_for_student(
+    db: Session, viewer: Teacher | Student, student_id: uuid.UUID
+) -> list[FeePaymentOut]:
+    student = db.get(Student, student_id)
+    if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
     if viewer.role == "student":
         if viewer.id != student.id:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only view your own fee log.")
-    elif student.school_id != viewer.school_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
+    else:
+        assert_can_view_student(db, viewer, student)
 
     logger_alias = aliased(Teacher)
     rows = (

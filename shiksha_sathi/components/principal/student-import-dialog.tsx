@@ -41,12 +41,12 @@ const COPY = {
     trigger: "Import CSV",
     title: "Import students from a CSV",
     intro:
-      "Create accounts for a whole class at once. Each student then activates their own account — you don't hand out any passwords.",
+      "Create accounts for a whole class at once. Students choose their own passwords — you never hand any out.",
     drop: "Choose a CSV file or drag it here",
     dropHint: `Up to ${MAX_STUDENT_IMPORT_ROWS.toLocaleString("en-IN")} students · 2 MB`,
     columns: "Columns",
     required: "required",
-    tip: "Class can be written as 8, Class 8 or VIII. Hindi headings (नाम, कक्षा, रोल नंबर) work too. Saving from Excel? Use “CSV UTF-8” so Hindi names stay intact.",
+    tip: "Class can be written as 8, Class 8, VIII or 8A. No Section column? Everyone goes to section A. Missing sections are created for you. Hindi headings (नाम, कक्षा, रोल नंबर) work too. Saving from Excel? Use “CSV UTF-8” so Hindi names stay intact.",
     template: "Download template",
     checking: (n: number) => `Checking ${n.toLocaleString("en-IN")} rows…`,
     another: "Choose another file",
@@ -55,6 +55,10 @@ const COPY = {
     exists: "Already on Medha",
     errors: "Need fixing",
     all: "All",
+    invited: (n: number) =>
+      `${n.toLocaleString("en-IN")} will get an email to set their password. The rest claim their account with class, section and roll number.`,
+    newSections: "New sections will be created:",
+    year: "Academic year",
     skipNote:
       "Rows that need fixing will be skipped. Fix them in your file and upload it again anytime — students already created won't be duplicated.",
     ignored: "Ignored columns:",
@@ -73,11 +77,14 @@ const COPY = {
         .filter(Boolean)
         .join(" · "),
     nextTitle: "What students do next",
-    next: [
-      "Open Medha, choose Student, then “Activate your account”.",
-      "Enter the school, class, roll number and name exactly as in your list.",
-      "Set their own email and password — then they can log in.",
+    nextEmail: (n: number) =>
+      `${n.toLocaleString("en-IN")} student${n === 1 ? " has" : "s have"} been emailed a link to set a password (valid 7 days). If it expires, “Forgot password” works.`,
+    nextClaim: [
+      "Students without an email: open Medha and choose Student → “Claim your account”.",
+      "They enter school, class, section, roll number and name exactly as in your list.",
+      "They add their own email and password — then they can log in.",
     ],
+    claimLink: "Share this page with them:",
     done: "Done",
     emptyFilter: "No rows here.",
     line: "Line",
@@ -87,12 +94,12 @@ const COPY = {
     trigger: "CSV आयात",
     title: "CSV से विद्यार्थी जोड़ें",
     intro:
-      "पूरी कक्षा के खाते एक साथ बनाएँ। हर विद्यार्थी अपना खाता खुद सक्रिय करेगा — आपको पासवर्ड नहीं बाँटने होंगे।",
+      "पूरी कक्षा के खाते एक साथ बनाएँ। विद्यार्थी अपना पासवर्ड खुद बनाएँगे — आपको कोई पासवर्ड नहीं बाँटना।",
     drop: "CSV फ़ाइल चुनें या यहाँ खींचकर छोड़ें",
     dropHint: `अधिकतम ${MAX_STUDENT_IMPORT_ROWS.toLocaleString("en-IN")} विद्यार्थी · 2 MB`,
     columns: "कॉलम",
     required: "ज़रूरी",
-    tip: "कक्षा 8, Class 8 या VIII — किसी भी तरह लिखें। हिंदी शीर्षक (नाम, कक्षा, रोल नंबर) भी चलेंगे। Excel से सेव करते समय “CSV UTF-8” चुनें ताकि हिंदी नाम सही रहें।",
+    tip: "कक्षा 8, Class 8, VIII या 8A — किसी भी तरह लिखें। सेक्शन कॉलम न हो तो सब सेक्शन A में जाएँगे। जो सेक्शन नहीं है वह अपने आप बन जाएगा। हिंदी शीर्षक (नाम, कक्षा, रोल नंबर) भी चलेंगे। Excel से सेव करते समय “CSV UTF-8” चुनें।",
     template: "टेम्पलेट डाउनलोड करें",
     checking: (n: number) => `${n.toLocaleString("en-IN")} पंक्तियाँ जाँची जा रही हैं…`,
     another: "दूसरी फ़ाइल चुनें",
@@ -101,6 +108,10 @@ const COPY = {
     exists: "पहले से मेधा पर",
     errors: "सुधार ज़रूरी",
     all: "सभी",
+    invited: (n: number) =>
+      `${n.toLocaleString("en-IN")} को पासवर्ड बनाने का ईमेल जाएगा। बाकी कक्षा, सेक्शन और रोल नंबर से अपना खाता क्लेम करेंगे।`,
+    newSections: "ये नए सेक्शन बनेंगे:",
+    year: "शैक्षणिक सत्र",
     skipNote:
       "जिन पंक्तियों में सुधार ज़रूरी है, वे छोड़ दी जाएँगी। फ़ाइल ठीक करके कभी भी दोबारा अपलोड करें — पहले बने खाते दोबारा नहीं बनेंगे।",
     ignored: "छोड़े गए कॉलम:",
@@ -119,11 +130,14 @@ const COPY = {
         .filter(Boolean)
         .join(" · "),
     nextTitle: "अब विद्यार्थी क्या करें",
-    next: [
-      "मेधा खोलें, Student चुनें, फिर “Activate your account” पर जाएँ।",
-      "स्कूल, कक्षा, रोल नंबर और नाम ठीक वैसे ही भरें जैसे आपकी सूची में हैं।",
+    nextEmail: (n: number) =>
+      `${n.toLocaleString("en-IN")} विद्यार्थियों को पासवर्ड बनाने का लिंक ईमेल हो गया है (7 दिन मान्य)। समाप्त होने पर “Forgot password” चलेगा।`,
+    nextClaim: [
+      "बिना ईमेल वाले विद्यार्थी: मेधा खोलें, Student चुनें → “Claim your account”।",
+      "स्कूल, कक्षा, सेक्शन, रोल नंबर और नाम ठीक वैसे ही भरें जैसे आपकी सूची में हैं।",
       "अपना ईमेल और पासवर्ड बनाएँ — फिर लॉग इन कर सकते हैं।",
     ],
+    claimLink: "उन्हें यह पेज बताएँ:",
     done: "पूर्ण",
     emptyFilter: "यहाँ कोई पंक्ति नहीं।",
     line: "पंक्ति",
@@ -134,7 +148,10 @@ const COPY = {
 const COLUMN_GUIDE: { name: string; required: boolean; example: string }[] = [
   { name: "Name", required: true, example: "Ravi Kumar" },
   { name: "Class", required: true, example: "8" },
+  { name: "Section", required: false, example: "A" },
   { name: "Roll No", required: true, example: "12" },
+  { name: "Admission No", required: false, example: "2026/104" },
+  { name: "Email", required: false, example: "ravi@example.com" },
   { name: "Guardian Name", required: false, example: "Suresh Kumar" },
   { name: "Relation", required: false, example: "Father" },
   { name: "Guardian Phone", required: false, example: "9876543210" },
@@ -348,7 +365,7 @@ export function StudentImportDialog({ token, onImported }: Props) {
                     </Button>
                   </div>
                   <div className="overflow-x-auto rounded-lg ring-1 ring-foreground/10">
-                    <table className="w-full min-w-[34rem] text-left text-xs">
+                    <table className="w-full min-w-[56rem] text-left text-xs">
                       <thead className="bg-muted/50">
                         <tr>
                           {COLUMN_GUIDE.map((c) => (
@@ -428,6 +445,22 @@ export function StudentImportDialog({ token, onImported }: Props) {
                   ))}
                 </div>
 
+                {result.ready > 0 && (
+                  <div className="flex flex-col gap-1 rounded-lg bg-muted/50 px-3 py-2 text-xs text-foreground/85">
+                    <span>
+                      <span className="text-muted-foreground">{t.year}: </span>
+                      {result.academic_year_label}
+                    </span>
+                    {result.new_sections.length > 0 && (
+                      <span>
+                        <span className="text-muted-foreground">{t.newSections} </span>
+                        {result.new_sections.join(", ")}
+                      </span>
+                    )}
+                    <span>{t.invited(result.invited)}</span>
+                  </div>
+                )}
+
                 {result.errors > 0 && (
                   <p className="flex gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
                     <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
@@ -459,16 +492,29 @@ export function StudentImportDialog({ token, onImported }: Props) {
                   <div className="mb-2 text-xs font-semibold tracking-wide text-foreground uppercase">
                     {t.nextTitle}
                   </div>
-                  <ol className="flex flex-col gap-2 text-sm text-foreground/90">
-                    {t.next.map((s, i) => (
-                      <li key={i} className="flex gap-2.5">
-                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-terracotta/15 text-[11px] font-semibold text-terracotta">
-                          {i + 1}
+                  {result.invited > 0 && (
+                    <p className="mb-3 text-sm text-foreground/90">{t.nextEmail(result.invited)}</p>
+                  )}
+                  {result.created > result.invited && (
+                    <>
+                      <ol className="flex flex-col gap-2 text-sm text-foreground/90">
+                        {t.nextClaim.map((s, i) => (
+                          <li key={i} className="flex gap-2.5">
+                            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-terracotta/15 text-[11px] font-semibold text-terracotta">
+                              {i + 1}
+                            </span>
+                            <span>{s}</span>
+                          </li>
+                        ))}
+                      </ol>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        {t.claimLink}{" "}
+                        <span className="font-medium text-foreground">
+                          {typeof window !== "undefined" ? `${window.location.origin}/student/claim` : "/student/claim"}
                         </span>
-                        <span>{s}</span>
-                      </li>
-                    ))}
-                  </ol>
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -538,7 +584,7 @@ function RowList({
                   {r.full_name ?? "—"}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {[r.grade_label, r.roll_number ? `${t.roll} ${r.roll_number}` : null]
+                  {[r.class_label, r.roll_number ? `${t.roll} ${r.roll_number}` : null, r.email]
                     .filter(Boolean)
                     .join(" · ")}
                 </span>

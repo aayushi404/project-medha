@@ -20,7 +20,9 @@ export default function StudentResourcesPage() {
   useEffect(() => {
     if (!accessToken) return;
     let active = true;
-    listLibraryItems(accessToken, { gradeId: teacher?.grade_id ?? undefined })
+    listLibraryItems(accessToken, {
+      gradeId: teacher?.role === "student" ? teacher.grade_id ?? undefined : undefined,
+    })
       .then((r) => active && setItems(r))
       .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Could not load."))
       .finally(() => {

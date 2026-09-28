@@ -69,12 +69,12 @@ export function getModuleVideos(module: CodingModule): CodingVideo[] {
 
 /** Playable embed URL for a YouTube video id. */
 export function youtubeEmbedUrl(youtubeId: string): string {
-  return `https://www.youtube.com/embed/${youtubeId}`;
+  return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeId)}`;
 }
 
 /** The video's normal watch-page URL, e.g. for an "Open on YouTube" link. */
 export function youtubeWatchUrl(youtubeId: string): string {
-  return `https://www.youtube.com/watch?v=${youtubeId}`;
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}`;
 }
 
 export type CodingCourse = {

@@ -6,10 +6,10 @@ import { toast } from "sonner";
 
 import {
   createHomework,
-  getProfile,
+  getMySections,
   listHomework,
   type HomeworkListItem,
-  type Profile,
+  type TeacherSection,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
@@ -27,10 +27,10 @@ export default function TeacherHomeworkPage() {
   const t = copy.homeworkPage;
 
   const [items, setItems] = useState<HomeworkListItem[]>([]);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [sections, setSections] = useState<TeacherSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
-  const [gradeId, setGradeId] = useState<string | null>(null);
+  const [classSectionId, setClassSectionId] = useState<string | null>(null);
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -38,11 +38,11 @@ export default function TeacherHomeworkPage() {
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(() => {
-    return Promise.all([listHomework(accessToken), getProfile(accessToken)])
-      .then(([h, p]) => {
+    return Promise.all([listHomework(accessToken), getMySections(accessToken)])
+      .then(([h, s]) => {
         setItems(h);
-        setProfile(p);
-        setGradeId((cur) => cur ?? p.subjects[0]?.grade_id ?? null);
+        setSections(s);
+        setClassSectionId((cur) => cur ?? s[0]?.id ?? null);
       })
       .catch((e: unknown) => {
         toast.error(e instanceof Error ? e.message : "Could not load homework.");
@@ -60,24 +60,26 @@ export default function TeacherHomeworkPage() {
     };
   }, [accessToken, reload]);
 
-  const grades = Array.from(
-    new Map((profile?.subjects ?? []).map((s) => [s.grade_id, s.grade_label])).entries(),
-  ).map(([value, label]) => ({ value, label }));
+  const sectionOptions = sections.map((s) => ({
+    value: s.id,
+    label: `${s.grade_label} · ${s.section}`,
+  }));
 
   const subjects = useMemo(
     () =>
-      (profile?.subjects ?? [])
-        .filter((s) => s.grade_id === gradeId)
-        .map((s) => ({ value: s.subject_id, label: s.subject_name })),
-    [profile, gradeId],
+      (sections.find((s) => s.id === classSectionId)?.subjects ?? []).map((s) => ({
+        value: s.id,
+        label: s.name,
+      })),
+    [sections, classSectionId],
   );
 
   async function submit() {
-    if (!gradeId || title.trim().length === 0) return;
+    if (!classSectionId || !subjectId || title.trim().length === 0) return;
     setSaving(true);
     try {
       await createHomework(accessToken, {
-        grade_id: gradeId,
+        class_section_id: classSectionId,
         subject_id: subjectId,
         title: title.trim(),
         description: description.trim() || null,
@@ -122,12 +124,12 @@ export default function TeacherHomeworkPage() {
                 <div className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
                   <div className="flex flex-wrap gap-2">
                     <Select
-                      value={gradeId}
+                      value={classSectionId}
                       onValueChange={(v) => {
-                        setGradeId(v);
+                        setClassSectionId(v);
                         setSubjectId(null);
                       }}
-                      options={grades}
+                      options={sectionOptions}
                       placeholder={t.classLabel}
                     />
                     <Select
@@ -159,7 +161,7 @@ export default function TeacherHomeworkPage() {
                   />
                   <Button
                     onClick={() => void submit()}
-                    disabled={!gradeId || title.trim().length === 0 || saving}
+                    disabled={!classSectionId || !subjectId || title.trim().length === 0 || saving}
                     className="self-start"
                   >
                     {saving ? t.assigning : t.assignBtn}
@@ -185,7 +187,7 @@ export default function TeacherHomeworkPage() {
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <span>{h.grade_label}</span>
+                        <span>{h.grade_label} · {h.section}</span>
                         {h.subject_name && <span>{h.subject_name}</span>}
                         <span>{h.due_date ? t.due(fmtDate(h.due_date)) : t.noDueDate}</span>
                       </div>

@@ -1,8 +1,8 @@
-"""Attendance. A teacher marks their own school's approved-student roster
-for one grade at a time; scoping (`school_id` match, `role == 'student'`,
-`approval_status == 'approved'`) lives here, same shape as
-`teacher/service.py`'s student-roster queries -- a stray id from another
-school or grade is silently dropped, not trusted."""
+"""Attendance. A teacher marks the roster of one class_section they're
+actually assigned to (a `teaching_assignments` row, or being its
+class_teacher -- see `core.section_access`); the roster itself comes from
+each student's current `StudentEnrollment` for that section, not a
+denormalized grade column."""
 
 import uuid
 from datetime import date as date_
@@ -18,7 +18,14 @@ from backend.attendance.schemas import (
     AttendanceMineItem,
     AttendanceStudentOut,
 )
-from backend.db.models import AttendanceRecord, Grade, Teacher
+from backend.core.section_access import assert_can_act_on_section, assert_is_class_teacher_of_section
+from backend.db.models import (
+    AttendanceRecord,
+    Grade,
+    Student,
+    StudentEnrollment,
+    Teacher,
+)
 
 
 def _school_id(teacher: Teacher) -> uuid.UUID:
@@ -27,33 +34,28 @@ def _school_id(teacher: Teacher) -> uuid.UUID:
     return teacher.school_id
 
 
-def _scoped_grade(db: Session, grade_id: uuid.UUID) -> Grade:
-    grade = db.get(Grade, grade_id)
-    if grade is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Grade not found.")
-    return grade
-
-
-def _roster(db: Session, school_id: uuid.UUID, grade_id: uuid.UUID) -> list[Teacher]:
-    return (
-        db.query(Teacher)
+def _roster(db: Session, class_section_id: uuid.UUID) -> list[tuple[Student, int | None]]:
+    rows = (
+        db.query(Student, StudentEnrollment.roll_number)
+        .join(StudentEnrollment, StudentEnrollment.student_id == Student.id)
         .filter(
-            Teacher.role == "student",
-            Teacher.school_id == school_id,
-            Teacher.grade_id == grade_id,
-            Teacher.approval_status == "approved",
+            StudentEnrollment.class_section_id == class_section_id,
+            StudentEnrollment.left_on.is_(None),
+            Student.approval_status == "approved",
         )
-        .order_by(Teacher.roll_number, Teacher.full_name)
+        .order_by(StudentEnrollment.roll_number, Student.full_name)
         .all()
     )
+    return rows
 
 
-def get_day(db: Session, teacher: Teacher, grade_id: uuid.UUID, on_date: date_) -> AttendanceDayOut:
-    school_id = _school_id(teacher)
-    grade = _scoped_grade(db, grade_id)
-    roster = _roster(db, school_id, grade_id)
+def get_day(db: Session, teacher: Teacher, class_section_id: uuid.UUID, on_date: date_) -> AttendanceDayOut:
+    _school_id(teacher)
+    section = assert_can_act_on_section(db, teacher, class_section_id)
+    grade = db.get(Grade, section.grade_id)
+    roster = _roster(db, class_section_id)
 
-    student_ids = [s.id for s in roster]
+    student_ids = [s.id for s, _ in roster]
     marks: dict[uuid.UUID, str] = {}
     if student_ids:
         rows = (
@@ -67,17 +69,19 @@ def get_day(db: Session, teacher: Teacher, grade_id: uuid.UUID, on_date: date_) 
         marks = {r.student_id: r.status for r in rows}
 
     return AttendanceDayOut(
-        grade_id=grade_id,
-        grade_label=grade.label,
+        class_section_id=class_section_id,
+        grade_label=grade.label if grade else "",
+        section=section.section,
         date=on_date,
         students=[
             AttendanceStudentOut(
                 student_id=s.id,
                 full_name=s.full_name,
-                roll_number=s.roll_number,
+                roll_number=roll_number,
+                photo_url=s.photo_url,
                 status=marks.get(s.id),
             )
-            for s in roster
+            for s, roll_number in roster
         ],
     )
 
@@ -88,9 +92,9 @@ def mark_day(
     payload: AttendanceMarkIn,
     background_tasks: BackgroundTasks | None = None,
 ) -> AttendanceDayOut:
-    school_id = _school_id(teacher)
-    _scoped_grade(db, payload.grade_id)
-    valid_ids = {s.id for s in _roster(db, school_id, payload.grade_id)}
+    _school_id(teacher)
+    assert_is_class_teacher_of_section(db, teacher, payload.class_section_id)
+    valid_ids = {s.id for s, _ in _roster(db, payload.class_section_id)}
 
     # Rows that just transitioned into "absent" for the first time -- these,
     # and only these, get an instant guardian call (see queue_call_for_absence).
@@ -135,10 +139,10 @@ def mark_day(
         for row in newly_absent:
             background_tasks.add_task(queue_call_for_absence, row.id)
 
-    return get_day(db, teacher, payload.grade_id, payload.date)
+    return get_day(db, teacher, payload.class_section_id, payload.date)
 
 
-def list_for_student(db: Session, student: Teacher) -> list[AttendanceMineItem]:
+def list_for_student(db: Session, student: Student) -> list[AttendanceMineItem]:
     rows = (
         db.query(AttendanceRecord)
         .filter(AttendanceRecord.student_id == student.id)

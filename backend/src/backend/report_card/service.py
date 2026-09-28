@@ -1,37 +1,42 @@
 """Report card: a teacher enters one subject's marks for one student in one
-term, scoped to a subject/grade they actually teach (`teacher_subjects`) so
-a Hindi teacher can't enter Science marks. Deliberately lightweight -- no
-term management, no grade-boundary/rank computation."""
+term, scoped to a class_section + subject they hold an exact
+`teaching_assignments` row for (see `assert_can_act_on_section_and_subject`
+-- no class-teacher bypass, since grading a subject you don't teach should
+never be allowed just because you're the homeroom teacher). Deliberately
+lightweight -- no term management, no grade-boundary/rank computation."""
 
 import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.db.models import ReportCardMark, Subject, Teacher, TeacherSubject
+from backend.core.section_access import (
+    assert_can_act_on_section_and_subject,
+    assert_can_view_student,
+    current_enrollment,
+)
+from backend.db.models import ReportCardMark, Student, StudentEnrollment, Subject, Teacher
 from backend.report_card.schemas import ReportCardMarkIn, ReportCardMarkOut, ReportCardOut
 
 
-def _assert_teaches(db: Session, teacher: Teacher, subject_id: uuid.UUID, grade_id: uuid.UUID) -> None:
-    taught = (
-        db.query(TeacherSubject)
-        .filter(
-            TeacherSubject.teacher_id == teacher.id,
-            TeacherSubject.subject_id == subject_id,
-            TeacherSubject.grade_id == grade_id,
-        )
-        .first()
-    )
-    if taught is None:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't teach this subject at this grade.")
+def _authorize_mark_write(db: Session, teacher: Teacher, student_id: uuid.UUID, subject_id: uuid.UUID) -> Student:
+    """Same-school student, enrolled in a section this teacher teaches this
+    subject in. A student with no current enrollment cannot be graded -- there
+    is no section to check the assignment against, so fail closed."""
+    student = db.get(Student, student_id)
+    if student is None or teacher.school_id is None or student.school_id != teacher.school_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
+    enrollment = current_enrollment(db, student)
+    if enrollment is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This student isn't enrolled in a class yet.")
+    assert_can_act_on_section_and_subject(db, teacher, enrollment.class_section_id, subject_id)
+    return student
 
 
 def upsert_mark(db: Session, teacher: Teacher, payload: ReportCardMarkIn) -> ReportCardMarkOut:
-    student = db.get(Teacher, payload.student_id)
-    if student is None or student.role != "student" or student.school_id != teacher.school_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
-    if student.grade_id is not None:
-        _assert_teaches(db, teacher, payload.subject_id, student.grade_id)
+    _authorize_mark_write(db, teacher, payload.student_id, payload.subject_id)
+    if payload.marks_obtained > payload.max_marks:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Marks obtained cannot exceed maximum marks.")
 
     row = (
         db.query(ReportCardMark)
@@ -64,16 +69,16 @@ def upsert_mark(db: Session, teacher: Teacher, payload: ReportCardMarkIn) -> Rep
     )
 
 
-def get_report_card(db: Session, viewer: Teacher, student_id: uuid.UUID) -> ReportCardOut:
-    student = db.get(Teacher, student_id)
-    if student is None or student.role != "student":
+def get_report_card(db: Session, viewer: Teacher | Student, student_id: uuid.UUID) -> ReportCardOut:
+    student = db.get(Student, student_id)
+    if student is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
     # a student may only view their own; teacher/principal must share the school
     if viewer.role == "student":
         if viewer.id != student.id:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only view your own report card.")
-    elif student.school_id != viewer.school_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
+    else:
+        assert_can_view_student(db, viewer, student)
 
     rows = (
         db.query(ReportCardMark, Subject.name)
@@ -98,6 +103,7 @@ def get_report_card(db: Session, viewer: Teacher, student_id: uuid.UUID) -> Repo
 
 
 def delete_mark(db: Session, teacher: Teacher, student_id: uuid.UUID, subject_id: uuid.UUID, term: str) -> None:
+    _authorize_mark_write(db, teacher, student_id, subject_id)
     row = (
         db.query(ReportCardMark)
         .filter(
@@ -119,18 +125,19 @@ def bulk_upsert_marks(db: Session, teacher: Teacher, payload: "BulkReportCardMar
     if teacher.school_id is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Your account isn't linked to a school.")
 
-    _assert_teaches(db, teacher, payload.subject_id, payload.grade_id)
+    assert_can_act_on_section_and_subject(db, teacher, payload.class_section_id, payload.subject_id)
 
-    students = (
-        db.query(Teacher)
+    valid_student_ids = {
+        sid
+        for (sid,) in db.query(Student.id)
+        .join(StudentEnrollment, StudentEnrollment.student_id == Student.id)
         .filter(
-            Teacher.role == "student",
-            Teacher.school_id == teacher.school_id,
-            Teacher.grade_id == payload.grade_id,
+            StudentEnrollment.class_section_id == payload.class_section_id,
+            StudentEnrollment.left_on.is_(None),
+            Student.approval_status == "approved",
         )
         .all()
-    )
-    valid_student_ids = {s.id for s in students}
+    }
 
     subject = db.get(Subject, payload.subject_id)
     if subject is None:
@@ -194,12 +201,12 @@ def bulk_upsert_marks(db: Session, teacher: Teacher, payload: "BulkReportCardMar
 
 
 def get_class_marks(
-    db: Session, teacher: Teacher, grade_id: uuid.UUID, subject_id: uuid.UUID, term: str
+    db: Session, teacher: Teacher, class_section_id: uuid.UUID, subject_id: uuid.UUID, term: str
 ) -> list[ReportCardMarkOut]:
     if teacher.school_id is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Your account isn't linked to a school.")
 
-    _assert_teaches(db, teacher, subject_id, grade_id)
+    assert_can_act_on_section_and_subject(db, teacher, class_section_id, subject_id)
 
     subject = db.get(Subject, subject_id)
     if subject is None:
@@ -207,11 +214,11 @@ def get_class_marks(
 
     rows = (
         db.query(ReportCardMark)
-        .join(Teacher, ReportCardMark.student_id == Teacher.id)
+        .join(Student, ReportCardMark.student_id == Student.id)
+        .join(StudentEnrollment, StudentEnrollment.student_id == Student.id)
         .filter(
-            Teacher.role == "student",
-            Teacher.school_id == teacher.school_id,
-            Teacher.grade_id == grade_id,
+            StudentEnrollment.class_section_id == class_section_id,
+            StudentEnrollment.left_on.is_(None),
             ReportCardMark.subject_id == subject_id,
             ReportCardMark.term == term,
         )

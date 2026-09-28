@@ -3,16 +3,12 @@
 import { ChevronUp, LogOut, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { ProfileImage } from "@/components/ui/profile-image";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useProfile } from "@/lib/profile-context";
 import { cn } from "@/lib/utils";
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase()) || "?";
-}
 
 export function ProfileMenu({ collapsed }: { collapsed?: boolean }) {
   const copy = useCopy();
@@ -27,11 +23,7 @@ export function ProfileMenu({ collapsed }: { collapsed?: boolean }) {
     ? `${t.subject(primary.subject_name)} · ${t.grade(primary.grade_label)}`
     : "";
 
-  const avatar = (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-foreground">
-      {initials(name || "?")}
-    </span>
-  );
+  const avatar = <ProfileImage url={profile?.photo_url} name={name || "?"} size="sm" />;
 
   const chip = collapsed ? (
     <span

@@ -46,6 +46,16 @@ def _payload(code: str, message: str, *, detail: object | None = None) -> dict:
     }
 
 
+def _safe_errors(exc: RequestValidationError) -> list[dict]:
+    """Validation errors without the submitted values: `input` would echo
+    back whatever the client sent -- including a password on a failed
+    registration -- and `ctx` can embed raw exception objects."""
+    return [
+        {"type": e.get("type"), "loc": list(e.get("loc", ())), "msg": str(e.get("msg", ""))}
+        for e in exc.errors()
+    ]
+
+
 def install_error_handlers(app: FastAPI) -> None:
     # Registered against the Starlette base (not fastapi.HTTPException) so it
     # also catches framework-raised 404/405s for unmatched routes. fastapi's
@@ -69,7 +79,7 @@ def install_error_handlers(app: FastAPI) -> None:
             content=_payload(
                 "validation_error",
                 "Request validation failed.",
-                detail=jsonable_encoder(exc.errors()),
+                detail=_safe_errors(exc),
             ),
         )
 

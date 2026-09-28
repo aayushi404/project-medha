@@ -1,5 +1,6 @@
-"""Homework: a teacher assigns work to one grade at their school; each
-student in that grade gets a personal done/not-done flag (self-reported,
+"""Homework: a teacher assigns work to one class_section they're assigned
+to teach a subject in (see `assert_can_act_on_section_and_subject`); each
+student in that section gets a personal done/not-done flag (self-reported,
 not graded -- see HomeworkStatus in db/models/homework.py). Status rows
 are created lazily (on the student's first read or first toggle) rather
 than eagerly for the whole roster at assignment time, so a student
@@ -12,7 +13,17 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.db.models import Grade, Homework, HomeworkStatus, Subject, Teacher
+from backend.core.section_access import assert_can_act_on_section_and_subject, current_enrollment
+from backend.db.models import (
+    ClassSection,
+    Grade,
+    Homework,
+    HomeworkStatus,
+    Student,
+    StudentEnrollment,
+    Subject,
+    Teacher,
+)
 from backend.homework.schemas import (
     HomeworkCreateIn,
     HomeworkDetailOut,
@@ -28,19 +39,32 @@ def _school_id(teacher: Teacher) -> uuid.UUID:
     return teacher.school_id
 
 
+def _roster_student_ids(db: Session, class_section_id: uuid.UUID) -> list[uuid.UUID]:
+    return [
+        row[0]
+        for row in db.query(Student.id)
+        .join(StudentEnrollment, StudentEnrollment.student_id == Student.id)
+        .filter(
+            StudentEnrollment.class_section_id == class_section_id,
+            StudentEnrollment.left_on.is_(None),
+            Student.approval_status == "approved",
+        )
+        .all()
+    ]
+
+
 def create(db: Session, teacher: Teacher, payload: HomeworkCreateIn) -> HomeworkDetailOut:
     school_id = _school_id(teacher)
-    grade = db.get(Grade, payload.grade_id)
-    if grade is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Grade not found.")
-    subject = db.get(Subject, payload.subject_id) if payload.subject_id else None
-    if payload.subject_id and subject is None:
+    section = assert_can_act_on_section_and_subject(db, teacher, payload.class_section_id, payload.subject_id)
+    grade = db.get(Grade, section.grade_id)
+    subject = db.get(Subject, payload.subject_id)
+    if subject is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Subject not found.")
 
     hw = Homework(
         teacher_id=teacher.id,
         school_id=school_id,
-        grade_id=payload.grade_id,
+        class_section_id=payload.class_section_id,
         subject_id=payload.subject_id,
         title=payload.title,
         description=payload.description,
@@ -50,20 +74,12 @@ def create(db: Session, teacher: Teacher, payload: HomeworkCreateIn) -> Homework
     db.commit()
     db.refresh(hw)
 
-    recipients = (
-        db.query(Teacher)
-        .filter(
-            Teacher.role == "student",
-            Teacher.school_id == school_id,
-            Teacher.grade_id == payload.grade_id,
-            Teacher.approval_status == "approved",
-        )
-        .all()
-    )
+    student_ids = _roster_student_ids(db, payload.class_section_id)
+    recipients = db.query(Student).filter(Student.id.in_(student_ids)).all() if student_ids else []
     notifications.notify(
         db,
         recipients=recipients,
-        sender_id=teacher.id,
+        sender=teacher,
         type="homework_assigned",
         title=f"नया गृहकार्य: {hw.title}",
         body=payload.description or "",
@@ -74,8 +90,9 @@ def create(db: Session, teacher: Teacher, payload: HomeworkCreateIn) -> Homework
         id=hw.id,
         title=hw.title,
         description=hw.description,
-        grade_label=grade.label,
-        subject_name=subject.name if subject else None,
+        grade_label=grade.label if grade else "",
+        section=section.section,
+        subject_name=subject.name,
         due_date=hw.due_date,
         created_at=hw.created_at,
     )
@@ -84,25 +101,17 @@ def create(db: Session, teacher: Teacher, payload: HomeworkCreateIn) -> Homework
 def list_for_teacher(db: Session, teacher: Teacher) -> list[HomeworkListItem]:
     school_id = _school_id(teacher)
     rows = (
-        db.query(Homework, Grade.label, Subject.name)
-        .join(Grade, Homework.grade_id == Grade.id)
+        db.query(Homework, Grade.label, ClassSection.section, Subject.name)
+        .join(ClassSection, Homework.class_section_id == ClassSection.id)
+        .join(Grade, ClassSection.grade_id == Grade.id)
         .outerjoin(Subject, Homework.subject_id == Subject.id)
         .filter(Homework.school_id == school_id, Homework.teacher_id == teacher.id)
         .order_by(Homework.created_at.desc())
         .all()
     )
     items = []
-    for hw, grade_label, subject_name in rows:
-        total = (
-            db.query(Teacher)
-            .filter(
-                Teacher.role == "student",
-                Teacher.school_id == school_id,
-                Teacher.grade_id == hw.grade_id,
-                Teacher.approval_status == "approved",
-            )
-            .count()
-        )
+    for hw, grade_label, section, subject_name in rows:
+        total = len(_roster_student_ids(db, hw.class_section_id))
         done = (
             db.query(HomeworkStatus)
             .filter(HomeworkStatus.homework_id == hw.id, HomeworkStatus.done.is_(True))
@@ -113,6 +122,7 @@ def list_for_teacher(db: Session, teacher: Teacher) -> list[HomeworkListItem]:
                 id=hw.id,
                 title=hw.title,
                 grade_label=grade_label,
+                section=section,
                 subject_name=subject_name,
                 due_date=hw.due_date,
                 created_at=hw.created_at,
@@ -123,13 +133,14 @@ def list_for_teacher(db: Session, teacher: Teacher) -> list[HomeworkListItem]:
     return items
 
 
-def list_for_student(db: Session, student: Teacher) -> list[HomeworkStudentOut]:
-    if student.school_id is None or student.grade_id is None:
+def list_for_student(db: Session, student: Student) -> list[HomeworkStudentOut]:
+    enrollment = current_enrollment(db, student)
+    if enrollment is None:
         return []
     rows = (
         db.query(Homework, Subject.name)
         .outerjoin(Subject, Homework.subject_id == Subject.id)
-        .filter(Homework.school_id == student.school_id, Homework.grade_id == student.grade_id)
+        .filter(Homework.class_section_id == enrollment.class_section_id)
         .order_by(Homework.created_at.desc())
         .all()
     )
@@ -154,9 +165,10 @@ def list_for_student(db: Session, student: Teacher) -> list[HomeworkStudentOut]:
     return out
 
 
-def set_done(db: Session, student: Teacher, homework_id: uuid.UUID, done: bool) -> HomeworkStudentOut:
+def set_done(db: Session, student: Student, homework_id: uuid.UUID, done: bool) -> HomeworkStudentOut:
     hw = db.get(Homework, homework_id)
-    if hw is None or hw.school_id != student.school_id or hw.grade_id != student.grade_id:
+    enrollment = current_enrollment(db, student)
+    if hw is None or enrollment is None or hw.class_section_id != enrollment.class_section_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Homework not found.")
 
     row = (

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_user, require_role
-from backend.db.models import Teacher
+from backend.db.models import Student, Teacher
 from backend.db.session import get_db
 from backend.practice import service
 from backend.practice.schemas import PracticeQuestionIn, PracticeQuestionOut
@@ -16,7 +16,7 @@ require_question_author = require_role("teacher", "principal")
 
 @router.get("", response_model=list[PracticeQuestionOut])
 def list_questions(
-    chapter_id: uuid.UUID, user: Teacher = Depends(get_current_user), db: Session = Depends(get_db)
+    chapter_id: uuid.UUID, user: Teacher | Student = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> list[PracticeQuestionOut]:
     return service.list_questions(db, user, chapter_id)
 

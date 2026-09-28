@@ -13,7 +13,6 @@ class Teacher(Base):
     __table_args__ = (
         Index("idx_teachers_school", "school_id"),
         Index("idx_teachers_phone", "phone_number"),
-        Index("idx_teachers_grade", "grade_id"),
         Index(
             "idx_teachers_pending",
             "school_id",
@@ -28,17 +27,8 @@ class Teacher(Base):
             unique=True,
             postgresql_where=text("role = 'principal' AND approval_status = 'approved'"),
         ),
-        # one student per (school, class, roll number)
-        Index(
-            "idx_one_student_per_roll",
-            "school_id",
-            "grade_id",
-            "roll_number",
-            unique=True,
-            postgresql_where=text("role = 'student' AND roll_number IS NOT NULL"),
-        ),
-        # email is optional (a student row exists before it has a credential);
-        # uniqueness is kept over the rows that do have one
+        # email is optional (a not-yet-onboarded teacher row can predate a
+        # credential); uniqueness is kept over the rows that do have one
         Index(
             "uq_teachers_email",
             "email",
@@ -54,7 +44,7 @@ class Teacher(Base):
             postgresql_where=text("google_sub IS NOT NULL"),
         ),
         CheckConstraint(
-            "role IN ('admin', 'principal', 'teacher', 'student')",
+            "role IN ('admin', 'principal', 'teacher')",
             name="chk_teachers_role",
         ),
         CheckConstraint(
@@ -92,22 +82,12 @@ class Teacher(Base):
     role: Mapped[str] = mapped_column(server_default="teacher")
     is_active: Mapped[bool] = mapped_column(server_default=text("true"))
     onboarded_at: Mapped[datetime | None]
-
-    # --- student profile ---
-    # the student's class, and their roll number within it -- the pair a teacher
-    # checks against the class register to verify a registration.
-    grade_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("grades.id")
-    )
-    roll_number: Mapped[str | None]
-    # Collected at student registration (optional -- may be filled in later by
-    # the student/teacher). This is the number the absence-calling feature
-    # dials; kept here rather than on the separate `students` directory table
-    # since that roster is principal-managed and not reliably linked to this
-    # login row (see docs/medha-student-role-plan.md).
-    guardian_name: Mapped[str | None]
-    guardian_phone: Mapped[str | None]
-    guardian_relation: Mapped[str | None]  # father | mother | guardian
+    # proof the person controls this email (auth/verification.py); a row can't
+    # be approved until it's set
+    email_verified_at: Mapped[datetime | None]
+    # MFA hook (TOTP) -- columns exist, nothing enforces them yet
+    mfa_secret: Mapped[str | None]
+    mfa_enabled: Mapped[bool] = mapped_column(server_default=text("false"))
 
     # --- registration profile (teachers) ---
     # employee_code is the government teacher ID: the field a principal checks
@@ -115,6 +95,9 @@ class Teacher(Base):
     employee_code: Mapped[str | None]
     years_of_experience: Mapped[int | None]
     qualification: Mapped[str | None]  # e.g. B.Ed, M.Sc
+    # Cloudinary secure_url, set only via core/images.py's upload/delete flow --
+    # never accepted as raw client input.
+    photo_url: Mapped[str | None]
 
     # --- approval workflow ---
     approval_status: Mapped[str] = mapped_column(server_default="pending")
@@ -129,38 +112,104 @@ class Teacher(Base):
 
 
 class AuthSession(Base):
+    """A logged-in session for either a `teachers` or a `students` actor --
+    exactly one of `teacher_id`/`student_id` is set (`chk_auth_sessions_actor`).
+    Two identity tables sharing one session table, rather than a second
+    parallel auth-session system, since login/refresh/rate-limit machinery is
+    otherwise identical for both."""
+
     __tablename__ = "auth_sessions"
-    __table_args__ = (Index("idx_sessions_teacher", "teacher_id"),)
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
-    )
-    teacher_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
-    )
-    refresh_token_hash: Mapped[str]
-    device_info: Mapped[str | None]
-    issued_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
-    expires_at: Mapped[datetime]
-    revoked_at: Mapped[datetime | None]
-
-
-class ApprovalEvent(Base):
-    """Append-only audit trail of every approve / reject / revoke decision."""
-
-    __tablename__ = "approval_events"
     __table_args__ = (
-        Index("idx_approval_events_subject", "subject_user_id"),
+        Index("idx_sessions_teacher", "teacher_id"),
+        Index("idx_sessions_student", "student_id"),
         CheckConstraint(
-            "action IN ('approved', 'rejected', 'revoked')", name="chk_approval_action"
+            "num_nonnulls(teacher_id, student_id) = 1", name="chk_auth_sessions_actor"
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
     )
-    subject_user_id: Mapped[uuid.UUID] = mapped_column(
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+    )
+    student_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
+    )
+    refresh_token_hash: Mapped[str]
+    # every rotation of one login stays in the same family, so replaying an
+    # already-rotated (i.e. stolen) token can revoke the whole chain
+    family_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    replaced_by_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    device_info: Mapped[str | None]
+    issued_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+    expires_at: Mapped[datetime]
+    revoked_at: Mapped[datetime | None]
+
+
+class AuthThrottle(Base):
+    """One rate-limit counter per (scope, hashed identifier), shared by every
+    worker and surviving restarts. See core/throttle.py."""
+
+    __tablename__ = "auth_throttle"
+
+    scope: Mapped[str] = mapped_column(primary_key=True)
+    key_hash: Mapped[str] = mapped_column(primary_key=True)
+    count: Mapped[int] = mapped_column(server_default=text("0"))
+    window_start: Mapped[datetime] = mapped_column(server_default=text("now()"))
+
+
+class AuthToken(Base):
+    """A single-use, expiring, hashed token for email verification or
+    password reset. Exactly one of teacher_id/student_id is set."""
+
+    __tablename__ = "auth_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    purpose: Mapped[str]  # verify_email | reset_password
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+    )
+    student_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
+    )
+    token_hash: Mapped[str]
+    expires_at: Mapped[datetime]
+    used_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+
+
+class ApprovalEvent(Base):
+    """Append-only audit trail of every approve / reject / revoke decision.
+    The subject can be a teacher/principal (approved by admin/principal) or a
+    student (approved by a teacher) -- exactly one of `subject_user_id`/
+    `subject_student_id` is set. The actor is always a teacher/principal/admin
+    row (students never approve anything), so `actor_user_id` stays a plain
+    required FK to `teachers`."""
+
+    __tablename__ = "approval_events"
+    __table_args__ = (
+        Index("idx_approval_events_subject", "subject_user_id"),
+        Index("idx_approval_events_subject_student", "subject_student_id"),
+        CheckConstraint(
+            "action IN ('approved', 'rejected', 'revoked')", name="chk_approval_action"
+        ),
+        CheckConstraint(
+            "num_nonnulls(subject_user_id, subject_student_id) = 1",
+            name="chk_approval_events_subject",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    subject_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+    )
+    subject_student_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
     )
     actor_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("teachers.id")

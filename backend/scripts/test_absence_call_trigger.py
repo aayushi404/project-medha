@@ -1,4 +1,4 @@
-"""Script to test triggering the absence call feature for +917050020815."""
+"""Script to exercise the absence-call workflow against a dev database."""
 
 import sys
 import os
@@ -8,19 +8,18 @@ from datetime import date
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 from backend.db.session import SessionLocal
-from backend.db.models import Teacher, AttendanceRecord, AbsenceCall
-from backend.absence_calls.service import queue_call_for_absence, DEFAULT_GUARDIAN_PHONE
+from backend.db.models import Student, Teacher, AttendanceRecord, AbsenceCall
+from backend.absence_calls.service import queue_call_for_absence
 from backend.core.config import settings
 
 async def main():
     print(f"=== ABSENCE CALL FEATURE VERIFICATION ===")
-    print(f"Default fallback guardian phone: {DEFAULT_GUARDIAN_PHONE}")
     print(f"Absence calling enabled: {settings.absence_calling_enabled}")
     print(f"Telephony provider: {settings.telephony_provider}")
-    
+
     db = SessionLocal()
     try:
-        student = db.query(Teacher).filter(Teacher.role == "student").first()
+        student = db.query(Student).first()
         teacher = db.query(Teacher).filter(Teacher.role == "teacher").first()
         
         if not student or not teacher:

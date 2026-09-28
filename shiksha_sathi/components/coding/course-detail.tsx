@@ -140,6 +140,8 @@ function ModuleRow({
                   className="h-full w-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
+                  sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+                  referrerPolicy="strict-origin-when-cross-origin"
                 />
               </div>
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import get_current_user, require_role
-from backend.db.models import Teacher
+from backend.db.models import Student, Teacher
 from backend.db.session import get_db
 from backend.library import service
 from backend.library.schemas import (
@@ -29,7 +29,7 @@ def list_presentations(
     language: str | None = None,
     q: str | None = None,
     limit: int | None = None,
-    _user: Teacher = Depends(get_current_user),
+    _user: Teacher | Student = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[LibraryPresentationItem]:
     return service.list_presentations(
@@ -47,7 +47,7 @@ def list_presentations(
 @router.get("/presentations/{pres_id}", response_model=LibraryPresentationDetail)
 def get_presentation(
     pres_id: uuid.UUID,
-    _user: Teacher = Depends(get_current_user),
+    _user: Teacher | Student = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> LibraryPresentationDetail:
     return service.get_presentation(db, pres_id)
@@ -56,7 +56,7 @@ def get_presentation(
 @router.get("/presentations/{pres_id}/pptx")
 def download_presentation(
     pres_id: uuid.UUID,
-    _user: Teacher = Depends(get_current_user),
+    _user: Teacher | Student = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Response:
     data, slug = service.render_presentation_ppt(db, pres_id)
@@ -71,7 +71,7 @@ def download_presentation(
 def list_library(
     grade_id: uuid.UUID | None = None,
     subject_id: uuid.UUID | None = None,
-    user: Teacher = Depends(get_current_user),
+    user: Teacher | Student = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[LibraryItemOut]:
     return service.list_items(db, user, grade_id=grade_id, subject_id=subject_id)

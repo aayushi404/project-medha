@@ -13,32 +13,38 @@ import {
 import {
   AuthError,
   apiFetch,
+  setTokenRefresher,
   extractErrorMessage,
   register as registerRequest,
+  type CurrentUser,
   type LoginRole,
   type RegisterInput,
   type RegisterResult,
   type Role,
-  type Teacher,
   type TokenOut,
 } from "@/lib/api";
+import { claimUserData, clearUserData } from "@/lib/user-data";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 type AuthContextValue = {
   status: AuthStatus;
-  teacher: Teacher | null;
+  /** The logged-in user -- a `teachers` row (admin/principal/teacher) or a
+   * `students` row. Named `teacher` for historical reasons/minimal diff
+   * across consumers; narrow on `.role` to access student-only fields
+   * (grade_id, roll_number). */
+  teacher: CurrentUser | null;
   accessToken: string | null;
-  /** `role` is the tab picked on the login screen -- the backend rejects the
-   * login (ROLE_MISMATCH) if the account's actual role doesn't match, so a
-   * teacher's credentials can't be used to sign in via the Student tab. */
+  /** `role` is the tab picked on the login screen -- the backend looks the
+   * email up in the matching table (teachers vs students), so a teacher's
+   * credentials can't be used to sign in via the Student tab. */
   login: (email: string, password: string, role: LoginRole) => Promise<void>;
   /** Creates a pending account. Does NOT start a session -- the caller shows a
    * "waiting for approval" screen. Throws Error with a readable message. */
   register: (input: RegisterInput) => Promise<RegisterResult>;
   logout: () => Promise<void>;
-  /** Updates the teacher in context (e.g. after onboarding completes) without a refetch/reload. */
-  updateTeacher: (teacher: Teacher) => void;
+  /** Updates the current user in context (e.g. after onboarding completes) without a refetch/reload. */
+  updateTeacher: (teacher: CurrentUser) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -58,7 +64,7 @@ class SessionRejected extends Error {}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
-  const [teacher, setTeacher] = useState<Teacher | null>(null);
+  const [teacher, setTeacher] = useState<CurrentUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // When the current access token expires (epoch ms). Background tabs and a
@@ -76,6 +82,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // and gets a 401, which would incorrectly clear a session the winner just
   // established.
   const inFlightRefresh = useRef<Promise<void> | null>(null);
+  // Bumped whenever the session is deliberately ended or replaced. A refresh or
+  // login that started before that must not resurrect a logged-out session
+  // when it eventually resolves.
+  const generation = useRef(0);
+  const accessTokenRef = useRef<string | null>(null);
 
   const clearRefreshTimer = useCallback(() => {
     if (refreshTimer.current) {
@@ -97,11 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const establishSession = useCallback(
     async (tokens: TokenOut) => {
+      const started = generation.current;
       const meRes = await apiFetch("/auth/me", { token: tokens.access_token });
       if (meRes.status === 401 || meRes.status === 403) throw new SessionRejected();
       if (!meRes.ok) throw new Error("Could not load your profile.");
-      const me = (await meRes.json()) as Teacher;
+      const me = (await meRes.json()) as CurrentUser;
+      if (started !== generation.current) return; // logged out / replaced meanwhile
 
+      claimUserData(me.id);
+      accessTokenRef.current = tokens.access_token;
       accessExpiresAt.current = Date.now() + tokens.expires_in * 1000;
       setAccessToken(tokens.access_token);
       setTeacher(me);
@@ -112,7 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const clearSession = useCallback(() => {
+    generation.current += 1;
     clearRefreshTimer();
+    accessTokenRef.current = null;
+    clearUserData(); // nothing from this user may linger on a shared school computer
     setAccessToken(null);
     setTeacher(null);
     setStatus("unauthenticated");
@@ -222,9 +240,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
+    // end the local session first so nothing in flight can revive it, then tell the server
     clearSession();
+    await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
   }, [clearSession]);
+
+  // let apiFetch recover from an expired access token with one refresh + retry
+  useEffect(() => {
+    setTokenRefresher(async () => {
+      await silentRefresh();
+      return accessTokenRef.current;
+    });
+    return () => setTokenRefresher(null);
+  }, [silentRefresh]);
 
   return (
     <AuthContext.Provider

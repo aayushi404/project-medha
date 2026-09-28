@@ -14,7 +14,7 @@ export type QuizQ = QuizContent["questions"][number];
 export type Participant = {
   id: string;
   name: string;
-  rollNumber: string | null;
+  rollNumber: number | null;
   gradeLabel: string;
 };
 

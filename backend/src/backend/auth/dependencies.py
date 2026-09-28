@@ -4,43 +4,87 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from backend.auth.jwt import decode_access_token
-from backend.db.models import Teacher
+from backend.db.models import Student, Teacher
 from backend.db.session import get_db
 
 _bearer_scheme = HTTPBearer(auto_error=True)
+
+
+def _decode(credentials: HTTPAuthorizationCredentials) -> tuple:
+    try:
+        return decode_access_token(credentials.credentials)
+    except pyjwt.PyJWTError as exc:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Invalid or expired access token."
+        ) from exc
+
+
+def get_current_actor(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+    db: Session = Depends(get_db),
+) -> Teacher | Student:
+    """Resolve the caller against whichever table the token's actor_type
+    claim points at. Used anywhere a route accepts any authenticated role
+    (notifications, report-card/fees reads, library/notes/practice reads)."""
+    actor_id, actor_type = _decode(credentials)
+    model = Student if actor_type == "student" else Teacher
+    actor = db.get(model, actor_id)
+    if actor is None or not actor.is_active:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication credentials.")
+    # Tokens are only ever issued to approved accounts, but re-check here so a
+    # later revocation takes effect on the next request without waiting for the
+    # access token to expire.
+    if actor.approval_status != "approved":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is not approved.")
+    return actor
 
 
 def get_current_teacher(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
     db: Session = Depends(get_db),
 ) -> Teacher:
-    try:
-        teacher_id = decode_access_token(credentials.credentials)
-    except pyjwt.PyJWTError as exc:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Invalid or expired access token."
-        ) from exc
+    """Like `get_current_actor`, but rejects a student token outright -- for
+    routes (admin/principal/teacher-only) that only ever make sense for a
+    `teachers` row."""
+    actor_id, actor_type = _decode(credentials)
+    if actor_type != "teacher":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication credentials.")
 
-    teacher = db.get(Teacher, teacher_id)
+    teacher = db.get(Teacher, actor_id)
     if teacher is None or not teacher.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication credentials.")
-    # Tokens are only ever issued to approved accounts, but re-check here so a
-    # later revocation takes effect on the next request without waiting for the
-    # access token to expire.
     if teacher.approval_status != "approved":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is not approved.")
     return teacher
 
 
-# `get_current_user` reads better in role-agnostic code (admins and principals
-# are not "teachers"); it's the same dependency.
-get_current_user = get_current_teacher
+def get_current_student(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+    db: Session = Depends(get_db),
+) -> Student:
+    actor_id, actor_type = _decode(credentials)
+    if actor_type != "student":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication credentials.")
+
+    student = db.get(Student, actor_id)
+    if student is None or not student.is_active:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication credentials.")
+    if student.approval_status != "approved":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is not approved.")
+    return student
+
+
+# `get_current_user` reads better in role-agnostic code (admins, principals,
+# teachers and students are all "users"); it's the same dependency.
+get_current_user = get_current_actor
 
 
 def require_role(*allowed: str):
-    """Dependency factory: 403 unless the caller's role is one of `allowed`."""
+    """Dependency factory: 403 unless the caller's (teacher-table) role is one
+    of `allowed`. Only ever resolves against `teachers` -- `admin`/`principal`/
+    `teacher` are the only values that live there now."""
 
-    def _guard(user: Teacher = Depends(get_current_user)) -> Teacher:
+    def _guard(user: Teacher = Depends(get_current_teacher)) -> Teacher:
         if user.role not in allowed:
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN, "You don't have permission to do that."
@@ -53,4 +97,6 @@ def require_role(*allowed: str):
 require_admin = require_role("admin")
 require_principal = require_role("principal")
 require_teacher = require_role("teacher")
-require_student = require_role("student")
+# A student isn't a `Teacher.role` value anymore -- resolving against
+# `students` via `get_current_student` *is* the role check.
+require_student = get_current_student

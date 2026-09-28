@@ -31,6 +31,10 @@ FILLED_THRESHOLD = 0.30  # Fill ratio > 30% considered filled
 EMPTY_THRESHOLD = 0.15   # Fill ratio < 15% considered empty
 
 
+_MAX_PDF_PAGES = 3
+_MAX_RENDER_PIXELS = 40_000_000  # ~ A4 at 400 DPI
+
+
 class OMREvaluator:
     def __init__(self, target_width: int = 1190, target_height: int = 1684):
         self.target_w = target_width
@@ -43,9 +47,15 @@ class OMREvaluator:
         filename_lower = filename.lower()
         if filename_lower.endswith(".pdf"):
             doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+            if doc.page_count > _MAX_PDF_PAGES:
+                raise ValueError("The PDF has too many pages.")
             images = []
             for page in doc:
-                zoom = 300 / 72  # 300 DPI rendering
+                # 300 DPI, but never render a page beyond the pixel budget (a
+                # page with a huge MediaBox would otherwise exhaust memory)
+                zoom = 300 / 72
+                if page.rect.width * zoom * page.rect.height * zoom > _MAX_RENDER_PIXELS:
+                    raise ValueError("The PDF page is too large.")
                 mat = pymupdf.Matrix(zoom, zoom)
                 pix = page.get_pixmap(matrix=mat)
                 img_data = np.frombuffer(pix.tobytes("png"), dtype=np.uint8)
@@ -57,6 +67,8 @@ class OMREvaluator:
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             if img is None:
                 raise ValueError("Could not decode image file.")
+            if img.shape[0] * img.shape[1] > _MAX_RENDER_PIXELS:
+                raise ValueError("The image is too large.")
             return [img]
 
     def detect_registration_markers(self, img: np.ndarray) -> np.ndarray:

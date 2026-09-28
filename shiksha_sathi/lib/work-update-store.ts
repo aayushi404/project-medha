@@ -162,17 +162,28 @@ const DEFAULT_NOTICES: SchoolNotice[] = [
   },
 ];
 
+// Sample data exists only so the demo/dev UI isn't empty. A production
+// deployment must never show invented staff or notices.
+const SHOW_DEMO_CONTENT =
+  process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_DEMO_CONTENT === "true";
+
+function parseList<T>(raw: string, fallback: T[]): T[] {
+  const parsed: unknown = JSON.parse(raw);
+  return Array.isArray(parsed) ? (parsed as T[]) : fallback; // never trust stored shape
+}
+
 function readStorage(): TeacherWorkUpdate[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
+    const seeds = SHOW_DEMO_CONTENT ? DEFAULT_SEEDS : [];
     if (!raw) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEEDS));
-      return DEFAULT_SEEDS;
+      if (seeds.length) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(seeds));
+      return seeds;
     }
-    return JSON.parse(raw) as TeacherWorkUpdate[];
+    return parseList<TeacherWorkUpdate>(raw, seeds);
   } catch {
-    return DEFAULT_SEEDS;
+    return SHOW_DEMO_CONTENT ? DEFAULT_SEEDS : [];
   }
 }
 
@@ -188,13 +199,14 @@ function readNotices(): SchoolNotice[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(NOTICES_KEY);
+    const seeds = SHOW_DEMO_CONTENT ? DEFAULT_NOTICES : [];
     if (!raw) {
-      window.localStorage.setItem(NOTICES_KEY, JSON.stringify(DEFAULT_NOTICES));
-      return DEFAULT_NOTICES;
+      if (seeds.length) window.localStorage.setItem(NOTICES_KEY, JSON.stringify(seeds));
+      return seeds;
     }
-    return JSON.parse(raw) as SchoolNotice[];
+    return parseList<SchoolNotice>(raw, seeds);
   } catch {
-    return DEFAULT_NOTICES;
+    return SHOW_DEMO_CONTENT ? DEFAULT_NOTICES : [];
   }
 }
 

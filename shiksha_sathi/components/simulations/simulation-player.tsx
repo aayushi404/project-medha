@@ -131,6 +131,8 @@ export function SimulationPlayer({
               loading="lazy"
               allow="fullscreen"
               allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              referrerPolicy="no-referrer"
               className="absolute inset-0 h-full w-full"
             />
             <button

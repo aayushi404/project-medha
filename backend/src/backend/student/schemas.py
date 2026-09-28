@@ -1,34 +1,55 @@
 import uuid
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
+from backend.auth.password_policy import validate_password
 from backend.auth.schemas import _normalize_email
+from backend.core import validators
 
 
 class StudentRegisterIn(BaseModel):
-    """Phase 1: a student asks to join a class. No credential yet -- a teacher at
-    the school verifies the class + roll number against the register first."""
+    """Self-registration, one step: a student picks their school, grade,
+    class_section (current academic year), and roll number for that
+    section, gives guardian details, and sets their own login credential.
+    A teacher still has to approve the resulting pending row before it can
+    log in -- but there's no separate "activate" step anymore."""
 
     full_name: str = Field(min_length=2, max_length=120)
     school_id: uuid.UUID
-    grade_id: uuid.UUID
-    roll_number: str = Field(min_length=1, max_length=20)
-    # Optional: the number the absence-calling feature dials when this
-    # student is marked absent (see backend.absence_calls). Left blank, that
-    # feature just quietly can't reach anyone for this student.
-    guardian_name: str | None = Field(default=None, max_length=120)
-    guardian_phone: str | None = Field(default=None, max_length=20)
+    class_section_id: uuid.UUID
+    roll_number: int = Field(ge=1, le=999)
+    guardian_name: str = Field(min_length=2, max_length=120)
+    guardian_relation: Literal["father", "mother", "guardian"]
+    guardian_phone: str = Field(min_length=1, max_length=20)
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)  # real rules: password_policy (below)
 
-    @field_validator("full_name", "roll_number")
+    @field_validator("email")
     @classmethod
-    def _trim(cls, v: str) -> str:
-        return v.strip()
+    def _email(cls, v: str) -> str:
+        return _normalize_email(v)
 
-    @field_validator("guardian_name", "guardian_phone")
+    @field_validator("full_name")
     @classmethod
-    def _trim_optional(cls, v: str | None) -> str | None:
-        return v.strip() or None if v is not None else None
+    def _name(cls, v: str) -> str:
+        return validators.clean_name(v, label="Name")
+
+    @field_validator("guardian_name")
+    @classmethod
+    def _guardian_name(cls, v: str) -> str:
+        return validators.clean_name(v, label="Guardian's name")
+
+    @field_validator("guardian_phone")
+    @classmethod
+    def _guardian_phone(cls, v: str) -> str:
+        # stored in E.164 -- this is the number the absence-call feature dials
+        return validators.e164_indian_mobile(v)
+
+    @model_validator(mode="after")
+    def _password_policy(self) -> "StudentRegisterIn":
+        validate_password(self.password, email=str(self.email), name=self.full_name)
+        return self
 
 
 class StudentRegisterOut(BaseModel):
@@ -36,28 +57,34 @@ class StudentRegisterOut(BaseModel):
     message: str
 
 
-class StudentActivateIn(BaseModel):
-    """Phase 2: the student proves who they are by re-entering the details a
-    teacher already approved, then sets a login credential."""
+class StudentClaimIn(BaseModel):
+    """Claiming an account a principal imported without an email: the student
+    proves who they are with the placement their school recorded (school,
+    section, roll number, name) and sets their own login credential."""
 
     school_id: uuid.UUID
-    grade_id: uuid.UUID
-    roll_number: str = Field(min_length=1, max_length=20)
+    class_section_id: uuid.UUID
+    roll_number: int = Field(ge=1, le=999)
     full_name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=1, max_length=128)  # real rules: password_policy (below)
 
     @field_validator("email")
     @classmethod
     def _email(cls, v: str) -> str:
         return _normalize_email(v)
 
-    @field_validator("full_name", "roll_number")
+    @field_validator("full_name")
     @classmethod
-    def _trim(cls, v: str) -> str:
-        return v.strip()
+    def _name(cls, v: str) -> str:
+        return validators.clean_name(v, label="Name")
+
+    @model_validator(mode="after")
+    def _password_policy(self) -> "StudentClaimIn":
+        validate_password(self.password, email=str(self.email), name=self.full_name)
+        return self
 
 
-class StudentActivateOut(BaseModel):
-    status: Literal["activated"] = "activated"
+class StudentClaimOut(BaseModel):
+    status: Literal["claimed"] = "claimed"
     message: str

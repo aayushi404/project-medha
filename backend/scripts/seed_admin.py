@@ -44,6 +44,7 @@ def main() -> None:
                 approval_status="approved",
                 school_id=None,
                 onboarded_at=datetime.now(timezone.utc),
+                email_verified_at=datetime.now(timezone.utc),
             )
         )
         db.commit()

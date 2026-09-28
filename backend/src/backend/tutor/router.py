@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from backend.auth.dependencies import require_student
-from backend.db.models import Teacher
+from backend.db.models import Student
 from backend.db.session import get_db
 from backend.speech import service as speech_service
 from backend.speech.rate_limit import voice_rate_limit_student
@@ -33,7 +33,7 @@ _SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 )
 def create_session(
     payload: TutorSessionCreateIn,
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> TutorSessionOut:
     return service.create_session(db, student, payload)
@@ -41,7 +41,7 @@ def create_session(
 
 @router.get("/sessions", response_model=list[TutorSessionListItem])
 def list_sessions(
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> list[TutorSessionListItem]:
     return service.list_sessions(db, student)
@@ -50,7 +50,7 @@ def list_sessions(
 @router.get("/sessions/{session_id}", response_model=TutorSessionDetailOut)
 def get_session(
     session_id: uuid.UUID,
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> TutorSessionDetailOut:
     session, messages = service.get_session_detail(db, student, session_id)
@@ -72,7 +72,7 @@ def get_session(
 async def post_message(
     session_id: uuid.UUID,
     payload: TutorMessageCreateIn,
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> EventSourceResponse:
     session = service.load_owned_session(db, student, session_id)
@@ -87,7 +87,7 @@ async def post_message(
 async def converse(
     session_id: uuid.UUID,
     payload: SpokenTurnIn,
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> EventSourceResponse:
     """One spoken doubt-chat turn. SSE: `token`* -> `audio` (base64 WAV) -> `done`,
@@ -106,7 +106,7 @@ async def converse(
 def list_voice_turns(
     session_id: uuid.UUID,
     limit: int = Query(default=20, ge=1, le=100),
-    student: Teacher = Depends(require_student),
+    student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> list[VoiceTurnOut]:
     """Recent completed spoken turns for a session, oldest first -- the voice

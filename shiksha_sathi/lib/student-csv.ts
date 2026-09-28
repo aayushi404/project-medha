@@ -15,10 +15,16 @@ const HEADER_ALIASES: Record<Field, string[]> = {
     "नाम", "छात्रकानाम", "विद्यार्थीकानाम", "छात्र", "विद्यार्थी",
   ],
   grade: ["class", "grade", "std", "standard", "classname", "कक्षा"],
+  section: ["section", "sec", "div", "division", "वर्ग", "सेक्शन"],
   roll_number: [
     "roll", "rollno", "rollnumber", "rollnum", "rollnos",
     "रोल", "रोलनंबर", "रोलनं", "क्रमांक",
   ],
+  admission_number: [
+    "admissionno", "admissionnumber", "admno", "admission", "admissionid", "scholarno",
+    "scholarnumber", "प्रवेशसंख्या", "प्रवेशक्रमांक", "दाखिलानंबर",
+  ],
+  email: ["email", "emailid", "emailaddress", "studentemail", "mail", "ईमेल"],
   guardian_name: [
     "guardianname", "guardian", "parentname", "parent", "fathername", "mothername",
     "अभिभावक", "अभिभावककानाम", "पिताकानाम", "माताकानाम",
@@ -37,7 +43,10 @@ export const REQUIRED_FIELDS: Field[] = ["full_name", "grade", "roll_number"];
 export const FIELD_LABELS: Record<Field, string> = {
   full_name: "Name",
   grade: "Class",
+  section: "Section",
   roll_number: "Roll No",
+  admission_number: "Admission No",
+  email: "Email",
   guardian_name: "Guardian Name",
   guardian_relation: "Relation",
   guardian_phone: "Guardian Phone",
@@ -213,7 +222,10 @@ export async function parseStudentCsv(file: File): Promise<ParsedStudentCsv> {
       line,
       full_name: get(cells, "full_name"),
       grade: get(cells, "grade"),
+      section: get(cells, "section"),
       roll_number: get(cells, "roll_number"),
+      admission_number: get(cells, "admission_number"),
+      email: get(cells, "email"),
       guardian_name: guardianName,
       guardian_relation:
         get(cells, "guardian_relation") ?? (guardianName ? impliedRelation : null),
@@ -267,12 +279,13 @@ const STATUS_LABELS: Record<StudentImportRowResult["status"], string> = {
 
 export function downloadImportReport(rows: StudentImportRowResult[]): void {
   saveCsv("medha-student-import-report.csv", [
-    ["Line", "Name", "Class", "Roll No", "Status", "Details"],
+    ["Line", "Name", "Class", "Roll No", "Email", "Status", "Details"],
     ...rows.map((r) => [
       r.line,
       r.full_name,
-      r.grade_label,
+      r.class_label,
       r.roll_number,
+      r.email,
       STATUS_LABELS[r.status],
       r.message,
     ]),

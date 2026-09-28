@@ -1,0 +1,156 @@
+import { z } from "zod";
+
+import { passwordProblem } from "@/lib/password-policy";
+import type { SchoolSearchResult } from "@/lib/api";
+
+/**
+ * Zod schemas for the login/register forms. These exist for fast, in-browser
+ * feedback only -- every rule here mirrors a real check the backend re-runs
+ * (see backend/src/backend/{auth,student}/schemas.py, core/validators.py,
+ * auth/password_policy.py). The backend is the authority; nothing here is
+ * ever trusted on its own.
+ */
+
+// --- primitives -------------------------------------------------------------
+
+const FORBIDDEN_NAME_CHARS = /[<>{}[\]\\/;`"|=@#$%^*~]/;
+
+/** Mirrors core/validators.py:clean_name -- collapse whitespace, 2-120 chars,
+ * no control/forbidden characters, at least 2 letters. */
+function nameField(label = "Name") {
+  return z
+    .string()
+    .transform((v) => v.split(/\s+/).filter(Boolean).join(" "))
+    .refine((v) => v.length >= 2, `${label} is too short.`)
+    .refine((v) => v.length <= 120, `${label} is too long.`)
+    .refine((v) => !FORBIDDEN_NAME_CHARS.test(v), `${label} contains invalid characters.`)
+    .refine((v) => (v.match(/\p{L}/gu) ?? []).length >= 2, `${label} must contain letters.`);
+}
+
+/** Mirrors core/validators.py:indian_mobile -- returns the bare 10 digits. */
+const mobileField = z
+  .string()
+  .transform((v) => {
+    let digits = v.replace(/\D/g, "");
+    if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+    else if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+    return digits;
+  })
+  .refine((v) => /^[6-9]\d{9}$/.test(v), "Enter a valid 10-digit Indian mobile number.");
+
+/** Mirrors core/validators.py:employee_code. */
+const employeeCodeField = z
+  .string()
+  .trim()
+  .regex(
+    /^[A-Za-z0-9][A-Za-z0-9\-_/]{2,59}$/,
+    "Employee code may contain only letters, digits, - _ / (3-60 characters).",
+  );
+
+/** Mirrors auth/schemas.py's `email: EmailStr`. */
+const emailField = z
+  .string()
+  .trim()
+  .min(1, "Email is required.")
+  .max(254, "Email is too long.")
+  .email("Enter a valid email address.")
+  .transform((v) => v.toLowerCase());
+
+/** Length/complexity only -- the identity (name/email) containment check runs
+ * separately in `.superRefine`, once both fields are known. */
+const passwordShapeField = z.string().superRefine((pw, ctx) => {
+  const problem = passwordProblem(pw);
+  if (problem) ctx.addIssue({ code: "custom", message: problem });
+});
+
+const schoolField = z
+  .custom<SchoolSearchResult | null>()
+  .refine((v): v is SchoolSearchResult => v !== null && typeof v === "object" && "id" in v, {
+    message: "Pick your school.",
+  });
+
+// --- login -------------------------------------------------------------------
+
+export const loginSchema = z.object({
+  email: z.string().trim().min(1, "Enter your email.").max(254, "Email is too long.").email("Enter a valid email address."),
+  password: z.string().min(1, "Enter your password.").max(128, "That password is too long."),
+});
+export type LoginFormValues = z.infer<typeof loginSchema>;
+
+// --- register: teacher / principal -------------------------------------------
+
+export const staffRegisterSchema = z
+  .object({
+    role: z.enum(["teacher", "principal"]),
+    full_name: nameField(),
+    email: emailField,
+    password: passwordShapeField,
+    confirm_password: z.string(),
+    mobile_number: mobileField,
+    school: schoolField,
+    employee_code: z.string().trim().optional().default(""),
+    years_of_experience: z.string().trim().optional().default(""),
+    qualification: z.string().trim().max(120, "Too long.").optional().default(""),
+  })
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirm_password) {
+      ctx.addIssue({ code: "custom", path: ["confirm_password"], message: "Passwords don't match." });
+    }
+    const problem = passwordProblem(data.password, { email: data.email, name: data.full_name });
+    if (problem) ctx.addIssue({ code: "custom", path: ["password"], message: problem });
+
+    if (data.role === "teacher") {
+      const parsed = employeeCodeField.safeParse(data.employee_code);
+      if (!parsed.success) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["employee_code"],
+          message: "Employee code (government teacher ID) is required (letters, digits, - _ / only).",
+        });
+      }
+    }
+    if (data.years_of_experience) {
+      const n = Number(data.years_of_experience);
+      if (!Number.isInteger(n) || n < 0 || n > 50) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["years_of_experience"],
+          message: "Years of experience must be between 0 and 50.",
+        });
+      }
+    }
+  });
+export type StaffRegisterFormValues = z.infer<typeof staffRegisterSchema>;
+
+// --- register: student --------------------------------------------------------
+
+export const studentRegisterSchema = z
+  .object({
+    role: z.literal("student"),
+    full_name: nameField(),
+    email: emailField,
+    password: passwordShapeField,
+    confirm_password: z.string(),
+    school: schoolField,
+    grade_id: z.string().min(1, "Select your class."),
+    section_id: z.string().min(1, "Select your section."),
+    roll_number: z
+      .string()
+      .trim()
+      .min(1, "Enter your roll number.")
+      .regex(/^\d{1,3}$/, "Enter a valid roll number.")
+      .refine((v) => Number(v) >= 1 && Number(v) <= 999, "Roll number must be between 1 and 999."),
+    guardian_name: nameField("Guardian's name"),
+    guardian_relation: z.enum(["father", "mother", "guardian"], {
+      error: "Select your guardian's relation.",
+    }),
+    guardian_phone: mobileField,
+  })
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirm_password) {
+      ctx.addIssue({ code: "custom", path: ["confirm_password"], message: "Passwords don't match." });
+    }
+    const problem = passwordProblem(data.password, { email: data.email, name: data.full_name });
+    if (problem) ctx.addIssue({ code: "custom", path: ["password"], message: problem });
+  });
+export type StudentRegisterFormValues = z.infer<typeof studentRegisterSchema>;

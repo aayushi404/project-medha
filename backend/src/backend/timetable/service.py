@@ -10,7 +10,7 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, aliased
 
-from backend.db.models import Grade, Subject, Teacher, TimetableEntry
+from backend.db.models import ClassSection, Grade, Subject, Teacher, TeacherSubject, TeachingAssignment, TimetableEntry
 from backend.timetable.schemas import TimetableOut, TimetableSetIn, TimetableSlotOut
 
 
@@ -54,6 +54,35 @@ def set_grid(db: Session, user: Teacher, payload: TimetableSetIn) -> TimetableOu
     grade = db.get(Grade, payload.grade_id)
     if grade is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Grade not found.")
+
+    # A principal manages every grade; a teacher only grades they actually teach.
+    if user.role != "principal":
+        teaches = (
+            db.query(TeacherSubject.id)
+            .filter(TeacherSubject.teacher_id == user.id, TeacherSubject.grade_id == payload.grade_id)
+            .first()
+            is not None
+        ) or (
+            db.query(TeachingAssignment.id)
+            .join(ClassSection, ClassSection.id == TeachingAssignment.class_section_id)
+            .filter(TeachingAssignment.teacher_id == user.id, ClassSection.grade_id == payload.grade_id)
+            .first()
+            is not None
+        )
+        if not teaches:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't teach this class.")
+
+    # Every referenced teacher must work at this school, every subject must exist.
+    teacher_ids = {sl.teacher_id for sl in payload.slots if sl.teacher_id}
+    if teacher_ids:
+        valid = {
+            tid for (tid,) in db.query(Teacher.id).filter(Teacher.id.in_(teacher_ids), Teacher.school_id == school_id).all()
+        }
+        if teacher_ids - valid:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "A selected teacher isn't part of your school.")
+    subject_ids = {sl.subject_id for sl in payload.slots if sl.subject_id}
+    if subject_ids and db.query(Subject.id).filter(Subject.id.in_(subject_ids)).count() != len(subject_ids):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "A selected subject doesn't exist.")
 
     db.query(TimetableEntry).filter(
         TimetableEntry.school_id == school_id, TimetableEntry.grade_id == payload.grade_id
