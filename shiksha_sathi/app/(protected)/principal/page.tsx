@@ -55,6 +55,7 @@ import { PendingTeachers } from "@/components/principal/pending-teachers";
 import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytics";
 import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
 import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
+import { StudentImportDialog } from "@/components/principal/student-import-dialog";
 import { TeacherRoster } from "@/components/principal/teacher-roster";
 import { StudentRoster } from "@/components/students/student-roster";
 
@@ -637,13 +638,21 @@ function PrincipalDashboard() {
 
           {/* Feature 7b: Student login accounts (registration / approval status) */}
           <section id="principal-students" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                {isHi ? "विद्यार्थी खाते (Students)" : "Student Accounts"}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {isHi ? "जिन छात्रों ने Medha पर लॉगिन बनाया है" : "Students who've registered a Medha login"}
-              </p>
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                  {isHi ? "विद्यार्थी खाते (Students)" : "Student Accounts"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {isHi
+                    ? "विद्यार्थियों के Medha लॉगिन — पूरी कक्षा की सूची CSV से एक साथ जोड़ें"
+                    : "Students' Medha logins — add a whole class list at once from a CSV"}
+                </p>
+              </div>
+              {/* the import endpoint is principal-only; this page also admits teachers/admins */}
+              {teacher?.role === "principal" && (
+                <StudentImportDialog token={accessToken} onImported={() => void reload()} />
+              )}
             </div>
             <StudentRoster students={students} />
           </section>

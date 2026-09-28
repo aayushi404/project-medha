@@ -1252,6 +1252,57 @@ export const listFees = (token: string | null, studentId: string) =>
 export const getPrincipalStudents = (token: string | null) =>
   json<StudentRosterItem[]>(apiFetch("/principal/students", { token }));
 
+// --- principal: bulk-create student accounts from a CSV ---
+
+/** One parsed CSV row. `line` is its line number in the file, for messages. */
+export type StudentImportRow = {
+  line: number;
+  full_name: string | null;
+  grade: string | null;
+  roll_number: string | null;
+  guardian_name: string | null;
+  guardian_relation: string | null;
+  guardian_phone: string | null;
+};
+
+export type StudentImportRowStatus = "ready" | "created" | "exists" | "error";
+
+export type StudentImportRowResult = {
+  line: number;
+  status: StudentImportRowStatus;
+  message: string | null;
+  full_name: string | null;
+  grade_label: string | null;
+  roll_number: string | null;
+};
+
+export type StudentImportResult = {
+  dry_run: boolean;
+  total: number;
+  ready: number;
+  created: number;
+  exists: number;
+  errors: number;
+  rows: StudentImportRowResult[];
+};
+
+/** Must match MAX_IMPORT_ROWS in backend/principal/schemas.py. */
+export const MAX_STUDENT_IMPORT_ROWS = 2000;
+
+/** `dryRun: true` validates and previews; `false` creates the accounts. */
+export const importStudents = (
+  token: string | null,
+  rows: StudentImportRow[],
+  dryRun: boolean,
+) =>
+  json<StudentImportResult>(
+    apiFetch("/principal/students/import", {
+      method: "POST",
+      token,
+      body: { rows, dry_run: dryRun },
+    }),
+  );
+
 // ---------------------------------------------------------------------------
 // Chapter notes and practice questions: teacher/principal-curated student
 // content, kept separate from the private `modules` feature (those stay

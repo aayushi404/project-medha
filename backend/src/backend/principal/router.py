@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from backend.auth.dependencies import require_principal
 from backend.db.models import Teacher
 from backend.db.session import get_db
-from backend.principal import service
+from backend.principal import service, student_import
 from backend.principal.schemas import (
     ApprovalResult,
     ClassSectionSummary,
@@ -14,6 +14,8 @@ from backend.principal.schemas import (
     PrincipalStats,
     RejectIn,
     RosterStudentItem,
+    StudentImportIn,
+    StudentImportOut,
     StudentProfile,
     StudentRosterItem,
     TeacherRosterItem,
@@ -43,6 +45,17 @@ def students(
     principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
 ) -> list[StudentRosterItem]:
     return service.list_students(db, principal)
+
+
+@router.post("/students/import", response_model=StudentImportOut)
+def import_students(
+    payload: StudentImportIn,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> StudentImportOut:
+    """Bulk-create student accounts from a CSV the browser has parsed. Send
+    `dry_run: true` first for the per-row preview, then `false` to create."""
+    return student_import.import_students(db, principal, payload)
 
 
 @router.get("/sections", response_model=list[ClassSectionSummary])
