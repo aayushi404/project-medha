@@ -11,6 +11,10 @@ type Props = {
   /** name of the person being rejected, for the dialog copy */
   subjectName: string;
   onConfirm: (reason: string) => Promise<void> | void;
+  /** action word for the title and confirm button (default "Reject") */
+  verb?: string;
+  /** replaces the default explanatory line under the title */
+  description?: string;
 };
 
 /**
@@ -18,7 +22,13 @@ type Props = {
  * re-register and recreate the problem. The confirm button stays disabled
  * until the reason is long enough for the backend (min 3 chars).
  */
-export function RejectDialog({ trigger, subjectName, onConfirm }: Props) {
+export function RejectDialog({
+  trigger,
+  subjectName,
+  onConfirm,
+  verb = "Reject",
+  description = "They'll see this reason and can register again. Be specific.",
+}: Props) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,10 +54,10 @@ export function RejectDialog({ trigger, subjectName, onConfirm }: Props) {
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
         <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-lg outline-none transition data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
           <Dialog.Title className="text-base font-medium">
-            Reject {subjectName}?
+            {verb} {subjectName}?
           </Dialog.Title>
           <Dialog.Description className="mt-1.5 text-sm text-muted-foreground">
-            They&apos;ll see this reason and can register again. Be specific.
+            {description}
           </Dialog.Description>
 
           <textarea
@@ -74,7 +84,7 @@ export function RejectDialog({ trigger, subjectName, onConfirm }: Props) {
               onClick={submit}
               disabled={!valid || busy}
             >
-              {busy ? "Rejecting…" : "Reject"}
+              {busy ? `${verb.replace(/e$/, "")}ing…` : verb}
             </Button>
           </div>
         </Dialog.Popup>

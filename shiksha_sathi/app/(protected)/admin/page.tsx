@@ -1,47 +1,42 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   approvePrincipal,
-  getAdminSchools,
   getAdminStats,
   getPendingPrincipals,
   rejectPrincipal,
   type AdminStats,
   type PendingPrincipal,
-  type SchoolPrincipalStatus,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { RoleGate } from "@/components/auth/role-gate";
-import { ConsoleShell } from "@/components/console/console-shell";
-import { StatGrid } from "@/components/console/stat-grid";
+import { ActivityFeed } from "@/components/admin/activity-feed";
+import { AdminShell } from "@/components/admin/admin-shell";
 import { PendingPrincipals } from "@/components/admin/pending-principals";
-import { SchoolsList } from "@/components/admin/schools-list";
+import { StatGrid } from "@/components/console/stat-grid";
 
 function AdminDashboard() {
   const { accessToken } = useAuth();
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [pending, setPending] = useState<PendingPrincipal[]>([]);
-  const [schools, setSchools] = useState<SchoolPrincipalStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // bumped after a decision so the activity feed refetches
+  const [feedVersion, setFeedVersion] = useState(0);
 
-  // returns the fetch chain; state is only set in `.then` (async), never
-  // synchronously -- keeps the mount effect free of cascading renders.
+  // state is only set in `.then` (async), never synchronously -- keeps the
+  // mount effect free of cascading renders.
   const reload = useCallback(() => {
-    return Promise.all([
-      getAdminStats(accessToken),
-      getPendingPrincipals(accessToken),
-      getAdminSchools(accessToken),
-    ])
-      .then(([s, p, sc]) => {
+    return Promise.all([getAdminStats(accessToken), getPendingPrincipals(accessToken)])
+      .then(([s, p]) => {
         setStats(s);
         setPending(p);
-        setSchools(sc);
       })
       .catch((e: unknown) => {
         toast.error(e instanceof Error ? e.message : "Could not load the dashboard.");
@@ -65,6 +60,7 @@ function AdminDashboard() {
       await run();
       toast.success(ok);
       await reload();
+      setFeedVersion((v) => v + 1);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Something went wrong.");
       throw e; // let RejectDialog keep itself open on failure
@@ -74,7 +70,10 @@ function AdminDashboard() {
   }
 
   return (
-    <ConsoleShell title="Admin">
+    <AdminShell
+      title="Overview"
+      description="Every school, principal and teacher on Medha at a glance."
+    >
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -85,22 +84,36 @@ function AdminDashboard() {
             <StatGrid
               stats={[
                 { label: "Schools", value: stats.schools },
+                { label: "Districts", value: stats.districts },
                 { label: "Principals", value: stats.principals },
                 { label: "Teachers", value: stats.teachers },
-                { label: "Pending", value: stats.pending_principals },
+                { label: "Students", value: stats.students },
+                { label: "Pending principals", value: stats.pending_principals },
+                { label: "Schools without a principal", value: stats.schools_without_principal },
+                {
+                  label: "Attendance today",
+                  value: stats.attendance_today_pct === null ? "—" : `${stats.attendance_today_pct}%`,
+                },
               ]}
             />
           )}
 
           <section>
-            <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
-              Principal applications
-            </h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                Principal applications
+              </h2>
+              <Link href="/admin/principals" className="text-xs font-semibold text-terracotta">
+                Manage all
+              </Link>
+            </div>
             <PendingPrincipals
               principals={pending}
               busyId={busyId}
               onApprove={(id) =>
-                void act(id, () => approvePrincipal(accessToken, id), "Principal approved.")
+                void act(id, () => approvePrincipal(accessToken, id), "Principal approved.").catch(
+                  () => {},
+                )
               }
               onReject={(id, reason) =>
                 act(id, () => rejectPrincipal(accessToken, id, reason), "Application rejected.")
@@ -109,14 +122,19 @@ function AdminDashboard() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-sm font-semibold tracking-wide text-foreground">
-              Schools
-            </h2>
-            <SchoolsList schools={schools} />
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                Recent activity
+              </h2>
+              <Link href="/admin/activity" className="text-xs font-semibold text-terracotta">
+                View all
+              </Link>
+            </div>
+            <ActivityFeed key={feedVersion} limit={8} />
           </section>
         </div>
       )}
-    </ConsoleShell>
+    </AdminShell>
   );
 }
 

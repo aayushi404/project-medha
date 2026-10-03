@@ -502,9 +502,13 @@ export const register = (input: RegisterInput) =>
 
 export type AdminStats = {
   schools: number;
+  districts: number;
   principals: number;
   teachers: number;
+  students: number;
   pending_principals: number;
+  schools_without_principal: number;
+  attendance_today_pct: number | null;
 };
 
 export type PendingPrincipal = {
@@ -519,6 +523,22 @@ export type PendingPrincipal = {
   applied_at: string;
 };
 
+export type PrincipalListItem = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  mobile_number: string | null;
+  qualification: string | null;
+  school_id: string | null;
+  school_name: string | null;
+  district_name: string | null;
+  approval_status: ApprovalStatus;
+  rejection_reason: string | null;
+  email_verified: boolean;
+  applied_at: string;
+  decided_at: string | null;
+};
+
 export type SchoolPrincipalStatus = {
   school_id: string;
   school_name: string;
@@ -526,6 +546,53 @@ export type SchoolPrincipalStatus = {
   principal_name: string | null;
   principal_email: string | null;
   principal_status: ApprovalStatus | null;
+  teacher_count: number;
+  student_count: number;
+};
+
+export type SchoolStaffMember = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  role: "principal" | "teacher";
+  approval_status: ApprovalStatus;
+  qualification: string | null;
+};
+
+export type SchoolDetail = {
+  school_id: string;
+  school_name: string;
+  udise_code: string | null;
+  school_type: string | null;
+  medium_of_instruction: string;
+  district_name: string;
+  block_name: string | null;
+  class_count: number;
+  student_count: number;
+  pending_student_count: number;
+  attendance_today_pct: number | null;
+  staff: SchoolStaffMember[];
+};
+
+export type DistrictSummary = {
+  district_id: string;
+  district_name: string;
+  schools: number;
+  schools_without_principal: number;
+  teachers: number;
+  students: number;
+  pending_principals: number;
+};
+
+export type AdminActivityItem = {
+  id: string;
+  action: "approved" | "rejected" | "revoked";
+  subject_name: string;
+  subject_role: "principal" | "teacher" | "student";
+  actor_name: string;
+  school_name: string | null;
+  reason: string | null;
+  created_at: string;
 };
 
 export type ApprovalResult = { id: string; approval_status: ApprovalStatus };
@@ -536,8 +603,36 @@ export const getAdminStats = (token: string | null) =>
 export const getPendingPrincipals = (token: string | null) =>
   json<PendingPrincipal[]>(apiFetch("/admin/principals/pending", { token }));
 
-export const getAdminSchools = (token: string | null) =>
-  json<SchoolPrincipalStatus[]>(apiFetch("/admin/schools", { token }));
+export const getAdminPrincipals = (
+  token: string | null,
+  opts: { status?: ApprovalStatus; q?: string } = {},
+) => {
+  const qs = new URLSearchParams();
+  if (opts.status) qs.set("approval_status", opts.status);
+  if (opts.q?.trim()) qs.set("q", opts.q.trim());
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return json<PrincipalListItem[]>(apiFetch(`/admin/principals${suffix}`, { token }));
+};
+
+export const getAdminSchools = (
+  token: string | null,
+  opts: { q?: string; districtId?: string } = {},
+) => {
+  const qs = new URLSearchParams();
+  if (opts.q?.trim()) qs.set("q", opts.q.trim());
+  if (opts.districtId) qs.set("district_id", opts.districtId);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return json<SchoolPrincipalStatus[]>(apiFetch(`/admin/schools${suffix}`, { token }));
+};
+
+export const getAdminSchool = (token: string | null, schoolId: string) =>
+  json<SchoolDetail>(apiFetch(`/admin/schools/${schoolId}`, { token }));
+
+export const getAdminDistricts = (token: string | null) =>
+  json<DistrictSummary[]>(apiFetch("/admin/districts", { token }));
+
+export const getAdminActivity = (token: string | null, limit = 50) =>
+  json<AdminActivityItem[]>(apiFetch(`/admin/activity?limit=${limit}`, { token }));
 
 export const approvePrincipal = (token: string | null, id: string) =>
   json<ApprovalResult>(
@@ -547,6 +642,11 @@ export const approvePrincipal = (token: string | null, id: string) =>
 export const rejectPrincipal = (token: string | null, id: string, reason: string) =>
   json<ApprovalResult>(
     apiFetch(`/admin/principals/${id}/reject`, { method: "POST", token, body: { reason } }),
+  );
+
+export const revokePrincipal = (token: string | null, id: string, reason: string) =>
+  json<ApprovalResult>(
+    apiFetch(`/admin/principals/${id}/revoke`, { method: "POST", token, body: { reason } }),
   );
 
 // --- principal ---
