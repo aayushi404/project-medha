@@ -13,8 +13,8 @@ const API_BASE_URL =
 export type Role = "admin" | "principal" | "teacher" | "student";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
-/** The tab a person picks on the login screen. No "admin" tab exists. */
-export type LoginRole = Exclude<Role, "admin">;
+/** The portal a login comes from: a tab on /login, or "admin" from /admin/login. */
+export type LoginRole = Role;
 
 export type Teacher = {
   id: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
@@ -16,12 +16,14 @@ import { useAuth } from "@/lib/auth-context";
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/login");
+      // admins have their own sign-in page
+      router.replace(pathname.startsWith("/admin") ? "/admin/login" : "/login");
     }
-  }, [status, router]);
+  }, [status, pathname, router]);
 
   if (status !== "authenticated") {
     return (

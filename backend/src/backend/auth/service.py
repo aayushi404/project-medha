@@ -314,7 +314,21 @@ def login(
     # whose password was discarded) -- fall back to the dummy hash so response
     # time and message match the "no such account" case.
     stored_hash = actor.password_hash if actor is not None and actor.password_hash else _DUMMY_HASH
-    if not verify_password(password, stored_hash) or actor is None or not actor.is_active:
+    # Admins sign in only through the dedicated /admin/login portal (role
+    # "admin"), and that portal admits only admins. A mismatch either way gets
+    # the generic failure below rather than ROLE_MISMATCH, so neither form
+    # confirms which emails belong to admins.
+    wrong_admin_portal = (
+        actor is not None
+        and expected_role is not None
+        and (expected_role == "admin") != (actor.role == "admin")
+    )
+    if (
+        not verify_password(password, stored_hash)
+        or actor is None
+        or not actor.is_active
+        or wrong_admin_portal
+    ):
         throttle.hit(db, "login_ip_email", pair_key, _LOGIN_WINDOW)
         throttle.hit(db, "login_ip", ip_key, _LOGIN_WINDOW)
         throttle.hit(db, "login_email", email, _LOGIN_EMAIL_WINDOW)
@@ -324,9 +338,9 @@ def login(
 
     # The password is right, so this is genuinely their account -- but the
     # login screen's tab doesn't match the role on file. Reject rather than
-    # silently letting a teacher in through the student tab; `admin` has no tab
-    # of its own, so it's exempt.
-    if expected_role is not None and actor.role != expected_role and actor.role != "admin":
+    # silently letting a teacher in through the student tab. (Admin/non-admin
+    # portal mismatches were already rejected above.)
+    if expected_role is not None and actor.role != expected_role:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             detail={"code": "ROLE_MISMATCH", "actual_role": actor.role},
