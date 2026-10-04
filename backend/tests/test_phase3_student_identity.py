@@ -22,10 +22,12 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from backend.app import app
+from backend.auth.hashing import verify_password
 from backend.db.models import ClassSection, Student, StudentEnrollment, Teacher
 from backend.db.session import SessionLocal
 
 PW = "Password@123"
+IMPORT_PW = "Kite-River-2026"  # the principal's choice for imported students
 PRINCIPAL_EMAIL = "principal.patna@medhabihar.org"
 ADITI_PHONE = "+919800000001"
 CLASS_6A_TEACHER_PHONE = "+919876543212"
@@ -249,6 +251,7 @@ class TestImporter(_Cleanup):
             "section": "A",
             "roll_number": roll,
             "login_phone": _fresh_phone(),
+            "password": IMPORT_PW,
         }
         row.update(extra)
         return row
@@ -291,12 +294,132 @@ class TestImporter(_Cleanup):
         with SessionLocal() as db:
             stored = db.query(Student).filter(Student.phone_number == phone).all()
             self.assertEqual(len(stored), 2)
-            self.assertTrue(all(s.approval_status == "approved" and s.password_hash is None for s in stored))
+            self.assertTrue(all(s.approval_status == "approved" and s.password_hash for s in stored))
+            self.assertTrue(all(verify_password(IMPORT_PW, s.password_hash) for s in stored))
+
+    def test_a_row_without_a_password_is_an_error_on_its_line(self):
+        row = self._row(1, "95")
+        del row["password"]
+        result = self._import([row], dry_run=True).json()["rows"][0]
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Password is missing", result["message"])
+
+    def test_a_weak_password_is_refused_and_never_echoed(self):
+        result = self._import([self._row(1, "96", password="password123")], dry_run=True).json()["rows"][0]
+        self.assertEqual(result["status"], "error")
+        self.assertIn("too common", result["message"])
+        self.assertNotIn("password123", result["message"])
 
     def test_a_malformed_phone_is_reported_not_stored(self):
         r = self._import([self._row(1, "94", login_phone="98765")], dry_run=True)
         self.assertEqual(r.json()["rows"][0]["status"], "error")
         self.assertIn("isn't a 10-digit mobile", r.json()["rows"][0]["message"])
+
+
+class TestAdmission(_Cleanup):
+    """The principal's one-student form. Same checks as a CSV row, approved at once."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture = _SchoolFixture()
+
+    def _admit(self, **overrides):
+        body = {
+            "full_name": f"Admitted {uuid.uuid4().hex[:6]}",
+            "grade": "Class 6",
+            "section": "A",
+            "roll_number": overrides.pop("roll_number", "80"),
+            "login_phone": _fresh_phone(),
+            "password": IMPORT_PW,
+            "guardian_name": "Test Guardian",
+            "guardian_relation": "father",
+            "guardian_phone": "9812345678",
+        }
+        body.update(overrides)
+        return self.client.post("/principal/students/admit", json=body, headers=_principal_headers())
+
+    def test_an_admitted_student_is_approved_and_logs_in_with_phone_and_password(self):
+        r = self._admit()
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["status"], "created")
+        with SessionLocal() as db:
+            student = db.query(Student).filter(Student.full_name == r.json()["full_name"]).one()
+            phone = student.phone_number
+            self.created.append(student.id)
+            self.assertEqual(student.approval_status, "approved")
+            self.assertTrue(verify_password(IMPORT_PW, student.password_hash))
+            student_id = student.id
+        login = self.client.post(
+            "/auth/login/phone",
+            json={"phone": phone, "password": IMPORT_PW, "role": "student", "student_id": str(student_id)},
+        )
+        self.assertEqual(login.status_code, 200, login.text)
+
+    def test_a_weak_password_is_refused(self):
+        r = self._admit(password="letmein123")
+        self.assertEqual(r.status_code, 422)
+        self.assertIn("too common", r.json()["detail"])
+
+    def test_the_same_roll_twice_is_a_conflict(self):
+        first = self._admit(roll_number="81")
+        self.assertEqual(first.status_code, 200, first.text)
+        with SessionLocal() as db:
+            self.created += [s.id for s in db.query(Student).filter(Student.full_name == first.json()["full_name"])]
+        second = self._admit(roll_number="81")
+        self.assertEqual(second.status_code, 409)
+        self.assertIn("already belongs", second.json()["detail"])
+
+
+class TestStudentSearch(_Cleanup):
+    """The Admission screen's search: one student found by name, phone or email."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture = _SchoolFixture()
+
+    def _admit(self, name: str, phone: str, roll: str, email: str | None = None) -> dict:
+        body = {
+            "full_name": name,
+            "grade": "Class 6",
+            "section": "A",
+            "roll_number": roll,
+            "login_phone": phone,
+            "password": IMPORT_PW,
+            "email": email,
+        }
+        r = self.client.post("/principal/students/admit", json=body, headers=_principal_headers())
+        self.assertEqual(r.status_code, 200, r.text)
+        self.created.append(uuid.UUID(r.json()["student_id"]))
+        return r.json()
+
+    def _search(self, q: str):
+        return self.client.get("/principal/students/search", params={"q": q}, headers=_principal_headers())
+
+    def test_the_admit_response_carries_the_new_students_id(self):
+        row = self._admit("Searchable Zephyr", _fresh_phone(), "70")
+        with SessionLocal() as db:
+            self.assertIsNotNone(db.get(Student, uuid.UUID(row["student_id"])))
+
+    def test_finds_by_name_phone_and_email_and_never_returns_a_password(self):
+        phone = "+919876501234"
+        self._admit("Anjali Quartz", phone, "71", email="anjali.quartz@example.org")
+        by_name = self._search("quartz").json()
+        by_phone = self._search("98765 01234").json()
+        by_email = self._search("anjali.quartz@").json()
+        for found in (by_name, by_phone, by_email):
+            self.assertTrue(any(item["full_name"] == "Anjali Quartz" for item in found), found)
+        self.assertNotIn("password", self._search("quartz").text.lower())
+
+    def test_a_one_letter_query_returns_nothing(self):
+        self.assertEqual(self._search("a").status_code, 422)
+
+    def test_wildcards_are_matched_literally(self):
+        self._admit("Percent Sign Tester", _fresh_phone(), "72")
+        self.assertEqual(self._search("%%").json(), [])
+        self.assertEqual(self._search("__").json(), [])
+
+    def test_results_are_capped(self):
+        self.assertLessEqual(len(self._search("the").json()), 25)
 
 
 class TestPrincipalProfile(unittest.TestCase):

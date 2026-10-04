@@ -1,8 +1,9 @@
+import re
 import uuid
 from datetime import date as date_
 
 from fastapi import HTTPException, status
-from sqlalchemy import case, func
+from sqlalchemy import case, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -228,6 +229,25 @@ def get_teacher_profile(db: Session, principal: Teacher, teacher_id: uuid.UUID) 
     )
 
 
+def _student_roster_items(rows) -> list[StudentRosterItem]:
+    """Rows of (Student, class_section_id, grade_id, grade_label, section, roll_number)."""
+    return [
+        StudentRosterItem(
+            id=s.id,
+            full_name=s.full_name,
+            class_section_id=class_section_id,
+            grade_id=grade_id,
+            grade_label=grade_label,
+            section=section,
+            roll_number=roll_number,
+            login_phone=s.phone_number,
+            approved_at=s.approved_at,
+            photo_url=s.photo_url,
+        )
+        for s, class_section_id, grade_id, grade_label, section, roll_number in rows
+    ]
+
+
 def list_students(db: Session, principal: Teacher) -> list[StudentRosterItem]:
     """Every approved student at the principal's school, across all grades --
     used by school-wide pickers (e.g. logging a fee payment) that a single
@@ -259,21 +279,54 @@ def list_students(db: Session, principal: Teacher) -> list[StudentRosterItem]:
         .order_by(Grade.numeric_level, ClassSection.section, StudentEnrollment.roll_number, Student.full_name)
         .all()
     )
-    return [
-        StudentRosterItem(
-            id=s.id,
-            full_name=s.full_name,
-            class_section_id=class_section_id,
-            grade_id=grade_id,
-            grade_label=grade_label,
-            section=section,
-            roll_number=roll_number,
-            login_phone=s.phone_number,
-            approved_at=s.approved_at,
-            photo_url=s.photo_url,
+    return _student_roster_items(rows)
+
+
+SEARCH_LIMIT = 25
+
+
+def search_students(db: Session, principal: Teacher, query: str) -> list[StudentRosterItem]:
+    """Find one of this school's students by name, email or login phone, for
+    the Admission screen's search box. Same scope as the roster: approved
+    students enrolled in the current academic year. Capped at SEARCH_LIMIT,
+    so a vague query gets a short list and never the whole school."""
+    text = " ".join(query.split())
+    if len(text) < 2:
+        return []
+    digits = re.sub(r"\D", "", text)
+    # autoescape: a "%" or "_" typed by the user matches itself, not a wildcard
+    match = or_(
+        Student.full_name.icontains(text, autoescape=True),
+        Student.email.icontains(text, autoescape=True),
+    )
+    if len(digits) >= 3:
+        # phones are stored as +91XXXXXXXXXX, so any run of digits can match
+        match = or_(match, Student.phone_number.contains(digits))
+    rows = (
+        db.query(
+            Student,
+            ClassSection.id,
+            ClassSection.grade_id,
+            Grade.label,
+            ClassSection.section,
+            StudentEnrollment.roll_number,
         )
-        for s, class_section_id, grade_id, grade_label, section, roll_number in rows
-    ]
+        .join(StudentEnrollment, StudentEnrollment.student_id == Student.id)
+        .join(ClassSection, StudentEnrollment.class_section_id == ClassSection.id)
+        .join(AcademicYear, StudentEnrollment.academic_year_id == AcademicYear.id)
+        .join(Grade, ClassSection.grade_id == Grade.id)
+        .filter(
+            Student.school_id == _school_id(principal),
+            Student.approval_status == "approved",
+            StudentEnrollment.left_on.is_(None),
+            AcademicYear.is_current.is_(True),
+            match,
+        )
+        .order_by(Student.full_name, Grade.numeric_level, ClassSection.section)
+        .limit(SEARCH_LIMIT)
+        .all()
+    )
+    return _student_roster_items(rows)
 
 
 def _resolve_year(

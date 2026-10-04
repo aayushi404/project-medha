@@ -36,9 +36,7 @@ import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytic
 import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
 import { PrincipalShell } from "@/components/principal/principal-shell";
 import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
-import { StudentImportDialog } from "@/components/principal/student-import-dialog";
 import { TeacherRoster } from "@/components/principal/teacher-roster";
-import { StudentRoster } from "@/components/students/student-roster";
 
 function ClassesSummaryCard() {
   const { accessToken } = useAuth();
@@ -226,7 +224,6 @@ function PrincipalDashboard() {
   const [stats, setStats] = useState<PrincipalStats | null>(null);
   const [pending, setPending] = useState<PendingTeacher[]>([]);
   const [roster, setRoster] = useState<TeacherRosterItem[]>([]);
-  const [students, setStudents] = useState<StudentRosterItem[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const principalName = teacher?.full_name?.trim() || "Principal";
@@ -237,13 +234,11 @@ function PrincipalDashboard() {
       getPrincipalStats(accessToken).catch(() => null),
       getPendingTeachers(accessToken).catch(() => []),
       getPrincipalTeachers(accessToken).catch(() => []),
-      getPrincipalStudents(accessToken).catch(() => []),
     ])
-      .then(([s, p, r, st]) => {
+      .then(([s, p, r]) => {
         if (s) setStats(s);
         if (p) setPending(p);
         if (r) setRoster(r);
-        if (st) setStudents(st);
       })
       .catch(() => {});
   }, [accessToken]);
@@ -391,27 +386,6 @@ function PrincipalDashboard() {
               </p>
             </div>
             <ClassesSummaryCard />
-          </section>
-
-          {/* Feature 7b: Student login accounts (registration / approval status) */}
-          <section id="principal-students" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                  {isHi ? "विद्यार्थी खाते (Students)" : "Student Accounts"}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {isHi
-                    ? "विद्यार्थियों के Medha लॉगिन — पूरी कक्षा की सूची CSV से एक साथ जोड़ें"
-                    : "Students' Medha logins — add a whole class list at once from a CSV"}
-                </p>
-              </div>
-              {/* the import endpoint is principal-only; this page also admits teachers/admins */}
-              {teacher?.role === "principal" && (
-                <StudentImportDialog token={accessToken} onImported={() => void reload()} />
-              )}
-            </div>
-            <StudentRoster students={students} profileHref="/principal/students" />
           </section>
 
           {/* Feature 8: Direct Announcements */}

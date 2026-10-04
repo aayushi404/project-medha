@@ -3,7 +3,7 @@ from backend.student_profile.schemas import StudentProfileOut
 import uuid
 from datetime import date as date_
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import require_principal
@@ -24,8 +24,10 @@ from backend.principal.schemas import (
     ReserveTeacherIn,
     ReserveTeacherOut,
     RosterStudentItem,
+    StudentAdmissionIn,
     StudentImportIn,
     StudentImportOut,
+    StudentImportRowResult,
     SchoolAttendanceSummaryOut,
     StudentRosterItem,
     SubjectTeacherIn,
@@ -61,17 +63,37 @@ def students(
     return service.list_students(db, principal)
 
 
+@router.get("/students/search", response_model=list[StudentRosterItem])
+def search_students(
+    q: str = Query(min_length=2, max_length=80),
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> list[StudentRosterItem]:
+    """Find a student of this school by name, email or login phone. Declared
+    before /students/{student_id} so "search" isn't read as an id."""
+    return service.search_students(db, principal, q)
+
+
 @router.post("/students/import", response_model=StudentImportOut)
 def import_students(
     payload: StudentImportIn,
-    background_tasks: BackgroundTasks,
     principal: Teacher = Depends(require_principal),
     db: Session = Depends(get_db),
 ) -> StudentImportOut:
-    """Bulk-create student accounts from a CSV the browser has parsed. Send
-    `dry_run: true` first for the per-row preview, then `false` to create
-    (rows with an email are sent a "set your password" invite)."""
-    return student_import.import_students(db, principal, payload, background_tasks)
+    """Bulk admission from a CSV the browser has parsed. Send `dry_run: true`
+    first for the per-row preview, then `false` to admit. Every admitted
+    student is approved at once and logs in with the password in the row."""
+    return student_import.import_students(db, principal, payload)
+
+
+@router.post("/students/admit", response_model=StudentImportRowResult)
+def admit_student(
+    payload: StudentAdmissionIn,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> StudentImportRowResult:
+    """Admit one student by hand. Approved immediately, no teacher step."""
+    return student_import.admit_student(db, principal, payload)
 
 
 @router.get("/sections", response_model=list[ClassSectionSummary])

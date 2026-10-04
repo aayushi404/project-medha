@@ -10,7 +10,7 @@ function StudentDetailPageContent() {
   const params = useParams<{ id: string }>();
 
   return (
-    <PrincipalShell activeId="principal-students">
+    <PrincipalShell activeId="principal-admission">
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-8">
         <StudentProfileView studentId={params.id} backHref="/principal" />
       </div>

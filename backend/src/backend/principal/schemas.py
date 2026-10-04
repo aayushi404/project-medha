@@ -122,10 +122,33 @@ class StudentImportRowIn(BaseModel):
     # The number the student logs in with. Required for every row -- checked in
     # the service so a missing one is reported against its line.
     login_phone: str | None = Field(default=None, max_length=50)
+    # The password the student logs in with, chosen by the principal. Required
+    # for every row; checked in the service against the password policy.
+    password: str | None = Field(default=None, max_length=128)
     email: str | None = Field(default=None, max_length=320)
     guardian_name: str | None = Field(default=None, max_length=300)
     guardian_relation: str | None = Field(default=None, max_length=50)
     guardian_phone: str | None = Field(default=None, max_length=50)
+
+
+class StudentAdmissionIn(BaseModel):
+    """One student admitted from the principal's Admission form. The same
+    fields as a CSV row, without the line number. Validated by the same
+    service code, so the form and the CSV can't disagree."""
+
+    full_name: str | None = Field(default=None, max_length=300)
+    grade: str | None = Field(default=None, max_length=50)
+    section: str | None = Field(default=None, max_length=50)
+    roll_number: str | None = Field(default=None, max_length=50)
+    login_phone: str | None = Field(default=None, max_length=50)
+    password: str | None = Field(default=None, max_length=128)
+    email: str | None = Field(default=None, max_length=320)
+    guardian_name: str | None = Field(default=None, max_length=300)
+    guardian_relation: str | None = Field(default=None, max_length=50)
+    guardian_phone: str | None = Field(default=None, max_length=50)
+
+    def to_row(self) -> StudentImportRowIn:
+        return StudentImportRowIn(line=1, **self.model_dump())
 
 
 class StudentImportIn(BaseModel):
@@ -146,7 +169,8 @@ class StudentImportRowResult(BaseModel):
     full_name: str | None
     class_label: str | None  # e.g. "Class 8 · A"
     roll_number: int | None
-    email: str | None  # set => the student is (or will be) emailed an invite
+    email: str | None  # contact only; nothing is sent to it
+    student_id: uuid.UUID | None = None  # set once a row is created, so the UI can link to the profile
 
 
 class StudentImportOut(BaseModel):
@@ -154,7 +178,6 @@ class StudentImportOut(BaseModel):
     total: int
     ready: int  # valid rows (created, when not a dry run)
     created: int
-    invited: int  # of `ready`, how many get a "set your password" email
     exists: int
     errors: int
     new_sections: list[str]  # sections that will be / were created, e.g. "Class 8 · C"

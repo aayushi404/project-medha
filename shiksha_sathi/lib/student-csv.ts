@@ -25,6 +25,10 @@ const HEADER_ALIASES: Record<Field, string[]> = {
     "loginphone", "loginmobile", "loginno", "loginnumber", "studentphone", "studentmobile",
     "लॉगिनफ़ोन", "लॉगिनफोन", "लॉगिनमोबाइल", "छात्रमोबाइल",
   ],
+  password: [
+    "password", "pass", "pwd", "loginpassword", "studentpassword", "initialpassword",
+    "पासवर्ड",
+  ],
   email: ["email", "emailid", "emailaddress", "studentemail", "mail", "ईमेल"],
   guardian_name: [
     "guardianname", "guardian", "parentname", "parent", "fathername", "mothername",
@@ -39,7 +43,7 @@ const HEADER_ALIASES: Record<Field, string[]> = {
   ],
 };
 
-export const REQUIRED_FIELDS: Field[] = ["full_name", "grade", "roll_number", "login_phone"];
+export const REQUIRED_FIELDS: Field[] = ["full_name", "grade", "roll_number", "login_phone", "password"];
 
 export const FIELD_LABELS: Record<Field, string> = {
   full_name: "Name",
@@ -47,6 +51,7 @@ export const FIELD_LABELS: Record<Field, string> = {
   section: "Section",
   roll_number: "Roll No",
   login_phone: "Login Phone",
+  password: "Password",
   email: "Email",
   guardian_name: "Guardian Name",
   guardian_relation: "Relation",
@@ -226,6 +231,7 @@ export async function parseStudentCsv(file: File): Promise<ParsedStudentCsv> {
       section: get(cells, "section"),
       roll_number: get(cells, "roll_number"),
       login_phone: get(cells, "login_phone"),
+      password: get(cells, "password"),
       email: get(cells, "email"),
       guardian_name: guardianName,
       guardian_relation:

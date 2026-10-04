@@ -17,7 +17,7 @@ const FORBIDDEN_NAME_CHARS = /[<>{}[\]\\/;`"|=@#$%^*~]/;
 
 /** Mirrors core/validators.py:clean_name -- collapse whitespace, 2-120 chars,
  * no control/forbidden characters, at least 2 letters. */
-function nameField(label = "Name") {
+export function nameField(label = "Name") {
   return z
     .string()
     .transform((v) => v.split(/\s+/).filter(Boolean).join(" "))
@@ -55,7 +55,7 @@ const employeeCodeField = z
   );
 
 /** Mirrors auth/schemas.py's `email: EmailStr`. */
-const emailField = z
+export const emailField = z
   .string()
   .trim()
   .min(1, "Email is required.")
@@ -65,7 +65,7 @@ const emailField = z
 
 /** Length/complexity only -- the identity (name/email) containment check runs
  * separately in `.superRefine`, once both fields are known. */
-const passwordShapeField = z.string().superRefine((pw, ctx) => {
+export const passwordShapeField = z.string().superRefine((pw, ctx) => {
   const problem = passwordProblem(pw);
   if (problem) ctx.addIssue({ code: "custom", message: problem });
 });
@@ -220,3 +220,73 @@ export const resetWithCodeSchema = z
     }
   });
 export type ResetWithCodeFormValues = z.input<typeof resetWithCodeSchema>;
+
+// --- admission: a principal admits one student ------------------------------
+
+/** Mirrors backend principal/student_import.py rules. The backend re-checks
+ * every field (and the duplicate roll/phone checks, which need the database). */
+export const admissionSchema = z
+  .object({
+    full_name: z.string().trim().min(1, "Enter the student's full name.").pipe(nameField()),
+    grade: z.string().min(1, "Choose the class."),
+    section: z
+      .string()
+      .trim()
+      .transform((v) => v.toUpperCase())
+      .refine((v) => /^[A-Z0-9]{1,5}$/.test(v), "Section should be a letter like A or B."),
+    roll_number: z
+      .string()
+      .trim()
+      .min(1, "Enter the roll number.")
+      .regex(/^\d{1,3}$/, "Roll number must be a whole number.")
+      .refine((v) => Number(v) >= 1 && Number(v) <= 999, "Roll number must be between 1 and 999."),
+    login_phone: mobileField,
+    password: passwordShapeField,
+    confirm_password: z.string(),
+    email: z.string().trim().max(254, "Email is too long."),
+    guardian_name: z.string().trim(),
+    guardian_relation: z.enum(["", "father", "mother", "guardian"]),
+    guardian_phone: z.string().trim(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirm_password) {
+      ctx.addIssue({ code: "custom", path: ["confirm_password"], message: "Passwords don't match." });
+    }
+    const problem = passwordProblem(data.password, {
+      email: data.email || undefined,
+      name: data.full_name,
+    });
+    if (problem) ctx.addIssue({ code: "custom", path: ["password"], message: problem });
+
+    if (data.email && !emailField.safeParse(data.email).success) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["email"],
+        message: "Enter a valid email address, or leave it blank.",
+      });
+    }
+    if (data.guardian_name) {
+      if (!nameField("Guardian's name").safeParse(data.guardian_name).success) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["guardian_name"],
+          message: "Enter the guardian's name (letters only, at least 2 characters).",
+        });
+      }
+      if (!data.guardian_relation) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["guardian_relation"],
+          message: "Choose the guardian's relation to the student.",
+        });
+      }
+    }
+    if (data.guardian_phone && !mobileField.safeParse(data.guardian_phone).success) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["guardian_phone"],
+        message: "Enter a valid 10-digit mobile number, or leave it blank.",
+      });
+    }
+  });
+export type AdmissionFormValues = z.input<typeof admissionSchema>;

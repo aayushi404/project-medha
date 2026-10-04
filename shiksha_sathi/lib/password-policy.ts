@@ -49,3 +49,31 @@ export function passwordProblem(
   }
   return null;
 }
+
+const LETTERS = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+const DIGITS = "23456789";
+const SYMBOLS = "@#%&*!?";
+
+/** A random password that passes `passwordProblem`, for a principal to read
+ * out or share. Uses the browser's CSPRNG, never Math.random. */
+export function suggestPassword(): string {
+  const pick = (alphabet: string) => {
+    const n = crypto.getRandomValues(new Uint32Array(1))[0] % alphabet.length;
+    return alphabet[n];
+  };
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const chars = [
+      ...Array.from({ length: 8 }, () => pick(LETTERS)),
+      ...Array.from({ length: 3 }, () => pick(DIGITS)),
+      pick(SYMBOLS),
+    ];
+    // Fisher-Yates shuffle so the symbol and digits aren't always at the end
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    const candidate = chars.join("");
+    if (passwordProblem(candidate) === null) return candidate;
+  }
+  throw new Error("Could not generate a password.");
+}

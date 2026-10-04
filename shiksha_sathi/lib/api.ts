@@ -1628,6 +1628,12 @@ export const listFees = (token: string | null, studentId: string) =>
 export const getPrincipalStudents = (token: string | null) =>
   json<StudentRosterItem[]>(apiFetch("/principal/students", { token }));
 
+/** Find a student of this school by name, email or login phone (at most 25). */
+export const searchPrincipalStudents = (token: string | null, query: string) => {
+  const qs = new URLSearchParams({ q: query });
+  return json<StudentRosterItem[]>(apiFetch(`/principal/students/search?${qs}`, { token }));
+};
+
 // --- principal: bulk-create student accounts from a CSV ---
 
 /** One parsed CSV row. `line` is its line number in the file, for messages. */
@@ -1638,6 +1644,7 @@ export type StudentImportRow = {
   section: string | null;
   roll_number: string | null;
   login_phone: string | null;
+  password: string | null; // the student's login password, chosen by the principal
   email: string | null;
   guardian_name: string | null;
   guardian_relation: string | null;
@@ -1653,7 +1660,8 @@ export type StudentImportRowResult = {
   full_name: string | null;
   class_label: string | null; // e.g. "Class 8 · A"
   roll_number: number | null;
-  email: string | null; // set => the student is emailed a "set your password" link
+  email: string | null; // contact only
+  student_id: string | null; // set once created; links to the profile
 };
 
 export type StudentImportResult = {
@@ -1661,7 +1669,6 @@ export type StudentImportResult = {
   total: number;
   ready: number;
   created: number;
-  invited: number; // of `ready`, how many get an email invite
   exists: number;
   errors: number;
   new_sections: string[]; // sections that will be / were created
@@ -1672,7 +1679,20 @@ export type StudentImportResult = {
 /** Must match MAX_IMPORT_ROWS in backend/principal/schemas.py. */
 export const MAX_STUDENT_IMPORT_ROWS = 2000;
 
-/** `dryRun: true` validates and previews; `false` creates the accounts. */
+/** One student from the Admission form. Same fields as a CSV row, no line. */
+export type StudentAdmissionInput = Omit<StudentImportRow, "line">;
+
+/** Admit one student. Approved at once; they log in with phone + password. */
+export const admitStudent = (token: string | null, input: StudentAdmissionInput) =>
+  json<StudentImportRowResult>(
+    apiFetch("/principal/students/admit", {
+      method: "POST",
+      token,
+      body: input,
+    }),
+  );
+
+/** `dryRun: true` validates and previews; `false` admits the students. */
 export const importStudents = (
   token: string | null,
   rows: StudentImportRow[],

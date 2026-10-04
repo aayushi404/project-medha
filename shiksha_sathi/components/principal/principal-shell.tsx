@@ -54,7 +54,7 @@ const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true },
   { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true },
   { id: "principal-cover", href: "/principal/cover", labelEn: "Daily Cover", labelHi: "आज का कवर", icon: UserX, ownRoute: true },
-  { id: "principal-students", href: "/principal#principal-students", labelEn: "Students", labelHi: "विद्यार्थी सूची", icon: GraduationCap },
+  { id: "principal-admission", href: "/principal/admission", labelEn: "Admission", labelHi: "प्रवेश", icon: GraduationCap, ownRoute: true },
   { id: "principal-fees", href: "/principal#principal-fees", labelEn: "Fee Records", labelHi: "शुल्क विवरण", icon: IndianRupee },
 ];
 

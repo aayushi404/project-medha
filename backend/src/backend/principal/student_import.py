@@ -8,29 +8,28 @@ the roster changed in between, the real pass simply reports it.
 Each valid row becomes an approved `Student` enrolled in Class + Section for
 the school's current academic year (sections that don't exist yet are
 created). Every row carries a `login_phone`, the number the student logs in
-with; siblings may share one. Imported students have no password; they get
-one of two ways in:
+with, and a `password` the principal chose for them; siblings may share a
+phone. The student logs in with phone + password straight away. Nothing is
+emailed, and no one has to claim the account.
 
-* the row has an email -> they're emailed a 7-day "set your password" link
-  (a RESET_PASSWORD token, so the existing /reset-password page handles it);
-* no email -> they claim the account on /student/claim by entering their
-  school, class, section, roll number, name and login phone, and set a password.
-
-A principal never has to hand out passwords.
+A principal admits a single student with the same code path: see
+`admit_student`, which runs one row through `import_students`.
 
 Admission numbers are no longer read or written. A legacy "Admission No"
 column in an old CSV is ignored.
 """
 import re
+import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 
 from email_validator import EmailNotValidError, validate_email
-from fastapi import BackgroundTasks, HTTPException, status
+from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.auth import emails, tokens
+from backend.auth.hashing import hash_password
+from backend.auth.password_policy import validate_password
 from backend.core import validators
 from backend.db.models import (
     AcademicYear,
@@ -39,12 +38,12 @@ from backend.db.models import (
     AuthToken,
     ClassSection,
     Grade,
-    School,
     Student,
     StudentEnrollment,
     Teacher,
 )
 from backend.principal.schemas import (
+    StudentAdmissionIn,
     StudentImportIn,
     StudentImportOut,
     StudentImportRowIn,
@@ -99,6 +98,7 @@ class _Candidate:
     section: str  # upper-cased
     roll_number: int
     login_phone: str
+    password: str  # plain text only until the write step hashes it; never returned
     email: str | None
     guardian_name: str | None
     guardian_relation: str | None
@@ -198,6 +198,17 @@ def _validate_row(
         except ValueError as exc:
             problems.append(str(exc))
 
+    # same rules as a student's own password: a weak one would be the first
+    # thing a principal's CSV hands out. The message never repeats the password.
+    password = row.password or ""
+    if not password:
+        problems.append("Password is missing.")
+    else:
+        try:
+            validate_password(password, email=email, name=full_name or None)
+        except ValueError as exc:
+            problems.append(str(exc))
+
     if problems:
         return " ".join(problems)
     assert grade is not None and login_phone is not None
@@ -209,6 +220,7 @@ def _validate_row(
         section=section,
         roll_number=roll_number,
         login_phone=login_phone,
+        password=password,
         email=email,
         guardian_name=guardian_name,
         guardian_relation=guardian_relation,
@@ -230,7 +242,6 @@ def import_students(
     db: Session,
     principal: Teacher,
     payload: StudentImportIn,
-    background: BackgroundTasks | None = None,
 ) -> StudentImportOut:
     school_id = _school_id(principal)
     year = (
@@ -247,7 +258,9 @@ def import_students(
     grades_by_level = {g.numeric_level: g for g in db.query(Grade).all()}
     results: dict[int, StudentImportRowResult] = {}  # keyed by position in payload
 
-    def result(c: _Candidate, status_: str, message: str | None) -> StudentImportRowResult:
+    def result(
+        c: _Candidate, status_: str, message: str | None, student_id: uuid.UUID | None = None
+    ) -> StudentImportRowResult:
         return StudentImportRowResult(
             line=c.line,
             status=status_,
@@ -256,6 +269,7 @@ def import_students(
             class_label=c.class_label,
             roll_number=c.roll_number,
             email=c.email,
+            student_id=student_id,
         )
 
     # --- 1. field validation + duplicates within the file -----------------
@@ -339,7 +353,6 @@ def import_students(
             new_sections.setdefault(c.section_key, c)
 
     # --- 4. write -----------------------------------------------------------
-    invites: list[tuple[str, str, str]] = []  # (email, name, link)
     if not payload.dry_run and to_create:
         now = datetime.now(timezone.utc)
         try:
@@ -369,7 +382,7 @@ def import_students(
                 student.guardian_relation = c.guardian_relation
                 student.guardian_phone = c.guardian_phone
                 student.email = c.email
-                student.password_hash = None
+                student.password_hash = hash_password(c.password)
                 student.email_verified_at = None
                 student.status = "active"
                 student.approval_status = "approved"
@@ -379,7 +392,9 @@ def import_students(
                 if reused is None:
                     db.add(student)
                 created.append((c, student, reused is not None))
-            db.flush()  # ids for sections, enrollments, audit rows and tokens
+            db.flush()  # ids for sections, enrollments and audit rows
+            for c, student, _ in created:
+                results[c.index] = result(c, "created", None, student.id)
 
             for c, student, was_reused in created:
                 enrollment = None
@@ -403,9 +418,6 @@ def import_students(
                 db.add(
                     ApprovalEvent(subject_student_id=student.id, actor_user_id=principal.id, action="approved")
                 )
-                if c.email:
-                    link = tokens.issue(db, student, tokens.RESET_PASSWORD, ttl=tokens.INVITE_TTL, commit=False)
-                    invites.append((c.email, c.full_name, link))
             db.commit()
         except IntegrityError as exc:
             db.rollback()
@@ -417,19 +429,12 @@ def import_students(
                 "Please preview the file again.",
             ) from exc
 
-        if invites and background is not None:
-            school = db.get(School, school_id)
-            school_name = school.name if school else "Your school"
-            for to, name, link in invites:
-                emails.student_invite(background, to, name, school_name, link)
-
     rows = [results[i] for i in range(len(payload.rows))]
     return StudentImportOut(
         dry_run=payload.dry_run,
         total=len(rows),
         ready=len(to_create),
         created=0 if payload.dry_run else len(to_create),
-        invited=sum(1 for c, _ in to_create if c.email),
         exists=sum(1 for r in rows if r.status == "exists"),
         errors=sum(1 for r in rows if r.status == "error"),
         new_sections=[
@@ -439,3 +444,20 @@ def import_students(
         academic_year_label=year.label,
         rows=rows,
     )
+
+
+def admit_student(db: Session, principal: Teacher, payload: StudentAdmissionIn) -> StudentImportRowResult:
+    """Admit one student from the principal's Admission form. It is the CSV
+    import for a single row, so the checks, duplicate handling and approval
+    are the same. The student is approved at once; no teacher approves them."""
+    out = import_students(
+        db,
+        principal,
+        StudentImportIn(rows=[payload.to_row()], dry_run=False),
+    )
+    row = out.rows[0]
+    if row.status == "error":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, row.message or "This student can't be admitted.")
+    if row.status == "exists":
+        raise HTTPException(status.HTTP_409_CONFLICT, row.message or "This student is already on Medha.")
+    return row

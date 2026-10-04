@@ -38,15 +38,15 @@ const MAX_VISIBLE_ROWS = 200;
 
 const COPY = {
   en: {
-    trigger: "Import CSV",
-    title: "Import students from a CSV",
+    trigger: "Bulk admission (CSV)",
+    title: "Admit students from a CSV",
     intro:
-      "Create accounts for a whole class at once. Students choose their own passwords — you never hand any out.",
+      "Admit a whole class at once. Each student gets the password in your file and can log in with their phone number straight away.",
     drop: "Choose a CSV file or drag it here",
     dropHint: `Up to ${MAX_STUDENT_IMPORT_ROWS.toLocaleString("en-IN")} students · 2 MB`,
     columns: "Columns",
     required: "required",
-    tip: "Class can be written as 8, Class 8, VIII or 8A. No Section column? Everyone goes to section A. Missing sections are created for you. Hindi headings (नाम, कक्षा, रोल नंबर) work too. Saving from Excel? Use “CSV UTF-8” so Hindi names stay intact.",
+    tip: "Class can be written as 8, Class 8, VIII or 8A. No Section column? Everyone goes to section A. Missing sections are created for you. Password: at least 10 characters, with letters and a number or symbol. Hindi headings (नाम, कक्षा, रोल नंबर, पासवर्ड) work too. Saving from Excel? Use “CSV UTF-8” so Hindi names stay intact.",
     template: "Download template",
     checking: (n: number) => `Checking ${n.toLocaleString("en-IN")} rows…`,
     another: "Choose another file",
@@ -55,8 +55,6 @@ const COPY = {
     exists: "Already on Medha",
     errors: "Need fixing",
     all: "All",
-    invited: (n: number) =>
-      `${n.toLocaleString("en-IN")} will get an email to set their password. The rest claim their account with class, section, roll number and login phone.`,
     newSections: "New sections will be created:",
     year: "Academic year",
     skipNote:
@@ -77,24 +75,18 @@ const COPY = {
         .filter(Boolean)
         .join(" · "),
     nextTitle: "What students do next",
-    nextEmail: (n: number) =>
-      `${n.toLocaleString("en-IN")} student${n === 1 ? " has" : "s have"} been emailed a link to set a password (valid 7 days). If it expires, their class teacher can give them a reset code.`,
-    nextClaim: [
-      "Students without an email: open Medha and choose Student → “Claim your account”.",
-      "They enter school, class, section, roll number, name and login phone exactly as in your list.",
-      "They choose a password — then they log in with their phone number.",
-    ],
-    claimLink: "Share this page with them:",
+    nextLogin:
+      "They log in on Medha with their login phone number and the password from your file. Give each student their password in person, and tell them they can change it later.",
     done: "Done",
     emptyFilter: "No rows here.",
     line: "Line",
     roll: "Roll",
   },
   hi: {
-    trigger: "CSV आयात",
-    title: "CSV से विद्यार्थी जोड़ें",
+    trigger: "CSV से प्रवेश (बल्क)",
+    title: "CSV से विद्यार्थियों का प्रवेश",
     intro:
-      "पूरी कक्षा के खाते एक साथ बनाएँ। विद्यार्थी अपना पासवर्ड खुद बनाएँगे — आपको कोई पासवर्ड नहीं बाँटना।",
+      "पूरी कक्षा का प्रवेश एक साथ करें। हर विद्यार्थी को आपकी फ़ाइल में दिया पासवर्ड मिलेगा और वे अपने फ़ोन नंबर से तुरंत लॉग इन कर सकेंगे।",
     drop: "CSV फ़ाइल चुनें या यहाँ खींचकर छोड़ें",
     dropHint: `अधिकतम ${MAX_STUDENT_IMPORT_ROWS.toLocaleString("en-IN")} विद्यार्थी · 2 MB`,
     columns: "कॉलम",
@@ -108,8 +100,6 @@ const COPY = {
     exists: "पहले से मेधा पर",
     errors: "सुधार ज़रूरी",
     all: "सभी",
-    invited: (n: number) =>
-      `${n.toLocaleString("en-IN")} को पासवर्ड बनाने का ईमेल जाएगा। बाकी कक्षा, सेक्शन, रोल नंबर और लॉगिन फ़ोन से अपना खाता क्लेम करेंगे।`,
     newSections: "ये नए सेक्शन बनेंगे:",
     year: "शैक्षणिक सत्र",
     skipNote:
@@ -130,14 +120,8 @@ const COPY = {
         .filter(Boolean)
         .join(" · "),
     nextTitle: "अब विद्यार्थी क्या करें",
-    nextEmail: (n: number) =>
-      `${n.toLocaleString("en-IN")} विद्यार्थियों को पासवर्ड बनाने का लिंक ईमेल हो गया है (7 दिन मान्य)। समाप्त होने पर उनके कक्षा शिक्षक रीसेट कोड दे सकते हैं।`,
-    nextClaim: [
-      "बिना ईमेल वाले विद्यार्थी: मेधा खोलें, Student चुनें → “Claim your account”।",
-      "स्कूल, कक्षा, सेक्शन, रोल नंबर, नाम और लॉगिन फ़ोन ठीक वैसे ही भरें जैसे आपकी सूची में हैं।",
-      "पासवर्ड बनाएँ — फिर अपने फ़ोन नंबर से लॉग इन करें।",
-    ],
-    claimLink: "उन्हें यह पेज बताएँ:",
+    nextLogin:
+      "विद्यार्थी मेधा पर अपने लॉगिन फ़ोन नंबर और आपकी फ़ाइल के पासवर्ड से लॉग इन करेंगे। हर विद्यार्थी को उसका पासवर्ड खुद दें और बताएँ कि वे उसे बाद में बदल सकते हैं।",
     done: "पूर्ण",
     emptyFilter: "यहाँ कोई पंक्ति नहीं।",
     line: "पंक्ति",
@@ -151,6 +135,7 @@ const COLUMN_GUIDE: { name: string; required: boolean; example: string }[] = [
   { name: "Section", required: false, example: "A" },
   { name: "Roll No", required: true, example: "12" },
   { name: "Login Phone", required: true, example: "98765 43210" },
+  { name: "Password", required: true, example: "Kite-River-2026" },
   { name: "Email", required: false, example: "ravi@example.com" },
   { name: "Guardian Name", required: false, example: "Suresh Kumar" },
   { name: "Relation", required: false, example: "Father" },
@@ -457,7 +442,6 @@ export function StudentImportDialog({ token, onImported }: Props) {
                         {result.new_sections.join(", ")}
                       </span>
                     )}
-                    <span>{t.invited(result.invited)}</span>
                   </div>
                 )}
 
@@ -492,29 +476,7 @@ export function StudentImportDialog({ token, onImported }: Props) {
                   <div className="mb-2 text-xs font-semibold tracking-wide text-foreground uppercase">
                     {t.nextTitle}
                   </div>
-                  {result.invited > 0 && (
-                    <p className="mb-3 text-sm text-foreground/90">{t.nextEmail(result.invited)}</p>
-                  )}
-                  {result.created > result.invited && (
-                    <>
-                      <ol className="flex flex-col gap-2 text-sm text-foreground/90">
-                        {t.nextClaim.map((s, i) => (
-                          <li key={i} className="flex gap-2.5">
-                            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-terracotta/15 text-[11px] font-semibold text-terracotta">
-                              {i + 1}
-                            </span>
-                            <span>{s}</span>
-                          </li>
-                        ))}
-                      </ol>
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        {t.claimLink}{" "}
-                        <span className="font-medium text-foreground">
-                          {typeof window !== "undefined" ? `${window.location.origin}/student/claim` : "/student/claim"}
-                        </span>
-                      </p>
-                    </>
-                  )}
+                  <p className="text-sm text-foreground/90">{t.nextLogin}</p>
                 </div>
               </div>
             )}
