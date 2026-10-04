@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app/app-sidebar";
 import { useAuth } from "@/lib/auth-context";
 import { LessonProvider } from "@/lib/lesson-context";
 import { ProfileProvider } from "@/lib/profile-context";
+import { SchoolProvider } from "@/lib/school-context";
 
 /**
  * Shell for the signed-in app screens (Dashboard, My Modules). Nests inside the
@@ -36,6 +37,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (!teacher || teacher.role !== "teacher" || !teacher.onboarded_at) return null;
 
   return (
+    <SchoolProvider>
     <ProfileProvider>
       <LessonProvider>
         {/* Shell is pinned to the viewport; the sidebar stays put and each
@@ -48,5 +50,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </LessonProvider>
     </ProfileProvider>
+    </SchoolProvider>
   );
 }

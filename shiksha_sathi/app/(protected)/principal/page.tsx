@@ -6,21 +6,15 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  approveTeacher,
   getClassSections,
-  getPendingTeachers,
   getPrincipalStats,
   getPrincipalStudents,
-  getPrincipalTeachers,
   listFees,
   logFeePayment,
-  rejectTeacher,
   type ClassSectionSummary,
   type FeePayment,
-  type PendingTeacher,
   type PrincipalStats,
   type StudentRosterItem,
-  type TeacherRosterItem,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy, useLocale } from "@/lib/copy";
@@ -31,12 +25,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AnnounceForm } from "@/components/notifications/announce-form";
 import { FeesList } from "@/components/fees/fees-list";
-import { PendingTeachers } from "@/components/principal/pending-teachers";
 import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytics";
 import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
 import { PrincipalShell } from "@/components/principal/principal-shell";
 import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
-import { TeacherRoster } from "@/components/principal/teacher-roster";
 
 function ClassesSummaryCard() {
   const { accessToken } = useAuth();
@@ -222,9 +214,6 @@ function PrincipalDashboard() {
   const [activeSection, setActiveSection] = useState<string>("principal-overview");
 
   const [stats, setStats] = useState<PrincipalStats | null>(null);
-  const [pending, setPending] = useState<PendingTeacher[]>([]);
-  const [roster, setRoster] = useState<TeacherRosterItem[]>([]);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   const principalName = teacher?.full_name?.trim() || "Principal";
 
@@ -232,13 +221,9 @@ function PrincipalDashboard() {
     if (!accessToken) return Promise.resolve();
     return Promise.all([
       getPrincipalStats(accessToken).catch(() => null),
-      getPendingTeachers(accessToken).catch(() => []),
-      getPrincipalTeachers(accessToken).catch(() => []),
     ])
-      .then(([s, p, r]) => {
+      .then(([s]) => {
         if (s) setStats(s);
-        if (p) setPending(p);
-        if (r) setRoster(r);
       })
       .catch(() => {});
   }, [accessToken]);
@@ -247,20 +232,6 @@ function PrincipalDashboard() {
     if (!accessToken) return;
     void reload();
   }, [accessToken, reload]);
-
-  async function act(id: string, run: () => Promise<unknown>, ok: string) {
-    setBusyId(id);
-    try {
-      await run();
-      toast.success(ok);
-      await reload();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Something went wrong.");
-      throw e;
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   return (
     <PrincipalShell activeId={activeSection} onAnchorClick={setActiveSection}>
@@ -331,47 +302,6 @@ function PrincipalDashboard() {
             <PrincipalWorkUpdatesFeed />
           </section>
 
-          {/* Feature 5: Teacher Applications & Approvals */}
-          <section id="principal-pending-teachers" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                  {isHi ? "शिक्षक आवेदन (Teacher Applications)" : "Teacher Applications"}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {isHi ? "नए शिक्षकों के पंजीकरण आवेदन स्वीकृत या अस्वीकृत करें" : "Review and approve new teacher registrations"}
-                </p>
-              </div>
-              {pending.length > 0 && (
-                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
-                  {pending.length} {isHi ? "लंबित" : "pending"}
-                </span>
-              )}
-            </div>
-            <PendingTeachers
-              teachers={pending}
-              busyId={busyId}
-              onApprove={(id) =>
-                void act(id, () => approveTeacher(accessToken, id), "Teacher approved.")
-              }
-              onReject={(id, reason) =>
-                act(id, () => rejectTeacher(accessToken, id, reason), "Application rejected.")
-              }
-            />
-          </section>
-
-          {/* Feature 6: Faculty Roster */}
-          <section id="principal-teachers" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                {isHi ? "विद्यालय शिक्षक दल (Faculty Staff)" : "Faculty Staff"}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {isHi ? "विद्यालय में अनुमोदित सभी सक्रिय शिक्षक" : "All approved teachers currently active"}
-              </p>
-            </div>
-            <TeacherRoster teachers={roster} />
-          </section>
 
           {/* Feature 7a: Class Sections -> now their own route (see sidebar "Classes") */}
           <section className="rounded-2xl border border-border bg-card p-6 shadow-xs">

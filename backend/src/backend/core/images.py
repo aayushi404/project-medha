@@ -71,3 +71,40 @@ def delete_avatar(kind: Literal["teacher", "student"], actor_id: uuid.UUID) -> N
         # Best-effort: the DB column is the source of truth for whether a
         # photo is shown, so a stray orphaned Cloudinary asset isn't user-visible.
         logger.warning("Cloudinary delete failed for %s %s: %s", kind, actor_id, exc)
+
+
+def _school_logo_public_id(school_id: uuid.UUID) -> str:
+    return f"school_logos/{school_id}"
+
+
+def upload_school_logo(data: bytes, school_id: uuid.UUID) -> str:
+    """Uploads/replaces the school's logo and returns its secure_url. A logo is
+    fitted inside a square, not face-cropped, and PNG keeps any transparency.
+    The `v` query changes on every upload, so browsers never show an old logo
+    from cache after a replacement."""
+    _ensure_configured()
+    try:
+        result = cloudinary.uploader.upload(
+            data,
+            public_id=_school_logo_public_id(school_id),
+            overwrite=True,
+            invalidate=True,
+            resource_type="image",
+            format="png",
+            transformation=[{"width": 400, "height": 400, "crop": "fit"}],
+        )
+    except Exception as exc:
+        logger.error("Cloudinary logo upload failed for school %s: %s", school_id, exc)
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, "Could not upload the logo. Please try again."
+        ) from exc
+    return f"{result['secure_url']}?v={uuid.uuid4().hex[:10]}"
+
+
+def delete_school_logo(school_id: uuid.UUID) -> None:
+    _ensure_configured()
+    try:
+        cloudinary.uploader.destroy(_school_logo_public_id(school_id))
+    except Exception as exc:
+        # Best-effort, as for avatars: the DB column decides what is shown.
+        logger.warning("Cloudinary logo delete failed for school %s: %s", school_id, exc)

@@ -36,6 +36,7 @@ import { useCopy, useCurriculumT } from "@/lib/copy";
 import type { Copy } from "@/lib/copy";
 import { useStudentData } from "@/lib/student-context";
 import { cn } from "@/lib/utils";
+import { SchoolCardPanel } from "@/components/school/school-card-panel";
 
 const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[] = [
   { href: "/learn", navKey: "ask", icon: MessagesSquare },
@@ -266,6 +267,9 @@ export function StudentSidebar() {
         )}
       >
         <Brand collapsed={collapsed} />
+        <div className={cn("pb-3", collapsed ? "px-2" : "px-3")}>
+          <SchoolCardPanel collapsed={collapsed} />
+        </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <NavList collapsed={collapsed} scroll={false} />
           {collapsed ? null : (
@@ -304,6 +308,9 @@ export function StudentSidebar() {
             <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
             <Dialog.Popup className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 data-[ending-style]:-translate-x-full data-[starting-style]:-translate-x-full">
               <Brand />
+              <div className="px-3 pb-3">
+                <SchoolCardPanel collapsed={false} />
+              </div>
               <NavList onNavigate={() => setOpen(false)} />
               <SidebarFooter />
             </Dialog.Popup>

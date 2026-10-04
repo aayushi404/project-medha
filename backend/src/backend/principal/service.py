@@ -329,6 +329,30 @@ def search_students(db: Session, principal: Teacher, query: str) -> list[Student
     return _student_roster_items(rows)
 
 
+def set_current_academic_year(
+    db: Session, principal: Teacher, year_id: uuid.UUID
+) -> AcademicYearOut:
+    """Make one of this school's years the current one. Everything that reads
+    "current" (roster, timetable, attendance, the school card) follows it."""
+    school_id = _school_id(principal)
+    year = (
+        db.query(AcademicYear)
+        .filter(AcademicYear.id == year_id, AcademicYear.school_id == school_id)
+        .first()
+    )
+    if year is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Academic year not found.")
+    if not year.is_current:
+        db.query(AcademicYear).filter(
+            AcademicYear.school_id == school_id, AcademicYear.is_current.is_(True)
+        ).update({AcademicYear.is_current: False}, synchronize_session=False)
+        year.is_current = True
+        db.commit()
+    return AcademicYearOut(
+        id=year.id, label=year.label, starts_on=year.starts_on, ends_on=year.ends_on, is_current=True
+    )
+
+
 def _resolve_year(
     db: Session, school_id: uuid.UUID, academic_year_id: uuid.UUID | None
 ) -> AcademicYear | None:

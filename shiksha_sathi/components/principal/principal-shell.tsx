@@ -8,7 +8,6 @@ import {
   CalendarCheck,
   CalendarDays,
   UserX,
-  ClipboardCheck,
   ClipboardPenLine,
   GraduationCap,
   IndianRupee,
@@ -19,7 +18,6 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  UserPlus,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -28,6 +26,8 @@ import { getPrincipalStats } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useLocale } from "@/lib/copy";
 import { cn } from "@/lib/utils";
+import { SchoolProvider } from "@/lib/school-context";
+import { SchoolCardPanel } from "@/components/school/school-card-panel";
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ProfileImage } from "@/components/ui/profile-image";
@@ -45,12 +45,10 @@ interface PrincipalNavItem {
 
 const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-overview", href: "/principal#principal-overview", labelEn: "Overview", labelHi: "डैशबोर्ड सारांश", icon: LayoutDashboard },
-  { id: "principal-analytics", href: "/principal#principal-analytics", labelEn: "Attendance & Syllabus", labelHi: "उपस्थिति व सिलेबस", icon: ClipboardCheck },
   { id: "principal-attendance-full", href: "/principal/attendance", labelEn: "Attendance", labelHi: "उपस्थिति", icon: CalendarCheck, ownRoute: true },
   { id: "principal-notices", href: "/principal#principal-notices", labelEn: "Notice Board", labelHi: "सूचना पट्ट (Notices)", icon: Megaphone },
   { id: "principal-work-updates", href: "/principal#principal-work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
-  { id: "principal-pending-teachers", href: "/principal#principal-pending-teachers", labelEn: "Teacher Approvals", labelHi: "शिक्षक अनुमोदन", icon: UserPlus },
-  { id: "principal-teachers", href: "/principal#principal-teachers", labelEn: "Faculty Staff", labelHi: "शिक्षक दल", icon: Users },
+  { id: "principal-teachers", href: "/principal/teachers", labelEn: "Teachers", labelHi: "शिक्षक", icon: Users, ownRoute: true },
   { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true },
   { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true },
   { id: "principal-cover", href: "/principal/cover", labelEn: "Daily Cover", labelHi: "आज का कवर", icon: UserX, ownRoute: true },
@@ -66,7 +64,20 @@ const COLLAPSE_KEY = "medha.principalSidebarCollapsed";
  * lets the dashboard report which section is currently scrolled/clicked into
  * view so the highlight stays in sync there, while sub-routes just pass their
  * own nav id. */
-export function PrincipalShell({
+export function PrincipalShell(props: {
+  children: ReactNode;
+  activeId: string;
+  onAnchorClick?: (id: string) => void;
+}) {
+  // the school card in the sidebar, and the shared school fetch behind it
+  return (
+    <SchoolProvider>
+      <PrincipalShellFrame {...props} />
+    </SchoolProvider>
+  );
+}
+
+function PrincipalShellFrame({
   children,
   activeId,
   onAnchorClick,
@@ -136,7 +147,7 @@ export function PrincipalShell({
           ? pathname.startsWith(item.href)
           : pathname === "/principal" && activeId === item.id;
         const label = isHi ? item.labelHi : item.labelEn;
-        const badge = item.id === "principal-pending-teachers" && pendingCount > 0 ? pendingCount : null;
+        const badge = item.id === "principal-teachers" && pendingCount > 0 ? pendingCount : null;
 
         return (
           <Link
@@ -216,6 +227,9 @@ export function PrincipalShell({
           )}
         </div>
 
+        <div className={cn("pb-2", collapsed ? "px-2" : "px-3")}>
+          <SchoolCardPanel collapsed={collapsed} />
+        </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {renderNavItems()}
 

@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { RoleGate } from "@/components/auth/role-gate";
 import { StudentSidebar } from "@/components/student/student-sidebar";
+import { SchoolProvider } from "@/lib/school-context";
 import { StudentDataProvider } from "@/lib/student-context";
 
 /**
@@ -23,6 +24,7 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
 
   return (
     <RoleGate role="student">
+      <SchoolProvider>
       <StudentDataProvider>
         {/* Shell is pinned to the viewport; the sidebar stays put and each
             screen scrolls inside its own overflow-y-auto region. */}
@@ -47,6 +49,7 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </StudentDataProvider>
+      </SchoolProvider>
     </RoleGate>
   );
 }

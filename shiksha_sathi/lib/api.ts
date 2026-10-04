@@ -2336,3 +2336,35 @@ export const finalizeDay = (token: string | null, date: string) =>
   json<FinalStatus>(
     apiFetch(`/principal/day/finalize?date=${encodeURIComponent(date)}`, { method: "POST", token }),
   );
+
+// ---------------------------------------------------------------------------
+// School card: the school's name, logo and current academic year. Every role
+// reads it; only the principal's routes change it (`can_edit` says which).
+// ---------------------------------------------------------------------------
+
+export type SchoolCard = {
+  id: string;
+  name: string;
+  district_name: string;
+  logo_url: string | null;
+  academic_year: { id: string; label: string } | null;
+  can_edit: boolean;
+};
+
+export const getSchoolCard = (token: string | null) =>
+  json<SchoolCard>(apiFetch("/school", { token }));
+
+export const renameSchool = (token: string | null, name: string) =>
+  json<SchoolCard>(apiFetch("/principal/school", { method: "PATCH", token, body: { name } }));
+
+export const uploadSchoolLogo = (token: string | null, file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return json<SchoolCard>(apiFetch("/principal/school/logo", { method: "POST", token, body: formData }));
+};
+
+export const removeSchoolLogo = (token: string | null) =>
+  json<SchoolCard>(apiFetch("/principal/school/logo", { method: "DELETE", token }));
+
+export const setCurrentAcademicYear = (token: string | null, yearId: string) =>
+  json<AcademicYear>(apiFetch(`/principal/academic-years/${yearId}/current`, { method: "POST", token }));

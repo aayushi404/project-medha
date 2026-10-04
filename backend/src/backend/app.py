@@ -33,6 +33,7 @@ from backend.speech.router import router as speech_router
 from backend.timetable.router import router as timetable_router
 from backend.timetable_planner.router import router as timetable_planner_router
 from backend.cover.router import day_board_router, router as cover_router
+from backend.school.router import router as school_router
 from backend.tools.router import router as tools_router
 from backend.student.router import router as student_router
 from backend.teacher.router import router as teacher_router
@@ -184,6 +185,7 @@ app.include_router(timetable_planner_router)
 app.include_router(cover_router)
 app.include_router(day_board_router)
 app.include_router(report_card_router)
+app.include_router(school_router)
 app.include_router(fees_router)
 app.include_router(notes_router)
 app.include_router(practice_router)

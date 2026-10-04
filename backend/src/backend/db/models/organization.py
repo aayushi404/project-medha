@@ -47,4 +47,6 @@ class School(Base):
     block_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("blocks.id"))
     medium_of_instruction: Mapped[str] = mapped_column(server_default="Hindi")
     school_type: Mapped[str | None]
+    # Cloudinary secure_url, set only by the principal's logo upload (school/service.py)
+    logo_url: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))

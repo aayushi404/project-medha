@@ -140,6 +140,15 @@ def academic_years(
     return service.list_academic_years(db, principal)
 
 
+@router.post("/academic-years/{year_id}/current", response_model=AcademicYearOut)
+def set_current_academic_year(
+    year_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> AcademicYearOut:
+    return service.set_current_academic_year(db, principal, year_id)
+
+
 @router.post("/academic-years", response_model=AcademicYearOut)
 def create_academic_year(
     payload: AcademicYearCreateIn,

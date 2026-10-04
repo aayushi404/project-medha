@@ -24,6 +24,11 @@ export const en = {
     simulations: "Simulations",
   },
   navMain: "Main",
+  navGroup: {
+    academics: "Academics",
+    resources: "Resources",
+    exams: "Exams",
+  },
   studentNav: {
     ask: "Ask Medha",
     practice: "Practice",

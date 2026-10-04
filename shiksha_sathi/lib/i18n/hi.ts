@@ -22,6 +22,11 @@ export const hi: Copy = {
     simulations: "सिमुलेशन",
   },
   navMain: "मुख्य",
+  navGroup: {
+    academics: "शैक्षणिक",
+    resources: "संसाधन",
+    exams: "परीक्षा",
+  },
   studentNav: {
     ask: "मेधा से पूछें",
     practice: "अभ्यास",
