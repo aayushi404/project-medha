@@ -30,10 +30,20 @@ from backend.db.models.school_records import (
     StudentEnrollment,
     TeachingAssignment,
 )
-from backend.db.models.teacher import ApprovalEvent, AuthSession, AuthThrottle, AuthToken, Teacher
+from backend.db.models.teacher import (
+    AccountAuditEvent,
+    ApprovalEvent,
+    AuthSession,
+    AuthThrottle,
+    AuthToken,
+    Teacher,
+)
 from backend.db.models.timetable import TimetableEntry
+from backend.db.models.timetable_planner import PeriodSlot, Timetable, TimetableCell
+from backend.db.models.substitution import DailyTimetable, PeriodSubstitution, TeacherAbsence
 
 __all__ = [
+    "AccountAuditEvent",
     "AuthThrottle",
     "AuthToken",
     "District",
@@ -66,6 +76,12 @@ __all__ = [
     "Homework",
     "HomeworkStatus",
     "TimetableEntry",
+    "PeriodSlot",
+    "Timetable",
+    "TimetableCell",
+    "TeacherAbsence",
+    "PeriodSubstitution",
+    "DailyTimetable",
     "ReportCardMark",
     "FeePayment",
     "ChapterNote",

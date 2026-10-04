@@ -35,6 +35,19 @@ def _student_ids(db: Session) -> list:
 
 
 def _sanity_checks(db: Session, ids: list) -> bool:
+    # This backfill writes students.admission_number, which migration 0032 drops.
+    # Once it's gone the split is long finished and this script must not run.
+    has_adm_col = db.execute(
+        text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'students' AND column_name = 'admission_number'"
+        )
+    ).first()
+    if not has_adm_col:
+        raise SystemExit(
+            "students.admission_number is gone (0032_phone_login_contract). This one-off "
+            "backfill belongs to the 0023-0025 split and can't run on a schema past 0031."
+        )
     if not ids:
         print("no teachers rows with role='student' -- nothing to back-fill.")
         return False

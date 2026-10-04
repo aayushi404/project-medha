@@ -66,8 +66,8 @@ class ClassSection(Base):
 
 class Student(Base):
     """The single source of truth for a student: school-records identity
-    (admission no., guardian contact) AND login credential AND grade/roll
-    placement, all on one row. Originally built deliberately login-less (see
+    (name, guardian contact) AND login credential (login phone + password) AND
+    grade/roll placement, all on one row. Originally built deliberately login-less (see
     docs/phase-2/Medha-principal-dashboard.md #3) -- that changed once student
     login moved off `teachers` onto this table; keeping them apart would have
     just recreated the same "two disconnected guardian-data stores" problem
@@ -75,7 +75,6 @@ class Student(Base):
 
     __tablename__ = "students"
     __table_args__ = (
-        UniqueConstraint("school_id", "admission_number"),
         Index("idx_students_school", "school_id"),
         Index(
             "idx_students_pending",
@@ -84,6 +83,9 @@ class Student(Base):
             postgresql_where=text("approval_status = 'pending'"),
         ),
         Index("uq_students_email", "email", unique=True, postgresql_where=text("email IS NOT NULL")),
+        # NOT unique: siblings share a parent's phone, each with their own
+        # password. Lookup by phone returns every student on that number.
+        Index("idx_students_phone", "phone_number", postgresql_where=text("phone_number IS NOT NULL")),
         Index(
             "uq_students_google_sub",
             "google_sub",
@@ -98,6 +100,11 @@ class Student(Base):
             "approval_status IN ('pending','approved','rejected')",
             name="chk_students_approval_status",
         ),
+        # 0032: every student logs in by phone, in E.164 form (+91XXXXXXXXXX).
+        CheckConstraint("phone_number IS NOT NULL", name="chk_students_phone_required"),
+        CheckConstraint(
+            r"phone_number ~ '^\+91[6-9][0-9]{9}$'", name="chk_students_phone_format"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -107,7 +114,6 @@ class Student(Base):
         UUID(as_uuid=True), ForeignKey("schools.id", ondelete="CASCADE")
     )
     full_name: Mapped[str]
-    admission_number: Mapped[str | None]
     guardian_name: Mapped[str | None]
     guardian_relation: Mapped[str | None]  # father | mother | guardian
     guardian_phone: Mapped[str | None]
@@ -122,9 +128,12 @@ class Student(Base):
     email: Mapped[str | None]
     password_hash: Mapped[str | None]
     google_sub: Mapped[str | None]
-    phone_number: Mapped[str | None] = mapped_column(unique=True)
+    # E.164 (+91XXXXXXXXXX). Not unique -- see idx_students_phone.
+    phone_number: Mapped[str | None]
     preferred_language: Mapped[str] = mapped_column(server_default="hi-BiharBoli")
     email_verified_at: Mapped[datetime | None]
+    # OTP hook: null until phone OTP is switched on (settings.phone_otp_required)
+    phone_verified_at: Mapped[datetime | None]
     mfa_secret: Mapped[str | None]
     mfa_enabled: Mapped[bool] = mapped_column(server_default=text("false"))
 
@@ -162,6 +171,17 @@ class TeachingAssignment(Base):
     __table_args__ = (
         UniqueConstraint("teacher_id", "class_section_id", "subject_id"),
         Index("idx_assignments_section", "class_section_id"),
+        # 0034: a primary assignment teaches one subject in the section. A reserve
+        # is a teacher on standby for any period in the section, subject-agnostic.
+        Index(
+            "uq_assign_reserve",
+            "teacher_id",
+            "class_section_id",
+            unique=True,
+            postgresql_where=text("role = 'reserve'"),
+        ),
+        CheckConstraint("role IN ('primary','reserve')", name="chk_assign_role"),
+        CheckConstraint("role = 'reserve' OR subject_id IS NOT NULL", name="chk_assign_subject"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -173,7 +193,9 @@ class TeachingAssignment(Base):
     class_section_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("class_sections.id", ondelete="CASCADE")
     )
-    subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("subjects.id"))
+    # Null only for reserve teachers, who may cover any subject in the section.
+    subject_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("subjects.id"))
+    role: Mapped[str] = mapped_column(server_default=text("'primary'"))
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
 
 

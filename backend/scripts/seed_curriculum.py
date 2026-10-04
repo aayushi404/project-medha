@@ -4,7 +4,8 @@ realistic data to show. No textbook content chunks -- retrieval degrades
 gracefully without them (see docs/phase-1/04). Run seed_phase0.py first (it
 creates the grades and the Science / Social Science subjects).
 
-Covers Classes 6-10 for Science, Social Science, Mathematics, English and Hindi.
+Covers Classes 6-10 for Science, Social Science, Mathematics, English, Hindi
+and Sanskrit.
 Mathematics / English / Hindi are created here if missing.
 
 Idempotent: matches on each table's natural key
@@ -26,7 +27,7 @@ BOARD = "BSEB"
 
 # Subjects to ensure exist. "Science" and "Social Science" are created by
 # seed_phase0.py; the rest are created here.
-SUBJECTS = ["Science", "Social Science", "Mathematics", "English", "Hindi"]
+SUBJECTS = ["Science", "Social Science", "Mathematics", "English", "Hindi", "Sanskrit"]
 
 # A handful of chapters carry real sub-topics (kept from the original seed so a
 # re-run still guarantees them). Everything else is chapter-only -- a topic is
@@ -587,6 +588,40 @@ CHAPTERS: dict[tuple[str, int], list[str]] = {
         "माँ (गुजराती कहानी)",
         "नगर (तमिल कहानी)",
         "धरती कब तक घूमेगी (राजस्थानी कहानी)",
+    ],
+    # --------------------------------------------------------------- Sanskrit
+    ("Sanskrit", 9): [
+        # पीयूषम् भाग 1 (Class 9)
+        "ईशस्तुतिः",
+        "लोभाविष्टः चक्रधरः",
+        "यक्षयुधिष्ठिर-संवादः",
+        "चत्वारो वेदाः",
+        "संस्कृतस्य महिमा",
+        "संस्कृतसाहित्ये पर्यावरणम्",
+        "ज्ञानं भारः क्रियां विना",
+        "नीतिपद्यानि",
+        "बिहारस्य सांस्कृतिकं वैभवम्",
+        "ईद-महोत्सवः",
+        "ग्राम्यजीवनम्",
+        "वीर कुँवर सिंहः",
+        "किशोराणां मनोविज्ञानम्",
+    ],
+    ("Sanskrit", 10): [
+        # पीयूषम् द्वितीयो भागः (Class 10)
+        "मङ्गलम्",
+        "पाटलिपुत्रवैभवम्",
+        "अलसकथा",
+        "संस्कृतसाहित्ये लेखिकाः",
+        "भारतमहिमा",
+        "भारतीयसंस्काराः",
+        "नीतिश्लोकाः",
+        "कर्मवीर कथा",
+        "स्वामी दयानन्दः",
+        "मन्दाकिनीवर्णनम्",
+        "व्याघ्रपथिककथा",
+        "कर्णस्य दानवीरता",
+        "विश्वशांतिः",
+        "शास्त्रकाराः",
     ],
 }
 

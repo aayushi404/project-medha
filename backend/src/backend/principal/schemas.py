@@ -14,13 +14,14 @@ __all__ = [
     "StudentRosterItem",
     "ClassSectionSummary",
     "RosterStudentItem",
-    "StudentProfile",
     "StudentImportRowIn",
     "StudentImportIn",
     "StudentImportRowResult",
     "StudentImportOut",
     "TeachingAssignmentIn",
     "TeachingAssignmentOut",
+    "ReserveTeacherIn",
+    "ReserveTeacherOut",
     "AcademicYearCreateIn",
     "AcademicYearOut",
     "ClassSectionCreateIn",
@@ -47,7 +48,7 @@ class PrincipalStats(BaseModel):
 class PendingTeacher(BaseModel):
     id: uuid.UUID
     full_name: str
-    email: str
+    email: str | None
     mobile_number: str | None
     employee_code: str | None
     years_of_experience: int | None
@@ -58,7 +59,7 @@ class PendingTeacher(BaseModel):
 class TeacherRosterItem(BaseModel):
     id: uuid.UUID
     full_name: str
-    email: str
+    email: str | None
     mobile_number: str | None
     employee_code: str | None
     years_of_experience: int | None
@@ -78,7 +79,7 @@ class TeacherProfile(BaseModel):
 
     id: uuid.UUID
     full_name: str
-    email: str
+    email: str | None
     mobile_number: str | None
     employee_code: str | None
     years_of_experience: int | None
@@ -107,22 +108,6 @@ class RosterStudentItem(BaseModel):
     photo_url: str | None = None
 
 
-class StudentProfile(BaseModel):
-    id: uuid.UUID
-    full_name: str
-    admission_number: str | None
-    status: str
-    photo_url: str | None
-    grade_label: str | None
-    section: str | None
-    roll_number: int | None
-    academic_year_label: str | None
-    class_teacher_name: str | None
-    guardian_name: str | None
-    guardian_relation: str | None
-    guardian_phone: str | None
-
-
 class StudentImportRowIn(BaseModel):
     """One CSV row, as the browser parsed it. Fields are deliberately loose
     strings: each row is validated in the service so one bad row is reported
@@ -134,7 +119,9 @@ class StudentImportRowIn(BaseModel):
     grade: str | None = Field(default=None, max_length=50)
     section: str | None = Field(default=None, max_length=50)
     roll_number: str | None = Field(default=None, max_length=50)
-    admission_number: str | None = Field(default=None, max_length=100)
+    # The number the student logs in with. Required for every row -- checked in
+    # the service so a missing one is reported against its line.
+    login_phone: str | None = Field(default=None, max_length=50)
     email: str | None = Field(default=None, max_length=320)
     guardian_name: str | None = Field(default=None, max_length=300)
     guardian_relation: str | None = Field(default=None, max_length=50)
@@ -152,7 +139,7 @@ class StudentImportRowResult(BaseModel):
     line: int
     # ready   -- valid; would be created (dry run only)
     # created -- account created
-    # exists  -- already on Medha (same class+section+roll or admission no.); left untouched
+    # exists  -- already on Medha (same class+section+roll); left untouched
     # error   -- invalid; `message` says what to fix
     status: Literal["ready", "created", "exists", "error"]
     message: str | None
@@ -251,3 +238,15 @@ class SchoolAttendanceSummaryOut(BaseModel):
     unmarked_count: int
     percentage: float | None
     classes: list[ClassAttendanceSummary]
+
+
+class ReserveTeacherIn(BaseModel):
+    teacher_id: uuid.UUID
+
+
+class ReserveTeacherOut(BaseModel):
+    teacher_id: uuid.UUID
+    full_name: str
+    photo_url: str | None
+    primary_subject_name: str | None
+    classes_count: int

@@ -35,7 +35,7 @@ class AdminStats(BaseModel):
 class PendingPrincipal(BaseModel):
     id: uuid.UUID
     full_name: str
-    email: str
+    email: str | None
     mobile_number: str | None
     qualification: str | None
     school_id: uuid.UUID

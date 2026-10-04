@@ -5,17 +5,21 @@ from backend.auth import service
 from backend.auth.dependencies import get_current_actor
 from backend.auth.schemas import (
     ChangePasswordIn,
+    EmailLoginIn,
     EmailOnlyIn,
     GoogleAuthIn,
-    LoginIn,
     MessageOut,
-    ResetPasswordIn,
-    VerifyEmailIn,
+    PhoneLoginIn,
     RegisterIn,
     RegisterOut,
+    ResetPasswordIn,
+    ResetWithCodeIn,
+    StudentLookupIn,
+    StudentLookupOut,
     StudentOut,
     TeacherOut,
     TokenOut,
+    VerifyEmailIn,
 )
 from backend.core import throttle
 from backend.core.api_prefix import api_prefix
@@ -92,12 +96,13 @@ def register(
 
 @router.post("/login", response_model=TokenOut)
 def login(
-    payload: LoginIn,
+    payload: EmailLoginIn,
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ) -> TokenOut:
-    access_token, refresh_token, expires_in = service.login(
+    """Principal and admin accounts. Teachers and students can't log in here."""
+    access_token, refresh_token, expires_in = service.login_email(
         db,
         payload.email,
         payload.password,
@@ -107,6 +112,42 @@ def login(
     )
     _set_refresh_cookie(request, response, refresh_token)
     return TokenOut(access_token=access_token, expires_in=expires_in)
+
+
+@router.post("/login/phone", response_model=TokenOut)
+def login_phone(
+    payload: PhoneLoginIn,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> TokenOut:
+    """Teacher and student accounts. A student picks their profile first
+    (POST /auth/student/lookup) and sends its id as `student_id`."""
+    access_token, refresh_token, expires_in = service.login_phone(
+        db,
+        payload.phone,
+        payload.role,
+        payload.student_id,
+        payload.password,
+        request.headers.get("user-agent"),
+        ip=throttle.client_ip(request),
+    )
+    _set_refresh_cookie(request, response, refresh_token)
+    return TokenOut(access_token=access_token, expires_in=expires_in)
+
+
+@router.post("/student/lookup", response_model=StudentLookupOut)
+def student_lookup(payload: StudentLookupIn, request: Request, db: Session = Depends(get_db)) -> StudentLookupOut:
+    """The student profiles on a phone number, for the login picker."""
+    return service.lookup_student_profiles(db, payload.phone, throttle.client_ip(request))
+
+
+@router.post("/reset-with-code", response_model=MessageOut)
+def reset_with_code(payload: ResetWithCodeIn, request: Request, db: Session = Depends(get_db)) -> MessageOut:
+    """Redeem a one-time code a teacher or principal read out to the account
+    holder, and set a new password."""
+    service.reset_with_code(db, payload, throttle.client_ip(request))
+    return MessageOut(message="Your password has been changed. Please log in.")
 
 
 @router.post("/google", response_model=TokenOut)

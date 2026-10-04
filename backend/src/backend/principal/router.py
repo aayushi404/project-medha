@@ -1,3 +1,5 @@
+from backend.student_profile import service as student_profile_service
+from backend.student_profile.schemas import StudentProfileOut
 import uuid
 from datetime import date as date_
 
@@ -5,6 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import require_principal
+from backend.auth.schemas import ResetCodeOut
 from backend.db.models import Teacher
 from backend.db.session import get_db
 from backend.principal import service, student_import
@@ -18,11 +21,12 @@ from backend.principal.schemas import (
     PendingTeacher,
     PrincipalStats,
     RejectIn,
+    ReserveTeacherIn,
+    ReserveTeacherOut,
     RosterStudentItem,
     StudentImportIn,
     StudentImportOut,
     SchoolAttendanceSummaryOut,
-    StudentProfile,
     StudentRosterItem,
     SubjectTeacherIn,
     TeacherProfile,
@@ -97,13 +101,14 @@ def section_roster(
     return service.list_section_students(db, principal, section_id)
 
 
-@router.get("/students/{student_id}", response_model=StudentProfile)
+@router.get("/students/{student_id}", response_model=StudentProfileOut)
 def student_profile(
     student_id: uuid.UUID,
     principal: Teacher = Depends(require_principal),
     db: Session = Depends(get_db),
-) -> StudentProfile:
-    return service.get_student_profile(db, principal, student_id)
+) -> StudentProfileOut:
+    """Kept for existing principal screens. The shared route is /students/{id}."""
+    return student_profile_service.student_profile(db, principal, student_id)
 
 
 @router.get("/academic-years", response_model=list[AcademicYearOut])
@@ -211,6 +216,15 @@ def approve_teacher(
     return service.approve_teacher(db, principal, teacher_id)
 
 
+@router.post("/teachers/{teacher_id}/reset-code", response_model=ResetCodeOut)
+def reset_teacher_code(
+    teacher_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> ResetCodeOut:
+    return service.issue_teacher_reset_code(db, principal, teacher_id)
+
+
 @router.post("/teachers/{teacher_id}/reject", response_model=ApprovalResult)
 def reject_teacher(
     teacher_id: uuid.UUID,
@@ -231,3 +245,32 @@ def attendance_summary(
     return service.get_attendance_summary(
         db, principal, date or date_.today(), academic_year_id
     )
+
+
+@router.get("/sections/{section_id}/reserve-teachers", response_model=list[ReserveTeacherOut])
+def reserve_teachers(
+    section_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> list[ReserveTeacherOut]:
+    return service.list_reserve_teachers(db, principal, section_id)
+
+
+@router.post("/sections/{section_id}/reserve-teachers", response_model=list[ReserveTeacherOut])
+def add_reserve_teacher(
+    section_id: uuid.UUID,
+    payload: ReserveTeacherIn,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> list[ReserveTeacherOut]:
+    return service.add_reserve_teacher(db, principal, section_id, payload.teacher_id)
+
+
+@router.delete("/sections/{section_id}/reserve-teachers/{teacher_id}", response_model=list[ReserveTeacherOut])
+def remove_reserve_teacher(
+    section_id: uuid.UUID,
+    teacher_id: uuid.UUID,
+    principal: Teacher = Depends(require_principal),
+    db: Session = Depends(get_db),
+) -> list[ReserveTeacherOut]:
+    return service.remove_reserve_teacher(db, principal, section_id, teacher_id)

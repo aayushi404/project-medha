@@ -7,14 +7,19 @@ the roster changed in between, the real pass simply reports it.
 
 Each valid row becomes an approved `Student` enrolled in Class + Section for
 the school's current academic year (sections that don't exist yet are
-created). Imported students have no password; they get one of two ways in:
+created). Every row carries a `login_phone`, the number the student logs in
+with; siblings may share one. Imported students have no password; they get
+one of two ways in:
 
 * the row has an email -> they're emailed a 7-day "set your password" link
   (a RESET_PASSWORD token, so the existing /reset-password page handles it);
 * no email -> they claim the account on /student/claim by entering their
-  school, class, section, roll number and name, and set email + password there.
+  school, class, section, roll number, name and login phone, and set a password.
 
 A principal never has to hand out passwords.
+
+Admission numbers are no longer read or written. A legacy "Admission No"
+column in an old CSV is ignored.
 """
 import re
 from dataclasses import dataclass
@@ -93,7 +98,7 @@ class _Candidate:
     grade: Grade
     section: str  # upper-cased
     roll_number: int
-    admission_number: str | None
+    login_phone: str
     email: str | None
     guardian_name: str | None
     guardian_relation: str | None
@@ -153,9 +158,15 @@ def _validate_row(
         if not 1 <= roll_number <= _MAX_ROLL:
             problems.append(f"Roll number must be between 1 and {_MAX_ROLL}.")
 
-    admission_number = _clean(row.admission_number) or None
-    if admission_number and len(admission_number) > 40:
-        problems.append("Admission number is longer than 40 characters.")
+    login_phone: str | None = None
+    login_phone_raw = _clean(row.login_phone)
+    if not login_phone_raw:
+        problems.append("Login phone is missing.")
+    else:
+        try:
+            login_phone = validators.e164_indian_mobile(login_phone_raw)
+        except ValueError:
+            problems.append(f'Login phone "{login_phone_raw}" isn\'t a 10-digit mobile number.')
 
     email: str | None = None
     email_raw = _clean(row.email)
@@ -189,7 +200,7 @@ def _validate_row(
 
     if problems:
         return " ".join(problems)
-    assert grade is not None
+    assert grade is not None and login_phone is not None
     return _Candidate(
         index=index,
         line=row.line,
@@ -197,7 +208,7 @@ def _validate_row(
         grade=grade,
         section=section,
         roll_number=roll_number,
-        admission_number=admission_number,
+        login_phone=login_phone,
         email=email,
         guardian_name=guardian_name,
         guardian_relation=guardian_relation,
@@ -250,7 +261,6 @@ def import_students(
     # --- 1. field validation + duplicates within the file -----------------
     candidates: list[_Candidate] = []
     seen_roll: dict[tuple, int] = {}
-    seen_admission: dict[str, int] = {}
     seen_email: dict[str, int] = {}
     for i, row in enumerate(payload.rows):
         checked = _validate_row(i, row, grades_by_level)
@@ -267,20 +277,15 @@ def import_students(
             continue
         c = checked
         roll_key = (*c.section_key, c.roll_number)
-        adm_key = c.admission_number.lower() if c.admission_number else None
         dup: str | None = None
         if roll_key in seen_roll:
             dup = f"Roll {c.roll_number} in {c.class_label} is also on line {seen_roll[roll_key]} of this file."
-        elif adm_key and adm_key in seen_admission:
-            dup = f"Admission number {c.admission_number} is also on line {seen_admission[adm_key]} of this file."
         elif c.email and c.email in seen_email:
             dup = f"Email {c.email} is also on line {seen_email[c.email]} of this file."
         if dup:
             results[i] = result(c, "error", dup)
             continue
         seen_roll[roll_key] = c.line
-        if adm_key:
-            seen_admission[adm_key] = c.line
         if c.email:
             seen_email[c.email] = c.line
         candidates.append(c)
@@ -305,12 +310,6 @@ def import_students(
             if enrollment.roll_number is not None:
                 occupant[(*key_of_section[enrollment.class_section_id], enrollment.roll_number)] = student
 
-    by_admission: dict[str, Student] = {}
-    admissions = {c.admission_number for c in candidates if c.admission_number}
-    if admissions:
-        for s in db.query(Student).filter(Student.school_id == school_id, Student.admission_number.isnot(None)):
-            by_admission[s.admission_number.lower()] = s
-
     by_email: dict[str, Student] = {}
     emails_in_file = {c.email for c in candidates if c.email}
     if emails_in_file:
@@ -327,12 +326,6 @@ def import_students(
         # a rejected registration still holds its (section, roll) slot --
         # reuse that row, the way student re-registration does
         reuse = holder
-        adm_holder = by_admission.get(c.admission_number.lower()) if c.admission_number else None
-        if adm_holder is not None and adm_holder is not reuse:
-            results[c.index] = result(
-                c, "exists", f"Admission number {c.admission_number} already belongs to {adm_holder.full_name}."
-            )
-            continue
         email_holder = by_email.get(c.email) if c.email else None
         if email_holder is not None and email_holder is not reuse:
             results[c.index] = result(c, "error", f"{c.email} is already used by another student account.")
@@ -371,8 +364,7 @@ def import_students(
                     ).update({AuthSession.revoked_at: now}, synchronize_session=False)
                     student.google_sub = None
                 student.full_name = c.full_name
-                if c.admission_number:
-                    student.admission_number = c.admission_number
+                student.phone_number = c.login_phone
                 student.guardian_name = c.guardian_name
                 student.guardian_relation = c.guardian_relation
                 student.guardian_phone = c.guardian_phone

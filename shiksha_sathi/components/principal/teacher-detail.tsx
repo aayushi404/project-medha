@@ -6,9 +6,15 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Loader2, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 
-import { getTeacherProfile, type TeacherProfile } from "@/lib/api";
+import {
+  getTeacherProfile,
+  issueTeacherResetCode,
+  type ResetCodeIssued,
+  type TeacherProfile,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { useLocale } from "@/lib/copy";
+import { useCopy, useLocale } from "@/lib/copy";
+import { ResetCodePanel } from "@/components/auth/reset-code-panel";
 import { ProfileImage } from "@/components/ui/profile-image";
 
 /** A teacher's full record, read-only from the principal's side -- contact,
@@ -19,8 +25,22 @@ export function TeacherDetail({ teacherId }: { teacherId: string }) {
   const isHi = locale === "hi";
   const router = useRouter();
 
+  const copy = useCopy();
   const [profile, setProfile] = useState<TeacherProfile | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [issuing, setIssuing] = useState(false);
+  const [issued, setIssued] = useState<ResetCodeIssued | null>(null);
+
+  async function resetCode() {
+    setIssuing(true);
+    try {
+      setIssued(await issueTeacherResetCode(accessToken, teacherId));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : copy.resetCode.failed);
+    } finally {
+      setIssuing(false);
+    }
+  }
 
   useEffect(() => {
     if (!accessToken) return;
@@ -93,7 +113,7 @@ export function TeacherDetail({ teacherId }: { teacherId: string }) {
           <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div className="flex items-center gap-2">
               <Mail className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate text-foreground">{profile.email}</span>
+              <span className="truncate text-foreground">{profile.email ?? "—"}</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="size-3.5 shrink-0 text-muted-foreground" />
@@ -118,6 +138,24 @@ export function TeacherDetail({ teacherId }: { teacherId: string }) {
               </dd>
             </div>
           </dl>
+        </div>
+
+        <div className="mt-5 border-t border-border pt-4">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
+            {isHi ? "लॉगिन" : "Login"}
+          </p>
+          {issued ? (
+            <ResetCodePanel issued={issued} onClose={() => setIssued(null)} />
+          ) : (
+            <button
+              type="button"
+              onClick={resetCode}
+              disabled={issuing}
+              className="rounded-lg bg-muted px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/70 disabled:opacity-50"
+            >
+              {issuing ? copy.resetCode.issuing : copy.resetCode.button}
+            </button>
+          )}
         </div>
 
         <div className="mt-5 border-t border-border pt-4">

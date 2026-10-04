@@ -11,6 +11,7 @@ export const SUBJECT_HI: Record<string, string> = {
   Mathematics: "गणित",
   English: "अंग्रेज़ी",
   Hindi: "हिंदी",
+  Sanskrit: "संस्कृत",
 };
 
 export const TOPIC_HI: Record<string, string> = {

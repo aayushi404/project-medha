@@ -56,7 +56,7 @@ const COPY = {
     errors: "Need fixing",
     all: "All",
     invited: (n: number) =>
-      `${n.toLocaleString("en-IN")} will get an email to set their password. The rest claim their account with class, section and roll number.`,
+      `${n.toLocaleString("en-IN")} will get an email to set their password. The rest claim their account with class, section, roll number and login phone.`,
     newSections: "New sections will be created:",
     year: "Academic year",
     skipNote:
@@ -78,11 +78,11 @@ const COPY = {
         .join(" · "),
     nextTitle: "What students do next",
     nextEmail: (n: number) =>
-      `${n.toLocaleString("en-IN")} student${n === 1 ? " has" : "s have"} been emailed a link to set a password (valid 7 days). If it expires, “Forgot password” works.`,
+      `${n.toLocaleString("en-IN")} student${n === 1 ? " has" : "s have"} been emailed a link to set a password (valid 7 days). If it expires, their class teacher can give them a reset code.`,
     nextClaim: [
       "Students without an email: open Medha and choose Student → “Claim your account”.",
-      "They enter school, class, section, roll number and name exactly as in your list.",
-      "They add their own email and password — then they can log in.",
+      "They enter school, class, section, roll number, name and login phone exactly as in your list.",
+      "They choose a password — then they log in with their phone number.",
     ],
     claimLink: "Share this page with them:",
     done: "Done",
@@ -109,7 +109,7 @@ const COPY = {
     errors: "सुधार ज़रूरी",
     all: "सभी",
     invited: (n: number) =>
-      `${n.toLocaleString("en-IN")} को पासवर्ड बनाने का ईमेल जाएगा। बाकी कक्षा, सेक्शन और रोल नंबर से अपना खाता क्लेम करेंगे।`,
+      `${n.toLocaleString("en-IN")} को पासवर्ड बनाने का ईमेल जाएगा। बाकी कक्षा, सेक्शन, रोल नंबर और लॉगिन फ़ोन से अपना खाता क्लेम करेंगे।`,
     newSections: "ये नए सेक्शन बनेंगे:",
     year: "शैक्षणिक सत्र",
     skipNote:
@@ -131,11 +131,11 @@ const COPY = {
         .join(" · "),
     nextTitle: "अब विद्यार्थी क्या करें",
     nextEmail: (n: number) =>
-      `${n.toLocaleString("en-IN")} विद्यार्थियों को पासवर्ड बनाने का लिंक ईमेल हो गया है (7 दिन मान्य)। समाप्त होने पर “Forgot password” चलेगा।`,
+      `${n.toLocaleString("en-IN")} विद्यार्थियों को पासवर्ड बनाने का लिंक ईमेल हो गया है (7 दिन मान्य)। समाप्त होने पर उनके कक्षा शिक्षक रीसेट कोड दे सकते हैं।`,
     nextClaim: [
       "बिना ईमेल वाले विद्यार्थी: मेधा खोलें, Student चुनें → “Claim your account”।",
-      "स्कूल, कक्षा, सेक्शन, रोल नंबर और नाम ठीक वैसे ही भरें जैसे आपकी सूची में हैं।",
-      "अपना ईमेल और पासवर्ड बनाएँ — फिर लॉग इन कर सकते हैं।",
+      "स्कूल, कक्षा, सेक्शन, रोल नंबर, नाम और लॉगिन फ़ोन ठीक वैसे ही भरें जैसे आपकी सूची में हैं।",
+      "पासवर्ड बनाएँ — फिर अपने फ़ोन नंबर से लॉग इन करें।",
     ],
     claimLink: "उन्हें यह पेज बताएँ:",
     done: "पूर्ण",
@@ -150,7 +150,7 @@ const COLUMN_GUIDE: { name: string; required: boolean; example: string }[] = [
   { name: "Class", required: true, example: "8" },
   { name: "Section", required: false, example: "A" },
   { name: "Roll No", required: true, example: "12" },
-  { name: "Admission No", required: false, example: "2026/104" },
+  { name: "Login Phone", required: true, example: "98765 43210" },
   { name: "Email", required: false, example: "ravi@example.com" },
   { name: "Guardian Name", required: false, example: "Suresh Kumar" },
   { name: "Relation", required: false, example: "Father" },

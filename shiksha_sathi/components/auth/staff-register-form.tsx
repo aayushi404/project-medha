@@ -18,7 +18,8 @@ export function StaffRegisterForm({
   onDone,
 }: {
   role: RegisterRole;
-  onDone: (email: string) => void;
+  /** `hasEmail` lets the next screen say whether a verification email was sent. */
+  onDone: (hasEmail: boolean) => void;
 }) {
   const form = useForm<
     z.input<typeof staffRegisterSchema>,
@@ -49,7 +50,7 @@ export function StaffRegisterForm({
       await registerRequest({
         role: values.role,
         full_name: values.full_name,
-        email: values.email,
+        email: values.email || null,
         password: values.password,
         mobile_number: values.mobile_number,
         school_id: values.school.id,
@@ -57,7 +58,7 @@ export function StaffRegisterForm({
         years_of_experience: isTeacher && values.years_of_experience ? Number(values.years_of_experience) : null,
         qualification: values.qualification || null,
       });
-      onDone(values.email);
+      onDone(Boolean(values.email));
     } catch (err) {
       form.setError("root", {
         message: err instanceof Error ? err.message : "Could not register.",
@@ -87,10 +88,15 @@ export function StaffRegisterForm({
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{isTeacher ? "Email (optional)" : "Email"}</FormLabel>
               <FormControl>
                 <Input {...field} type="email" autoComplete="email" placeholder="you@example.com" className="h-11 text-base" />
               </FormControl>
+              {isTeacher && (
+                <p className="text-xs text-muted-foreground">
+                  You can log in with your mobile number. Add an email if you have one.
+                </p>
+              )}
               <FormMessage />
             </FormItem>
           )}

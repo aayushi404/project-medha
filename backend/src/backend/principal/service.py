@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from backend.approvals import service as approvals
 from backend.approvals.schemas import ApprovalResult
+from backend.auth import service as auth_service
+from backend.auth.schemas import ResetCodeOut
 from backend.db.models import (
     AcademicYear,
     AttendanceRecord,
@@ -31,10 +33,10 @@ from backend.principal.schemas import (
     PrincipalStats,
     RosterStudentItem,
     SchoolAttendanceSummaryOut,
-    StudentProfile,
     StudentRosterItem,
     TeacherProfile,
     TeacherRosterItem,
+    ReserveTeacherOut,
     TeachingAssignmentIn,
     TeachingAssignmentOut,
 )
@@ -111,7 +113,7 @@ def _sections_taught_by(db: Session, teacher_ids: list[uuid.UUID]) -> dict[uuid.
         .join(Subject, TeachingAssignment.subject_id == Subject.id)
         .join(ClassSection, TeachingAssignment.class_section_id == ClassSection.id)
         .join(Grade, ClassSection.grade_id == Grade.id)
-        .filter(TeachingAssignment.teacher_id.in_(teacher_ids))
+        .filter(TeachingAssignment.teacher_id.in_(teacher_ids), TeachingAssignment.role == "primary")
         .all()
     )
     for ta, subject_name, grade_label, section in assignment_rows:
@@ -151,7 +153,7 @@ def _assignment_drawer_extras(
 
     assignment_rows = (
         db.query(TeachingAssignment.teacher_id, TeachingAssignment.class_section_id)
-        .filter(TeachingAssignment.teacher_id.in_(teacher_ids))
+        .filter(TeachingAssignment.teacher_id.in_(teacher_ids), TeachingAssignment.role == "primary")
         .all()
     )
     for tid, section_id in assignment_rows:
@@ -266,7 +268,7 @@ def list_students(db: Session, principal: Teacher) -> list[StudentRosterItem]:
             grade_label=grade_label,
             section=section,
             roll_number=roll_number,
-            email=s.email,
+            login_phone=s.phone_number,
             approved_at=s.approved_at,
             photo_url=s.photo_url,
         )
@@ -462,6 +464,28 @@ def create_class_section(
     return _class_section_out(db, section)
 
 
+def _teaches_section(db: Session, teacher_id: uuid.UUID, section_id: uuid.UUID) -> bool:
+    return (
+        db.query(TeachingAssignment.id)
+        .filter(
+            TeachingAssignment.teacher_id == teacher_id,
+            TeachingAssignment.class_section_id == section_id,
+            TeachingAssignment.role == "primary",
+        )
+        .first()
+        is not None
+    )
+
+
+def _release_class_teacher_if_not_teaching(db: Session, section: ClassSection) -> None:
+    """A class teacher must teach at least one subject in their class. When a
+    subject change leaves them teaching nothing there, the class teacher seat
+    is released rather than left pointing at someone who isn't in the class."""
+    db.flush()  # the check must see this request's own deletes and reassignments
+    if section.class_teacher_id and not _teaches_section(db, section.class_teacher_id, section.id):
+        section.class_teacher_id = None
+
+
 def update_class_section(
     db: Session, principal: Teacher, section_id: uuid.UUID, payload: ClassSectionUpdateIn
 ) -> ClassSectionSummary:
@@ -477,6 +501,13 @@ def update_class_section(
             or teacher.approval_status != "approved"
         ):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Teacher not found.")
+        if not _teaches_section(db, payload.class_teacher_id, section.id):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"{teacher.full_name} doesn't teach any subject in "
+                f"{db.get(Grade, section.grade_id).label} · {section.section} yet. "
+                "Assign them a subject here first.",
+            )
 
         # A teacher may be class teacher of only one section (see
         # idx_one_section_per_class_teacher) -- clear any other section
@@ -531,46 +562,6 @@ def list_section_students(
     ]
 
 
-def get_student_profile(
-    db: Session, principal: Teacher, student_id: uuid.UUID
-) -> StudentProfile:
-    school_id = _school_id(principal)
-    student = db.get(Student, student_id)
-    if student is None or student.school_id != school_id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Student not found.")
-
-    row = (
-        db.query(StudentEnrollment, ClassSection, Grade, AcademicYear, Teacher.full_name)
-        .join(ClassSection, StudentEnrollment.class_section_id == ClassSection.id)
-        .join(Grade, ClassSection.grade_id == Grade.id)
-        .join(AcademicYear, StudentEnrollment.academic_year_id == AcademicYear.id)
-        .outerjoin(Teacher, ClassSection.class_teacher_id == Teacher.id)
-        .filter(
-            StudentEnrollment.student_id == student.id,
-            StudentEnrollment.left_on.is_(None),
-        )
-        .order_by(AcademicYear.starts_on.desc())
-        .first()
-    )
-    enrollment, section, grade, year, class_teacher_name = row if row else (None, None, None, None, None)
-
-    return StudentProfile(
-        id=student.id,
-        full_name=student.full_name,
-        admission_number=student.admission_number,
-        status=student.status,
-        photo_url=student.photo_url,
-        grade_label=grade.label if grade else None,
-        section=section.section if section else None,
-        roll_number=enrollment.roll_number if enrollment else None,
-        academic_year_label=year.label if year else None,
-        class_teacher_name=class_teacher_name,
-        guardian_name=student.guardian_name,
-        guardian_relation=student.guardian_relation,
-        guardian_phone=student.guardian_phone,
-    )
-
-
 def _get_scoped_teacher(
     db: Session, principal: Teacher, teacher_id: uuid.UUID
 ) -> Teacher:
@@ -586,6 +577,13 @@ def _get_scoped_teacher(
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Teacher application not found.")
     return teacher
+
+
+def issue_teacher_reset_code(db: Session, principal: Teacher, teacher_id: uuid.UUID) -> ResetCodeOut:
+    """A teacher who can't log in (forgotten password, no email to reset by)
+    gets a one-time code from their principal, read out in person."""
+    teacher = _get_scoped_teacher(db, principal, teacher_id)
+    return auth_service.issue_reset_code(db, principal, teacher)
 
 
 def approve_teacher(
@@ -636,7 +634,7 @@ def list_section_teaching_assignments(
     section = _get_scoped_section(db, principal, section_id)
     rows = (
         db.query(TeachingAssignment)
-        .filter(TeachingAssignment.class_section_id == section.id)
+        .filter(TeachingAssignment.class_section_id == section.id, TeachingAssignment.role == "primary")
         .all()
     )
     return [_teaching_assignment_out(db, a) for a in rows]
@@ -689,6 +687,7 @@ def delete_teaching_assignment(
     if section is None or section.school_id != school_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Assignment not found.")
     db.delete(assignment)
+    _release_class_teacher_if_not_teaching(db, section)
     db.commit()
 
 
@@ -720,6 +719,7 @@ def set_subject_teacher(
     if teacher_id is None:
         if existing is not None:
             db.delete(existing)
+            _release_class_teacher_if_not_teaching(db, section)
             db.commit()
         return list_section_teaching_assignments(db, principal, section_id)
 
@@ -741,6 +741,7 @@ def set_subject_teacher(
             )
         )
 
+    _release_class_teacher_if_not_teaching(db, section)
     try:
         db.commit()
     except IntegrityError as exc:
@@ -838,3 +839,71 @@ def get_attendance_summary(
         percentage=round(total_present / total_students * 100, 1) if total_students else None,
         classes=classes,
     )
+
+
+# --- reserve teachers: on standby for any period in a class (daily cover) ---
+
+
+def list_reserve_teachers(
+    db: Session, principal: Teacher, section_id: uuid.UUID
+) -> list[ReserveTeacherOut]:
+    section = _get_scoped_section(db, principal, section_id)
+    rows = (
+        db.query(Teacher)
+        .join(TeachingAssignment, TeachingAssignment.teacher_id == Teacher.id)
+        .filter(TeachingAssignment.class_section_id == section.id, TeachingAssignment.role == "reserve")
+        .order_by(Teacher.full_name)
+        .all()
+    )
+    extras = _assignment_drawer_extras(db, [t.id for t in rows])
+    return [
+        ReserveTeacherOut(
+            teacher_id=t.id,
+            full_name=t.full_name,
+            photo_url=t.photo_url,
+            primary_subject_name=extras[t.id]["primary_subject_name"],
+            classes_count=len(extras[t.id]["classes"]),
+        )
+        for t in rows
+    ]
+
+
+def add_reserve_teacher(
+    db: Session, principal: Teacher, section_id: uuid.UUID, teacher_id: uuid.UUID
+) -> list[ReserveTeacherOut]:
+    section = _get_scoped_section(db, principal, section_id)
+    school_id = _school_id(principal)
+    teacher = db.get(Teacher, teacher_id)
+    if (
+        teacher is None
+        or teacher.role != "teacher"
+        or teacher.school_id != school_id
+        or teacher.approval_status != "approved"
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Teacher not found.")
+    db.add(TeachingAssignment(teacher_id=teacher.id, class_section_id=section.id, role="reserve"))
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{teacher.full_name} is already a reserve here.") from exc
+    return list_reserve_teachers(db, principal, section_id)
+
+
+def remove_reserve_teacher(
+    db: Session, principal: Teacher, section_id: uuid.UUID, teacher_id: uuid.UUID
+) -> list[ReserveTeacherOut]:
+    section = _get_scoped_section(db, principal, section_id)
+    deleted = (
+        db.query(TeachingAssignment)
+        .filter(
+            TeachingAssignment.class_section_id == section.id,
+            TeachingAssignment.teacher_id == teacher_id,
+            TeachingAssignment.role == "reserve",
+        )
+        .delete(synchronize_session=False)
+    )
+    if not deleted:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Reserve teacher not found.")
+    db.commit()
+    return list_reserve_teachers(db, principal, section_id)

@@ -27,6 +27,14 @@ import { claimUserData, clearUserData } from "@/lib/user-data";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
+export type PhoneLoginInput = {
+  /** 10-digit Indian mobile number, as typed. The server normalises it. */
+  phone: string;
+  password: string;
+  role: Exclude<LoginRole, "principal">;
+  studentId?: string;
+};
+
 type AuthContextValue = {
   status: AuthStatus;
   /** The logged-in user -- a `teachers` row (admin/principal/teacher) or a
@@ -35,10 +43,13 @@ type AuthContextValue = {
    * (grade_id, roll_number). */
   teacher: CurrentUser | null;
   accessToken: string | null;
-  /** `role` is the tab picked on the login screen -- the backend looks the
-   * email up in the matching table (teachers vs students), so a teacher's
-   * credentials can't be used to sign in via the Student tab. */
-  login: (email: string, password: string, role: LoginRole) => Promise<void>;
+  /** Principal and admin only. Teachers and students never log in by email.
+   * `portal` is the page the login came from: the principal tab on /login, or
+   * "admin" from /admin/login. The backend rejects a mismatch. */
+  loginWithEmail: (email: string, password: string, portal?: "principal" | "admin") => Promise<void>;
+  /** Teachers, and students (who must pick a profile on their phone first).
+   * `studentId` is required for students and forbidden for teachers. */
+  loginWithPhone: (input: PhoneLoginInput) => Promise<void>;
   /** Creates a pending account. Does NOT start a session -- the caller shows a
    * "waiting for approval" screen. Throws Error with a readable message. */
   register: (input: RegisterInput) => Promise<RegisterResult>;
@@ -202,12 +213,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [status, silentRefresh]);
 
-  const login = useCallback(
-    async (email: string, password: string, role: LoginRole) => {
-      const res = await apiFetch("/auth/login", {
-        method: "POST",
-        body: { email, password, role },
-      });
+  // One place turns a failed login response into an AuthError the screens can
+  // branch on (pending, rejected, wrong tab). Both login paths share it.
+  const postLogin = useCallback(
+    async (path: string, body: unknown) => {
+      const res = await apiFetch(path, { method: "POST", body });
       if (!res.ok) {
         // The backend answers a not-yet-approved account, or a login attempt
         // on the wrong tab, with a structured body: { detail: { code, ... } }.
@@ -232,6 +242,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await establishSession((await res.json()) as TokenOut);
     },
     [establishSession]
+  );
+
+  const loginWithEmail = useCallback(
+    (email: string, password: string, portal: "principal" | "admin" = "principal") =>
+      postLogin("/auth/login", { email, password, role: portal }),
+    [postLogin]
+  );
+
+  const loginWithPhone = useCallback(
+    ({ phone, password, role, studentId }: PhoneLoginInput) =>
+      postLogin("/auth/login/phone", {
+        phone,
+        password,
+        role,
+        ...(studentId ? { student_id: studentId } : {}),
+      }),
+    [postLogin]
   );
 
   const register = useCallback(
@@ -260,7 +287,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status,
         teacher,
         accessToken,
-        login,
+        loginWithEmail,
+        loginWithPhone,
         register,
         logout,
         updateTeacher: setTeacher,

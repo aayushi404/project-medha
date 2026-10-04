@@ -28,14 +28,21 @@ function nameField(label = "Name") {
 }
 
 /** Mirrors core/validators.py:indian_mobile -- returns the bare 10 digits. */
-const mobileField = z
+export function normalizeMobile(v: string): string {
+  let digits = v.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
+  return digits;
+}
+
+/** True when `v` normalises to a valid 10-digit Indian mobile number. */
+export function isIndianMobile(v: string): boolean {
+  return /^[6-9]\d{9}$/.test(normalizeMobile(v));
+}
+
+export const mobileField = z
   .string()
-  .transform((v) => {
-    let digits = v.replace(/\D/g, "");
-    if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
-    else if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
-    return digits;
-  })
+  .transform(normalizeMobile)
   .refine((v) => /^[6-9]\d{9}$/.test(v), "Enter a valid 10-digit Indian mobile number.");
 
 /** Mirrors core/validators.py:employee_code. */
@@ -71,11 +78,36 @@ const schoolField = z
 
 // --- login -------------------------------------------------------------------
 
-export const loginSchema = z.object({
+/** Principal login. Only principals and admins log in by email. */
+export const principalLoginSchema = z.object({
   email: z.string().trim().min(1, "Enter your email.").max(254, "Email is too long.").email("Enter a valid email address."),
   password: z.string().min(1, "Enter your password.").max(128, "That password is too long."),
 });
-export type LoginFormValues = z.infer<typeof loginSchema>;
+export type PrincipalLoginFormValues = z.infer<typeof principalLoginSchema>;
+
+const loginPasswordField = z
+  .string()
+  .min(1, "Enter your password.")
+  .max(128, "That password is too long.");
+
+/** Teacher login, and the phone step of the student login. */
+export const phoneLoginSchema = z.object({
+  phone: mobileField,
+  password: loginPasswordField,
+});
+export type PhoneLoginFormValues = z.infer<typeof phoneLoginSchema>;
+
+/** Student password step: the phone is already known from the earlier step. */
+export const studentPasswordSchema = z.object({
+  password: loginPasswordField,
+});
+export type StudentPasswordFormValues = z.infer<typeof studentPasswordSchema>;
+
+/** Student phone step. Same rule as login; kept separate so the copy can differ later. */
+export const studentPhoneSchema = z.object({
+  phone: mobileField,
+});
+export type StudentPhoneFormValues = z.infer<typeof studentPhoneSchema>;
 
 // --- register: teacher / principal -------------------------------------------
 
@@ -83,7 +115,8 @@ export const staffRegisterSchema = z
   .object({
     role: z.enum(["teacher", "principal"]),
     full_name: nameField(),
-    email: emailField,
+    // Principals need an email (they reset by email). Teachers may leave it blank.
+    email: z.string().trim().max(254, "Email is too long.").transform((v) => v.toLowerCase()),
     password: passwordShapeField,
     confirm_password: z.string(),
     mobile_number: mobileField,
@@ -96,7 +129,16 @@ export const staffRegisterSchema = z
     if (data.password !== data.confirm_password) {
       ctx.addIssue({ code: "custom", path: ["confirm_password"], message: "Passwords don't match." });
     }
-    const problem = passwordProblem(data.password, { email: data.email, name: data.full_name });
+    if (data.role === "principal" && !emailField.safeParse(data.email).success) {
+      ctx.addIssue({ code: "custom", path: ["email"], message: "Enter a valid email address." });
+    }
+    if (data.email && !emailField.safeParse(data.email).success) {
+      ctx.addIssue({ code: "custom", path: ["email"], message: "Enter a valid email address, or leave it blank." });
+    }
+    const problem = passwordProblem(data.password, {
+      email: data.email || undefined,
+      name: data.full_name,
+    });
     if (problem) ctx.addIssue({ code: "custom", path: ["password"], message: problem });
 
     if (data.role === "teacher") {
@@ -128,7 +170,7 @@ export const studentRegisterSchema = z
   .object({
     role: z.literal("student"),
     full_name: nameField(),
-    email: emailField,
+    login_phone: mobileField,
     password: passwordShapeField,
     confirm_password: z.string(),
     school: schoolField,
@@ -150,7 +192,31 @@ export const studentRegisterSchema = z
     if (data.password !== data.confirm_password) {
       ctx.addIssue({ code: "custom", path: ["confirm_password"], message: "Passwords don't match." });
     }
-    const problem = passwordProblem(data.password, { email: data.email, name: data.full_name });
+    const problem = passwordProblem(data.password, { name: data.full_name });
     if (problem) ctx.addIssue({ code: "custom", path: ["password"], message: problem });
   });
 export type StudentRegisterFormValues = z.infer<typeof studentRegisterSchema>;
+
+// --- reset with a staff-issued code (teachers and students) -----------------
+
+export const resetWithCodeSchema = z
+  .object({
+    role: z.enum(["teacher", "student"]),
+    phone: mobileField,
+    student_id: z.string().optional().default(""),
+    code: z
+      .string()
+      .transform((v) => v.replace(/[\s-]/g, "").toUpperCase())
+      .refine((v) => v.length === 10, "Enter the 10-character code, for example ABCDE-FGHJK."),
+    password: passwordShapeField,
+    confirm_password: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "student" && !data.student_id) {
+      ctx.addIssue({ code: "custom", path: ["student_id"], message: "Choose which profile to reset." });
+    }
+    if (data.password !== data.confirm_password) {
+      ctx.addIssue({ code: "custom", path: ["confirm_password"], message: "Passwords don't match." });
+    }
+  });
+export type ResetWithCodeFormValues = z.input<typeof resetWithCodeSchema>;

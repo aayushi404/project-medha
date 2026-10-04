@@ -13,6 +13,14 @@ class Teacher(Base):
     __table_args__ = (
         Index("idx_teachers_school", "school_id"),
         Index("idx_teachers_phone", "phone_number"),
+        # 0032: a teacher-role account logs in by phone; principals may leave it blank.
+        CheckConstraint(
+            "role <> 'teacher' OR phone_number IS NOT NULL", name="chk_teachers_phone_required"
+        ),
+        CheckConstraint(
+            r"phone_number IS NULL OR phone_number ~ '^\+91[6-9][0-9]{9}$'",
+            name="chk_teachers_phone_format",
+        ),
         Index(
             "idx_teachers_pending",
             "school_id",
@@ -85,6 +93,8 @@ class Teacher(Base):
     # proof the person controls this email (auth/verification.py); a row can't
     # be approved until it's set
     email_verified_at: Mapped[datetime | None]
+    # OTP hook: null until phone OTP is switched on (settings.phone_otp_required)
+    phone_verified_at: Mapped[datetime | None]
     # MFA hook (TOTP) -- columns exist, nothing enforces them yet
     mfa_secret: Mapped[str | None]
     mfa_enabled: Mapped[bool] = mapped_column(server_default=text("false"))
@@ -216,4 +226,39 @@ class ApprovalEvent(Base):
     )
     action: Mapped[str]  # approved | rejected | revoked
     reason: Mapped[str | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))
+
+
+class AccountAuditEvent(Base):
+    """Append-only record of staff acting on someone else's login: issuing a
+    password reset code, and that code being used. The actor is always a
+    teacher or principal row. Exactly one of subject_teacher_id /
+    subject_student_id is set."""
+
+    __tablename__ = "account_audit_events"
+    __table_args__ = (
+        Index("idx_account_audit_actor", "actor_teacher_id"),
+        Index("idx_account_audit_subject_teacher", "subject_teacher_id"),
+        Index("idx_account_audit_subject_student", "subject_student_id"),
+        CheckConstraint(
+            "action IN ('reset_code_issued', 'password_reset_by_code')",
+            name="chk_account_audit_action",
+        ),
+        CheckConstraint(
+            "num_nonnulls(subject_teacher_id, subject_student_id) = 1",
+            name="chk_account_audit_subject",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
+    )
+    actor_teacher_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("teachers.id"))
+    subject_teacher_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE")
+    )
+    subject_student_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE")
+    )
+    action: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(server_default=text("now()"))

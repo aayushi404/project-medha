@@ -33,8 +33,8 @@ export default function PrivacyPage() {
           if provided.
         </li>
         <li>
-          <strong>Student school records</strong> entered by teachers — name, class, roll and
-          admission number, guardian name, relation and phone number, attendance, marks and
+          <strong>Student school records</strong> entered by teachers — name, class, roll,
+          login phone number, guardian name, relation and phone number, attendance, marks and
           remarks, and fee payments.
         </li>
         <li>

@@ -24,19 +24,24 @@ def _normalize_email(v: str) -> str:
 
 
 def _normalize_mobile(v: str) -> str:
-    return validators.indian_mobile(v)
+    """E.164 (+91XXXXXXXXXX). Stored in this form so phone lookups compare
+    like with like."""
+    return validators.e164_indian_mobile(v)
 
 
-class LoginIn(BaseModel):
+class EmailLoginIn(BaseModel):
+    """Principal and admin accounts only -- they keep email + password.
+    Teachers and students log in by phone (PhoneLoginIn). Sending a
+    teacher's or student's email here is rejected."""
+
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
-    # The portal the login came from: the Student / Teacher / Principal tabs on
-    # /login, or `admin` from the separate /admin/login page. Optional: omitted
-    # (or None), no portal check is done -- kept optional rather than required
-    # so any other caller of this endpoint (scripts, future clients) isn't
-    # forced to know it. When given, the account's role must match it (see
-    # auth/service.py).
-    role: Literal["student", "teacher", "principal", "admin"] | None = None
+    # The portal the login came from: the Principal tab on /login, or `admin`
+    # from the separate /admin/login page. Optional: omitted (or None), no
+    # portal check is done -- kept optional rather than required so any other
+    # caller of this endpoint (scripts, future clients) isn't forced to know
+    # it. When given, the account's role must match it (see auth/service.py).
+    role: Literal["principal", "admin"] | None = None
 
     @field_validator("email")
     @classmethod
@@ -44,11 +49,92 @@ class LoginIn(BaseModel):
         return _normalize_email(v)
 
 
+class PhoneLoginIn(BaseModel):
+    """Teachers, and students (who pick a profile first). `student_id` is
+    required for students and forbidden for teachers -- it must belong to
+    `phone`, which the server checks."""
+
+    phone: str = Field(min_length=1, max_length=20)
+    password: str = Field(min_length=1, max_length=128)
+    role: Literal["teacher", "student"]
+    student_id: uuid.UUID | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        return _normalize_mobile(v)
+
+    @model_validator(mode="after")
+    def _student_profile(self) -> "PhoneLoginIn":
+        if self.role == "student" and self.student_id is None:
+            raise ValueError("Choose which student profile to log in to.")
+        if self.role == "teacher" and self.student_id is not None:
+            raise ValueError("student_id is only for student logins.")
+        return self
+
+
+class StudentLookupIn(BaseModel):
+    phone: str = Field(min_length=1, max_length=20)
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        return _normalize_mobile(v)
+
+
+class StudentProfileOut(BaseModel):
+    """What the profile picker shows. Deliberately small: no guardian details,
+    no emails, no school-internal ids beyond the profile id itself."""
+
+    id: uuid.UUID
+    full_name: str
+    class_label: str | None
+    roll_number: str | None
+
+
+class StudentLookupOut(BaseModel):
+    profiles: list[StudentProfileOut]
+
+
+class ResetWithCodeIn(BaseModel):
+    """Redeem a staff-issued code. `student_id` is required for students and
+    must belong to `phone`, same as login."""
+
+    phone: str = Field(min_length=1, max_length=20)
+    role: Literal["teacher", "student"]
+    student_id: uuid.UUID | None = None
+    code: str = Field(min_length=6, max_length=20)
+    new_password: str = Field(min_length=1, max_length=128)
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        return _normalize_mobile(v)
+
+    @model_validator(mode="after")
+    def _policy(self) -> "ResetWithCodeIn":
+        if (self.role == "student") != (self.student_id is not None):
+            raise ValueError("Choose which student profile this code is for.")
+        validate_password(self.new_password)
+        return self
+
+
+class ResetCodeOut(BaseModel):
+    """Shown once, to the staff member who issued it. Not stored in plaintext."""
+
+    code: str
+    expires_at: datetime
+    full_name: str
+
+
 class RegisterIn(BaseModel):
     role: RegisterRole
     full_name: str = Field(min_length=2, max_length=120)
-    email: EmailStr
+    # Teachers may omit it (they log in by phone). Principals must give one:
+    # they log in by email and their address has to be verified.
+    email: EmailStr | None = None
     password: str = Field(min_length=1, max_length=128)  # real rules: password_policy (below)
+    # The login phone for teachers. Required for every role that has one.
     mobile_number: str = Field(min_length=1, max_length=20)
     school_id: uuid.UUID
     # teacher-only; employee_code is required for teachers (checked below)
@@ -59,12 +145,14 @@ class RegisterIn(BaseModel):
     # backend verifies this token itself and takes the Google identity (and a
     # verified email) from it -- a client-supplied "sub" is never trusted.
     # Approval (employee_code + principal sign-off) still applies.
+    # Principals only. Google sign-in is not offered to teachers or students:
+    # it links accounts by email, which phone-login accounts may not have.
     google_id_token: str | None = Field(default=None, min_length=10, max_length=4096)
 
     @field_validator("email")
     @classmethod
-    def _email(cls, v: str) -> str:
-        return _normalize_email(v)
+    def _email(cls, v: str | None) -> str | None:
+        return _normalize_email(v) if v else None
 
     @field_validator("mobile_number")
     @classmethod
@@ -87,10 +175,14 @@ class RegisterIn(BaseModel):
         return validators.clean_text(v, max_len=120) if v else None
 
     @model_validator(mode="after")
-    def _require_teacher_fields(self) -> "RegisterIn":
+    def _require_role_fields(self) -> "RegisterIn":
         if self.role == "teacher" and not self.employee_code:
             raise ValueError("Employee code (government teacher ID) is required.")
-        validate_password(self.password, email=str(self.email), name=self.full_name)
+        if self.role == "principal" and not self.email:
+            raise ValueError("Principals need an email address to log in.")
+        if self.role == "teacher" and self.google_id_token:
+            raise ValueError("Google sign-in isn't available for teacher accounts.")
+        validate_password(self.password, email=self.email, name=self.full_name)
         return self
 
 

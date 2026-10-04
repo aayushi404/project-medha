@@ -30,7 +30,7 @@ class ProfileSubjectOut(BaseModel):
 class ProfileOut(BaseModel):
     id: uuid.UUID
     full_name: str
-    email: str
+    email: str | None
     phone_number: str | None
     preferred_language: str
     photo_url: str | None

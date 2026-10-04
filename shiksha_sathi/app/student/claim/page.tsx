@@ -17,6 +17,7 @@ import {
   type SchoolSearchResult,
 } from "@/lib/api";
 import { passwordProblem } from "@/lib/password-policy";
+import { isIndianMobile, normalizeMobile } from "@/lib/validation/auth";
 
 /**
  * For students whose school imported them from a CSV without an email: they
@@ -32,7 +33,7 @@ export default function ClaimAccountPage() {
   const [sectionId, setSectionId] = useState<string | null>(null);
   const [roll, setRoll] = useState("");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [loginPhone, setLoginPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -59,14 +60,14 @@ export default function ClaimAccountPage() {
 
   const sectionsLoading = !!school && !!gradeId && sections === null;
   const rollNumber = /^\d{1,3}$/.test(roll.trim()) ? Number(roll.trim()) : 0;
-  const problem = password ? passwordProblem(password, { email, name }) : null;
+  const problem = password ? passwordProblem(password, { name }) : null;
   const mismatch = confirm.length > 0 && confirm !== password;
   const canSubmit =
     !!school &&
     !!sectionId &&
     rollNumber >= 1 &&
     name.trim().length >= 2 &&
-    /^\S+@\S+\.\S+$/.test(email.trim()) &&
+    isIndianMobile(loginPhone) &&
     password.length > 0 &&
     !problem &&
     confirm === password &&
@@ -82,7 +83,7 @@ export default function ClaimAccountPage() {
         class_section_id: sectionId,
         roll_number: rollNumber,
         full_name: name.trim(),
-        email: email.trim().toLowerCase(),
+        login_phone: normalizeMobile(loginPhone),
         password,
       });
       setDone(true);
@@ -98,8 +99,7 @@ export default function ClaimAccountPage() {
       <SimpleAuthCard title="Your account is ready">
         <div className="mlogin-form">
           <p className="text-center text-sm">
-            Log in with the email and password you just chose. We&apos;ve also sent a message to
-            confirm your email address.
+            Log in with the mobile number and the password you just chose.
           </p>
           <Link href="/login" className="mlogin-submit text-center">
             Go to log in
@@ -172,12 +172,13 @@ export default function ClaimAccountPage() {
         </div>
         <div className="mlogin-field">
           <input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Your email"
-            maxLength={254}
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            value={loginPhone}
+            onChange={(e) => setLoginPhone(e.target.value)}
+            placeholder="Your mobile number (you log in with it)"
+            maxLength={20}
           />
         </div>
         <div className="mlogin-field">

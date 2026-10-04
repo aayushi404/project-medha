@@ -2,18 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  ChevronLeft,
-  Loader2,
-  Search,
-  Settings2,
-} from "lucide-react";
+import { AlertTriangle, ChevronLeft, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  addReserveTeacher,
+  getReserveTeachers,
+  removeReserveTeacher,
   getClassSection,
   getPrincipalTeachers,
   getSectionRoster,
@@ -22,6 +17,7 @@ import {
   setSubjectTeacher,
   updateClassSection,
   type ClassSectionSummary,
+  type ReserveTeacher,
   type RosterStudentItem,
   type Subject,
   type TeacherRosterItem,
@@ -31,12 +27,11 @@ import { useAuth } from "@/lib/auth-context";
 import { useLocale } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
 import { ProfileImage } from "@/components/ui/profile-image";
-import { TeacherAssignmentDrawer } from "@/components/principal/teacher-assignment-drawer";
+import { TeacherPickerSheet, type PickerOption } from "@/components/principal/teacher-picker-sheet";
 
-/** The principal's "Class Section Management" workspace for one class:
- * overview, class teacher, subject teachers, then the student roster --
- * replaces the old bare class-teacher dropdown + a disconnected assignment
- * dialog with one page and one reusable assignment drawer. */
+/** One class, one screen: who is the class teacher, which teacher takes each
+ * subject, and the students. The class teacher can only be someone who already
+ * teaches a subject in this class, so the picker lists exactly those people. */
 export function ClassDetail({ sectionId }: { sectionId: string }) {
   const { accessToken } = useAuth();
   const { locale } = useLocale();
@@ -49,10 +44,12 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [assignments, setAssignments] = useState<TeachingAssignment[] | null>(null);
   const [query, setQuery] = useState("");
-  const [classTeacherDrawerOpen, setClassTeacherDrawerOpen] = useState(false);
+  const [classTeacherOpen, setClassTeacherOpen] = useState(false);
   const [activeSubjectId, setActiveSubjectId] = useState<string | null>(null);
+  const [reserves, setReserves] = useState<ReserveTeacher[]>([]);
+  const [reserveOpen, setReserveOpen] = useState(false);
 
-  function loadSection() {
+  useEffect(() => {
     if (!accessToken) return;
     getClassSection(accessToken, sectionId)
       .then(setSection)
@@ -60,72 +57,72 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
         setSectionError(true);
         toast.error(e instanceof Error ? e.message : "Could not load this class.");
       });
-  }
-
-  function reloadTeachers() {
-    // Workload counts / "class teacher of" flags shift after any assignment
-    // change (this section's or another's, via the auto-unassign rule), so
-    // refresh the whole roster rather than patch one row.
-    if (!accessToken) return;
-    getPrincipalTeachers(accessToken).then(setTeachers).catch(() => {});
-  }
-
-  function loadAssignments() {
-    if (!accessToken) return;
-    getSectionTeachingAssignments(accessToken, sectionId)
-      .then(setAssignments)
-      .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Could not load subject teachers."));
-  }
-
-  useEffect(() => {
-    if (!accessToken) return;
-    loadSection();
     getSectionRoster(accessToken, sectionId)
       .then(setRoster)
       .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Could not load roster."));
-    reloadTeachers();
+    getPrincipalTeachers(accessToken).then(setTeachers).catch(() => {});
     getSubjects().then(setSubjects).catch(() => {});
-    loadAssignments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    getReserveTeachers(accessToken, sectionId).then(setReserves).catch(() => {});
+    getSectionTeachingAssignments(accessToken, sectionId)
+      .then(setAssignments)
+      .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Could not load subject teachers."));
   }, [accessToken, sectionId]);
 
+  function refreshTeachers() {
+    if (accessToken) getPrincipalTeachers(accessToken).then(setTeachers).catch(() => {});
+  }
+
+  const teacherById = useMemo(() => new Map(teachers.map((t) => [t.id, t])), [teachers]);
+  const label = section ? `${section.grade_label} · ${section.section}` : "";
+
+  // Teachers who teach something in this class, with the subjects they teach here.
+  const taughtHere = useMemo(() => {
+    const byTeacher = new Map<string, { teacher: TeacherRosterItem | undefined; subjects: string[] }>();
+    for (const a of assignments ?? []) {
+      const entry = byTeacher.get(a.teacher_id) ?? { teacher: teacherById.get(a.teacher_id), subjects: [] };
+      entry.subjects.push(a.subject_name);
+      byTeacher.set(a.teacher_id, entry);
+    }
+    return byTeacher;
+  }, [assignments, teacherById]);
+
+  const classTeacherId = section?.class_teacher_id ?? null;
+  const classTeacher = classTeacherId ? teacherById.get(classTeacherId) ?? null : null;
+  const classTeacherTeachesHere = classTeacherId ? taughtHere.has(classTeacherId) : false;
+  const classTeacherSubjects = classTeacherId ? taughtHere.get(classTeacherId)?.subjects ?? [] : [];
+
+  const assignedCount = assignments?.length ?? 0;
+  const subjectCount = subjects.length;
+
   async function pickClassTeacher(teacherId: string | null) {
-    if (!section) return;
-    const teacherName = teacherId ? teachers.find((t) => t.id === teacherId)?.full_name : null;
     try {
       const updated = await updateClassSection(accessToken, sectionId, { class_teacher_id: teacherId });
       setSection(updated);
-      reloadTeachers();
-      toast.success(
-        teacherName
-          ? `${teacherName} is now the class teacher of ${section.grade_label} · ${section.section}.`
-          : "Class teacher removed.",
-      );
+      refreshTeachers();
+      const name = teacherId ? teacherById.get(teacherId)?.full_name : null;
+      toast.success(name ? `${name} is now the class teacher of ${label}.` : "Class teacher removed.");
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Couldn't update the class teacher. Please try again.",
-      );
+      toast.error(e instanceof Error ? e.message : "Couldn't update the class teacher.");
       throw e;
     }
   }
 
   async function pickSubjectTeacher(subjectId: string, teacherId: string | null) {
-    if (!section) return;
     const subject = subjects.find((s) => s.id === subjectId);
-    const teacherName = teacherId ? teachers.find((t) => t.id === teacherId)?.full_name : null;
     try {
       const updated = await setSubjectTeacher(accessToken, sectionId, subjectId, teacherId);
       setAssignments(updated);
-      reloadTeachers();
+      refreshTeachers();
+      // a subject change can release the class teacher seat, so reload the class too
+      getClassSection(accessToken, sectionId).then(setSection).catch(() => {});
+      const name = teacherId ? teacherById.get(teacherId)?.full_name : null;
       toast.success(
-        teacherName && subject
-          ? `${teacherName} is now teaching ${subject.name} in ${section.grade_label} · ${section.section}.`
+        name && subject
+          ? `${name} now teaches ${subject.name} in ${label}.`
           : `${subject?.name ?? "Subject"} is now unassigned.`,
       );
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Couldn't update the subject teacher. Please try again.",
-      );
+      toast.error(e instanceof Error ? e.message : "Couldn't update the subject teacher.");
       throw e;
     }
   }
@@ -138,18 +135,6 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
       (s) => s.full_name.toLowerCase().includes(q) || String(s.roll_number ?? "").includes(q),
     );
   }, [roster, query]);
-
-  const classTeacher = useMemo(
-    () => (section?.class_teacher_id ? teachers.find((t) => t.id === section.class_teacher_id) ?? null : null),
-    [section, teachers],
-  );
-
-  const assignedSubjectsCount = assignments?.length ?? 0;
-  const teachersInvolvedCount = useMemo(() => {
-    const ids = new Set((assignments ?? []).map((a) => a.teacher_id));
-    if (section?.class_teacher_id) ids.add(section.class_teacher_id);
-    return ids.size;
-  }, [assignments, section]);
 
   if (sectionError) {
     return (
@@ -172,129 +157,149 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
     );
   }
 
+  const classTeacherOptions: PickerOption[] = [...taughtHere.entries()]
+    .filter(([, v]) => v.teacher)
+    .map(([id, v]) => {
+      const t = v.teacher!;
+      const elsewhere =
+        t.class_teacher_of_section_id && t.class_teacher_of_section_id !== sectionId
+          ? `Class teacher of ${t.class_teacher_of_label} — moves here`
+          : null;
+      return {
+        id,
+        name: t.full_name,
+        photoUrl: t.photo_url,
+        detail: v.subjects.join(", "),
+        note: elsewhere,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const reserveIds = new Set(reserves.map((r) => r.teacher_id));
+  const reserveOptions: PickerOption[] = teachers
+    .filter((t) => !reserveIds.has(t.id))
+    .map((t) => ({
+      id: t.id,
+      name: t.full_name,
+      photoUrl: t.photo_url,
+      detail: t.primary_subject_name ?? (isHi ? "विषय तय नहीं" : "No subject set"),
+      note: t.classes_count >= 5 ? `${isHi ? "पहले से" : "Already teaches"} ${t.classes_count} ${isHi ? "कक्षाएँ" : "classes"}` : null,
+    }));
+
+  async function addReserve(teacherId: string | null) {
+    if (!teacherId) return;
+    try {
+      setReserves(await addReserveTeacher(accessToken, sectionId, teacherId));
+      refreshTeachers();
+      toast.success(isHi ? "आरक्षित शिक्षक जोड़ा गया।" : "Reserve teacher added.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't add the reserve teacher.");
+      throw e;
+    }
+  }
+
+  async function dropReserve(teacherId: string) {
+    try {
+      setReserves(await removeReserveTeacher(accessToken, sectionId, teacherId));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't remove the reserve teacher.");
+    }
+  }
+
+  const activeSubject = subjects.find((s) => s.id === activeSubjectId) ?? null;
+  const subjectOptions: PickerOption[] = teachers.map((t) => ({
+    id: t.id,
+    name: t.full_name,
+    photoUrl: t.photo_url,
+    detail: t.primary_subject_name ?? (isHi ? "विषय तय नहीं" : "No subject set"),
+    note:
+      t.class_teacher_of_section_id && t.class_teacher_of_section_id !== sectionId
+        ? `Class teacher of ${t.class_teacher_of_label}`
+        : null,
+  }));
+
   return (
     <div className="flex flex-col gap-5">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/principal/classes"
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label={isHi ? "वापस" : "Back to Classes"}
-          >
-            <ChevronLeft className="size-4" />
-          </Link>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">
-              {section.grade_label} · {section.section}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {section.student_count} {isHi ? "छात्र" : section.student_count === 1 ? "student" : "students"}
-              {" · "}
-              {isHi ? "शैक्षणिक सत्र" : "Academic year"} {section.academic_year_label}
-            </p>
-          </div>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            document.getElementById("subject-teachers")?.scrollIntoView({ behavior: "smooth", block: "start" })
-          }
+      <div className="flex items-center gap-3">
+        <Link
+          href="/principal/classes"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label={isHi ? "वापस" : "Back to Classes"}
         >
-          <Settings2 className="size-3.5" /> {isHi ? "असाइनमेंट प्रबंधित करें" : "Manage assignments"}
-        </Button>
-      </div>
-
-      {/* Overview */}
-      <div className="flex flex-col gap-2">
-        <div className="grid grid-cols-3 gap-3">
-          <OverviewCard label={isHi ? "छात्र" : "Students"} value={section.student_count} />
-          <OverviewCard label={isHi ? "विषय" : "Subjects"} value={subjects.length} />
-          <OverviewCard label={isHi ? "शिक्षक" : "Teachers"} value={teachersInvolvedCount} />
+          <ChevronLeft className="size-4" />
+        </Link>
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">{label}</h1>
+          <p className="text-xs text-muted-foreground">
+            {section.student_count}{" "}
+            {isHi ? "छात्र" : section.student_count === 1 ? "student" : "students"} · {section.academic_year_label}
+          </p>
         </div>
-        {subjects.length > 0 && (
-          <div
-            className={
-              assignedSubjectsCount === subjects.length
-                ? "flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
-                : "flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400"
-            }
-          >
-            {assignedSubjectsCount === subjects.length ? (
-              <>
-                <CheckCircle2 className="size-3.5" />
-                {isHi ? "सभी विषय असाइन किए गए" : "All subjects assigned"}
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="size-3.5" />
-                {assignedSubjectsCount}/{subjects.length}{" "}
-                {isHi
-                  ? "विषय असाइन किए गए"
-                  : `subjects assigned — ${subjects.length - assignedSubjectsCount} ${
-                      subjects.length - assignedSubjectsCount === 1 ? "subject needs" : "subjects need"
-                    } a teacher`}
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Class teacher */}
-      <div className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">{isHi ? "कक्षा शिक्षक" : "Class teacher"}</h2>
-          <Button size="sm" variant="outline" onClick={() => setClassTeacherDrawerOpen(true)}>
-            {classTeacher ? (isHi ? "बदलें" : "Change") : isHi ? "असाइन करें" : "Assign teacher"}
+      <section className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-foreground">{isHi ? "कक्षा शिक्षक" : "Class teacher"}</h2>
+            <p className="text-xs text-muted-foreground">
+              {isHi
+                ? "केवल वे शिक्षक जो इस कक्षा में कोई विषय पढ़ाते हैं"
+                : "Only teachers who teach a subject in this class"}
+            </p>
+          </div>
+          <Button size="sm" variant={classTeacher ? "outline" : "default"} onClick={() => setClassTeacherOpen(true)}>
+            {classTeacher ? (isHi ? "बदलें" : "Change") : isHi ? "चुनें" : "Choose"}
           </Button>
         </div>
 
         {classTeacher ? (
-          <div className="flex items-center gap-3">
-            <Link href={`/principal/teachers/${classTeacher.id}`} className="shrink-0">
-              <ProfileImage url={classTeacher.photo_url} name={classTeacher.full_name} size="lg" />
-            </Link>
-            <div className="min-w-0 flex-1">
-              <Link
-                href={`/principal/teachers/${classTeacher.id}`}
-                className="truncate text-sm font-semibold text-foreground hover:underline"
-              >
+          <div className="mt-4 flex items-center gap-3">
+            <ProfileImage url={classTeacher.photo_url} name={classTeacher.full_name} size="lg" />
+            <div className="min-w-0">
+              <Link href={`/principal/teachers/${classTeacher.id}`} className="block truncate text-sm font-semibold text-foreground hover:underline">
                 {classTeacher.full_name}
               </Link>
               <p className="truncate text-xs text-muted-foreground">
-                {classTeacher.primary_subject_name ?? "—"}
+                {isHi ? "पढ़ाते हैं" : "Teaches"}: {classTeacherSubjects.join(", ") || "—"}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {isHi ? "कक्षा शिक्षक" : "Class teacher"} · {section.grade_label} · {section.section}
-              </p>
-              <Link
-                href={`/principal/teachers/${classTeacher.id}`}
-                className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-terracotta hover:underline"
-              >
-                {isHi ? "शिक्षक प्रोफ़ाइल देखें" : "View teacher profile"} <ArrowRight className="size-3" />
-              </Link>
             </div>
           </div>
         ) : (
-          <p className="py-2 text-sm text-muted-foreground">
-            {isHi ? "अभी कोई कक्षा शिक्षक नहीं है।" : "No class teacher assigned."}
+          <p className="mt-4 text-sm text-muted-foreground">
+            {isHi ? "अभी कोई कक्षा शिक्षक नहीं है।" : "No class teacher yet."}
           </p>
         )}
-      </div>
 
-      {/* Subject teachers */}
-      <div id="subject-teachers" className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10">
-        <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">
-            {isHi ? "विषय शिक्षक" : "Subject teachers"}
-          </h2>
-          {subjects.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              {subjects.length} {isHi ? "विषय" : "subjects"} · {assignedSubjectsCount} {isHi ? "असाइन" : "assigned"}
+        {classTeacher && !classTeacherTeachesHere ? (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="size-3.5 shrink-0" />
+            {isHi
+              ? "यह शिक्षक इस कक्षा में कोई विषय नहीं पढ़ाते। नया कक्षा शिक्षक चुनें।"
+              : "This teacher doesn't teach any subject in this class. Choose another class teacher."}
+          </p>
+        ) : null}
+      </section>
+
+      {/* Subjects */}
+      <section id="subject-teachers" className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-foreground">{isHi ? "विषय और शिक्षक" : "Subjects and teachers"}</h2>
+          {assignments !== null ? (
+            <span className="text-xs font-medium text-muted-foreground">
+              {assignedCount}/{subjectCount} {isHi ? "असाइन" : "assigned"}
             </span>
-          )}
+          ) : null}
         </div>
+        {assignments !== null && subjectCount > 0 ? (
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${Math.round((assignedCount / subjectCount) * 100)}%` }}
+            />
+          </div>
+        ) : null}
 
         {assignments === null ? (
           <div className="flex justify-center py-8">
@@ -305,42 +310,79 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
             {isHi ? "कोई विषय उपलब्ध नहीं है।" : "No subjects available."}
           </p>
         ) : (
-          <ul className="mt-2 divide-y divide-border">
+          <ul className="mt-3 divide-y divide-border">
             {subjects.map((subject) => {
               const assignment = assignments.find((a) => a.subject_id === subject.id);
-              const teacher = assignment ? teachers.find((t) => t.id === assignment.teacher_id) : null;
+              const teacher = assignment ? teacherById.get(assignment.teacher_id) : undefined;
               return (
-                <li key={subject.id} className="flex items-center gap-3 py-2.5">
-                  <span className="w-28 shrink-0 truncate text-sm font-medium text-foreground sm:w-36">
-                    {subject.name}
-                  </span>
+                <li key={subject.id} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    {teacher ? (
-                      <Link
-                        href={`/principal/teachers/${teacher.id}`}
-                        className="flex min-w-0 items-center gap-2 hover:underline"
-                      >
-                        <ProfileImage url={teacher.photo_url} name={teacher.full_name} size="sm" />
-                        <span className="truncate text-sm text-foreground">{teacher.full_name}</span>
-                      </Link>
+                    <p className="text-sm font-medium text-foreground">{subject.name}</p>
+                    {assignment ? (
+                      <p className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                        <ProfileImage url={teacher?.photo_url ?? null} name={assignment.teacher_name} size="sm" />
+                        <span className="truncate">{assignment.teacher_name}</span>
+                      </p>
                     ) : (
-                      <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                        — {isHi ? "अनसाइन्ड" : "Unassigned"}
-                      </span>
+                      <p className="mt-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                        {isHi ? "शिक्षक नहीं चुना गया" : "No teacher yet"}
+                      </p>
                     )}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setActiveSubjectId(subject.id)}>
-                    {teacher ? (isHi ? "बदलें" : "Change") : isHi ? "असाइन करें" : "Assign"}
+                  <Button
+                    size="sm"
+                    variant={assignment ? "outline" : "default"}
+                    onClick={() => setActiveSubjectId(subject.id)}
+                  >
+                    {assignment ? (isHi ? "बदलें" : "Change") : isHi ? "चुनें" : "Choose"}
                   </Button>
                 </li>
               );
             })}
           </ul>
         )}
-      </div>
+      </section>
+
+      {/* Reserve teachers: on standby for any period in this class */}
+      <section className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-foreground">{isHi ? "आरक्षित शिक्षक" : "Reserve teachers"}</h2>
+            <p className="text-xs text-muted-foreground">
+              {isHi
+                ? "किसी शिक्षक के अनुपस्थित होने पर इस कक्षा के किसी भी कालांश में कवर करेंगे"
+                : "Cover any period in this class when a teacher is absent"}
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setReserveOpen(true)}>
+            {isHi ? "जोड़ें" : "Add"}
+          </Button>
+        </div>
+        {reserves.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">{isHi ? "अभी कोई आरक्षित शिक्षक नहीं।" : "No reserve teachers yet."}</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-border">
+            {reserves.map((r) => (
+              <li key={r.teacher_id} className="flex items-center gap-3 py-2.5">
+                <ProfileImage url={r.photo_url} name={r.full_name} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{r.full_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {r.primary_subject_name ?? (isHi ? "विषय तय नहीं" : "No subject set")} · {r.classes_count}{" "}
+                    {isHi ? "कक्षाएँ" : r.classes_count === 1 ? "class" : "classes"}
+                  </p>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => dropReserve(r.teacher_id)}>
+                  {isHi ? "हटाएँ" : "Remove"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* Students */}
-      <div className="rounded-xl bg-card ring-1 ring-foreground/10">
+      <section className="rounded-xl bg-card ring-1 ring-foreground/10">
         <div className="flex items-center justify-between border-b border-border p-3">
           <h2 className="text-sm font-semibold text-foreground">{isHi ? "छात्र" : "Students"}</h2>
           <span className="text-xs text-muted-foreground">{section.student_count}</span>
@@ -356,7 +398,6 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
             />
           </div>
         </div>
-
         {filteredRoster === null ? (
           <div className="flex justify-center py-8">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -364,21 +405,14 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
         ) : filteredRoster.length === 0 ? (
           <p className="p-6 text-center text-sm text-muted-foreground">
             {roster && roster.length > 0
-              ? isHi
-                ? "कोई मेल खाता छात्र नहीं मिला।"
-                : "No students match your search."
-              : isHi
-                ? "इस कक्षा में अभी कोई छात्र नहीं है।"
-                : "No students are enrolled in this class."}
+              ? isHi ? "कोई मेल खाता छात्र नहीं मिला।" : "No students match your search."
+              : isHi ? "इस कक्षा में अभी कोई छात्र नहीं है।" : "No students are enrolled in this class."}
           </p>
         ) : (
           <ul className="divide-y divide-border">
             {filteredRoster.map((s) => (
               <li key={s.id}>
-                <Link
-                  href={`/principal/students/${s.id}`}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/50"
-                >
+                <Link href={`/principal/students/${s.id}`} className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-muted/50">
                   <span className="w-6 shrink-0 text-xs text-muted-foreground">{s.roll_number ?? ""}</span>
                   <ProfileImage url={s.photo_url} name={s.full_name} size="sm" />
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">{s.full_name}</span>
@@ -388,49 +422,50 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
-      <TeacherAssignmentDrawer
-        open={classTeacherDrawerOpen}
-        onOpenChange={setClassTeacherDrawerOpen}
-        title={isHi ? "कक्षा शिक्षक असाइन करें" : "Assign class teacher"}
-        subtitle={`${section.grade_label} · ${section.section}`}
-        teachers={teachers}
-        currentTeacherId={section.class_teacher_id}
-        currentSectionId={sectionId}
-        mode="class_teacher"
+      <TeacherPickerSheet
+        open={reserveOpen}
+        onOpenChange={setReserveOpen}
+        title={isHi ? "आरक्षित शिक्षक जोड़ें" : "Add reserve teacher"}
+        subtitle={label}
+        options={reserveOptions}
+        currentId={null}
+        emptyText={isHi ? "जोड़ने के लिए कोई शिक्षक नहीं बचा।" : "Everyone is already a reserve here."}
+        unassignLabel={null}
+        onPick={addReserve}
+      />
+
+      <TeacherPickerSheet
+        open={classTeacherOpen}
+        onOpenChange={setClassTeacherOpen}
+        title={isHi ? "कक्षा शिक्षक चुनें" : "Choose class teacher"}
+        subtitle={label}
+        options={classTeacherOptions}
+        currentId={classTeacherId}
+        emptyText={
+          isHi
+            ? "इस कक्षा में अभी कोई शिक्षक विषय नहीं पढ़ाता। पहले नीचे विषय के शिक्षक चुनें।"
+            : "No one teaches a subject in this class yet. Choose subject teachers below first."
+        }
+        unassignLabel={isHi ? "कक्षा शिक्षक हटाएँ" : "Remove class teacher"}
         onPick={pickClassTeacher}
       />
 
-      {activeSubjectId && (
-        <TeacherAssignmentDrawer
-          key={activeSubjectId}
+      {activeSubject ? (
+        <TeacherPickerSheet
+          key={activeSubject.id}
           open
           onOpenChange={(o) => !o && setActiveSubjectId(null)}
-          title={
-            isHi
-              ? `${subjects.find((s) => s.id === activeSubjectId)?.name ?? ""} शिक्षक असाइन करें`
-              : `Assign ${subjects.find((s) => s.id === activeSubjectId)?.name ?? ""} teacher`
-          }
-          subtitle={`${section.grade_label} · ${section.section}`}
-          teachers={teachers}
-          currentTeacherId={
-            assignments?.find((a) => a.subject_id === activeSubjectId)?.teacher_id ?? null
-          }
-          currentSectionId={sectionId}
-          mode="subject"
-          onPick={(teacherId) => pickSubjectTeacher(activeSubjectId, teacherId)}
+          title={isHi ? `${activeSubject.name} के शिक्षक चुनें` : `Choose ${activeSubject.name} teacher`}
+          subtitle={label}
+          options={subjectOptions}
+          currentId={assignments?.find((a) => a.subject_id === activeSubject.id)?.teacher_id ?? null}
+          emptyText={isHi ? "इस विद्यालय में कोई शिक्षक नहीं है।" : "No approved teachers at this school yet."}
+          unassignLabel={isHi ? "विषय से शिक्षक हटाएँ" : "Remove teacher from this subject"}
+          onPick={(teacherId) => pickSubjectTeacher(activeSubject.id, teacherId)}
         />
-      )}
-    </div>
-  );
-}
-
-function OverviewCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl bg-card p-4 text-center ring-1 ring-foreground/10">
-      <div className="text-2xl font-semibold tabular-nums text-foreground">{value}</div>
-      <div className="mt-0.5 text-xs text-muted-foreground">{label}</div>
+      ) : null}
     </div>
   );
 }

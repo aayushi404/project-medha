@@ -14,6 +14,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from backend.core.config import settings
 from backend.db.models import ApprovalEvent, AuthSession, Student, Teacher
 from backend.notifications import service as notifications
 
@@ -53,13 +54,20 @@ def approve(db: Session, *, actor: Teacher, subject: Subject, note: str | None =
         raise HTTPException(
             status.HTTP_409_CONFLICT, "This account is already approved."
         )
-    # An account can only be admitted once its owner has proven they control
-    # the email address -- otherwise a pending row could be approved on behalf of
-    # someone else's mailbox.
-    if subject.email_verified_at is None:
+    # A principal logs in by email, so they must have proven they control it
+    # before anyone admits them -- otherwise a pending row could be approved on
+    # behalf of someone else's mailbox.
+    if subject.role == "principal" and subject.email_verified_at is None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "This person hasn't verified their email address yet. Ask them to open the verification link we emailed.",
+        )
+    # Teachers and students log in by phone. Phone OTP isn't built yet, so this
+    # check is off during the trial; `phone_otp_required` turns it on.
+    if subject.role != "principal" and settings.phone_otp_required and subject.phone_verified_at is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This person hasn't verified their phone number yet.",
         )
 
     subject.approval_status = "approved"

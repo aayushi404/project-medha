@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_issuer: str = "medha-api"
     jwt_audience: str = "medha-web"
-    access_token_expire_minutes: int = 15
+    access_token_expire_minutes: int = 30
 
     # Refresh tokens (opaque, stored hashed in auth_sessions)
     refresh_token_expire_days: int = 30
@@ -114,6 +114,10 @@ class Settings(BaseSettings):
     # Google sign-in — the WEB client ID, used as the audience when verifying
     # ID tokens (see auth/service.py). Unset disables /auth/google (503).
     google_client_id: str = ""
+    # Phone-number login (docs/phone-login-plan.md). Off during the trial: staff
+    # create/approve accounts and no OTP is sent. Turning it on makes approval
+    # of teachers and students wait for `phone_verified_at` (OTP not built yet).
+    phone_otp_required: bool = False
 
     # Firebase Cloud Messaging — path to a service-account JSON (Firebase
     # console -> Project settings -> Service accounts -> Generate new private

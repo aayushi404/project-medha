@@ -13,7 +13,6 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from backend.app import app
@@ -26,6 +25,16 @@ client = TestClient(app)
 PW = "Sup3r-secret-Phrase"
 
 
+def _student_profile_id(phone: str, full_name: str) -> str:
+    """Resolve a seeded student's profile id through the picker endpoint, the
+    same way the login screen does."""
+    r = client.post("/auth/student/lookup", json={"phone": phone})
+    for profile in r.json().get("profiles", []):
+        if profile["full_name"] == full_name:
+            return profile["id"]
+    raise unittest.SkipTest(f"seed student {full_name} unavailable")
+
+
 def _student_payload(email: str, school_id, section_id, roll: int) -> dict:
     return {
         "full_name": "Test Student",
@@ -35,6 +44,9 @@ def _student_payload(email: str, school_id, section_id, roll: int) -> dict:
         "guardian_name": "Test Guardian",
         "guardian_relation": "father",
         "guardian_phone": "9812345678",
+        # a random number per call: login phones are not unique, but a fixed one
+        # would still tie these tests' accounts together
+        "login_phone": f"+919{uuid.uuid4().int % 10**9:09d}",
         "email": email,
         "password": PW,
     }
@@ -54,14 +66,25 @@ class TestPasswordPolicy(unittest.TestCase):
 
 class TestLoginThrottle(unittest.TestCase):
     def test_locks_pair_but_not_other_accounts(self):
-        victim = f"victim-{uuid.uuid4().hex[:8]}@example.org"
-        body = {"email": victim, "password": "wrong-password-1", "role": "student"}
-        codes = [client.post("/auth/login", json=body).status_code for _ in range(7)]
+        # a random, unused number: no account, so every attempt is a plain miss
+        victim = f"+919{uuid.uuid4().int % 10**9:09d}"
+        body = {"phone": victim, "password": "wrong-password-1", "role": "teacher"}
+        codes = [client.post("/auth/login/phone", json=body).status_code for _ in range(7)]
         self.assertEqual(codes[:5], [401] * 5)
         self.assertEqual(codes[5:], [429, 429])
-        # locking the (ip, email) pair must not block a different account from the same IP
-        other = client.post("/auth/login", json={"email": f"o-{uuid.uuid4().hex[:8]}@example.org", "password": "x" * 12, "role": "student"})
+        # locking the (ip, phone) pair must not block a different account from the same IP
+        other_phone = f"+919{uuid.uuid4().int % 10**9:09d}"
+        other = client.post(
+            "/auth/login/phone", json={"phone": other_phone, "password": "x" * 12, "role": "teacher"}
+        )
         self.assertEqual(other.status_code, 401)
+
+    def test_email_login_rejects_teacher_and_student_roles(self):
+        # teachers and students no longer log in by email at all
+        r = client.post("/auth/login", json={"email": "anita.science@medhabihar.org", "password": "Password@123", "role": "teacher"})
+        self.assertEqual(r.status_code, 422)
+        r = client.post("/auth/login", json={"email": "aditi.c6@medhabihar.org", "password": "Password@123", "role": "student"})
+        self.assertEqual(r.status_code, 422)
 
 
 class TestRegistrationFlow(unittest.TestCase):
@@ -108,22 +131,22 @@ class TestRegistrationFlow(unittest.TestCase):
         # ...and the address owner is told by email instead
         self.assertTrue(any("already have" in c.args[1] for c in self.sent.call_args_list))
 
-        # approval is refused until the email is verified
+        # Students log in by phone, so an unverified email no longer blocks
+        # approval -- the email is only a contact address now.
         student = self.db.query(Student).filter(Student.email == email).one()
         teacher = self.db.query(Teacher).filter(Teacher.role == "teacher", Teacher.school_id == self.school.id).first()
-        with self.assertRaises(HTTPException) as cm:
-            approvals.approve(self.db, actor=teacher, subject=student)
-        self.assertEqual(cm.exception.status_code, 409)
+        approvals.approve(self.db, actor=teacher, subject=student)
+        self.db.expire_all()
+        self.assertIsNone(self.db.query(Student).filter(Student.email == email).one().email_verified_at)
 
+        # the verification link still works, once
         body = next(c.args[2] for c in self.sent.call_args_list if "Verify" in c.args[1])
         token = re.search(r"token=([A-Za-z0-9_-]+)", body).group(1)
         self.assertEqual(client.post("/auth/verify-email", json={"token": token}).status_code, 200)
         self.assertEqual(client.post("/auth/verify-email", json={"token": token}).status_code, 400)  # single use
 
         self.db.expire_all()
-        student = self.db.query(Student).filter(Student.email == email).one()
-        self.assertIsNotNone(student.email_verified_at)
-        approvals.approve(self.db, actor=teacher, subject=student)
+        self.assertIsNotNone(self.db.query(Student).filter(Student.email == email).one().email_verified_at)
 
     def test_forgot_password_is_uniform_and_reset_is_single_use(self):
         email = f"pw-{uuid.uuid4().hex[:8]}@example.org"
@@ -146,7 +169,15 @@ class TestRefreshSessions(unittest.TestCase):
 
     def _login(self):
         c = TestClient(app)
-        r = c.post("/auth/login", json={"email": "aditi.c6@medhabihar.org", "password": "Password@123", "role": "student"})
+        r = c.post(
+            "/auth/login/phone",
+            json={
+                "phone": "+919800000001",
+                "password": "Password@123",
+                "role": "student",
+                "student_id": _student_profile_id("+919800000001", "Aditi Sharma"),
+            },
+        )
         if r.status_code != 200:
             self.skipTest("seed student unavailable")
         return c, r.cookies.get("refresh_token")

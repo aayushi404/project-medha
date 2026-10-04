@@ -11,14 +11,21 @@ from sqlalchemy.orm import Session
 from backend.auth import emails, tokens
 from backend.auth.hashing import hash_password, hash_refresh_token, verify_password
 from backend.auth.jwt import create_access_token, create_refresh_token
-from backend.auth.schemas import RegisterIn
+from backend.auth.schemas import (
+    RegisterIn,
+    ResetCodeOut,
+    ResetWithCodeIn,
+    StudentLookupOut,
+    StudentProfileOut,
+)
 from backend.core import throttle
 from backend.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
-from backend.db.models import AuthSession, School, Student, Teacher
+from backend.core.section_access import current_enrollment
+from backend.db.models import AccountAuditEvent, AuthSession, ClassSection, Grade, School, Student, Teacher
 
 logger = logging.getLogger("backend.auth")
 
-# A real hash so verify_password does the full bcrypt work even when the email
+# A real hash so verify_password does the full bcrypt work even when the account
 # doesn't exist -- keeps login response time from leaking account existence.
 _DUMMY_HASH = bcrypt.hashpw(b"unused", bcrypt.gensalt()).decode("utf-8")
 
@@ -28,12 +35,25 @@ MAX_SESSIONS_PER_ACTOR = 5
 _REUSE_GRACE_SECONDS = 10
 _DEVICE_INFO_MAX = 300
 
-# Login limits (see core/throttle.py for why there's no email-only lockout).
+# Login limits (see core/throttle.py for why there's no identifier-only lockout).
 _LOGIN_WINDOW = 15 * 60
-_LOGIN_PER_IP_EMAIL = 5
+_LOGIN_PER_IP_IDENTIFIER = 5  # one identifier (email, or phone + profile) from one address
 _LOGIN_PER_IP = 100  # generous: a school computer lab shares one address
-_LOGIN_EMAIL_WINDOW = 60 * 60
-_LOGIN_PER_EMAIL = 100  # makes distributed guessing costly without making lockout cheap
+_LOGIN_IDENTIFIER_WINDOW = 60 * 60
+_LOGIN_PER_IDENTIFIER = 100  # makes distributed guessing costly without making lockout cheap
+
+# Profile lookup and staff-issued reset codes. Lookup is the enumeration point
+# for phone numbers, so it is throttled on both axes.
+_LOOKUP_WINDOW = 15 * 60
+_LOOKUP_PER_IP = 30
+_LOOKUP_PER_PHONE = 10
+_RESET_WINDOW = 60 * 60
+_RESET_PER_IP = 30
+_RESET_PER_PHONE = 10
+
+_ADMIN_OR_PRINCIPAL = ("principal", "admin")
+_LOGIN_FAILED = "Invalid email or password."
+_PHONE_LOGIN_FAILED = "Invalid phone number or password."
 
 
 def _now() -> datetime:
@@ -142,15 +162,21 @@ def _verify_google_id_token(raw_id_token: str) -> dict:
     return claims
 
 
-def register(db: Session, payload: RegisterIn, background: BackgroundTasks) -> None:
-    """Create a pending account, or quietly do nothing visible if the email is
-    already registered. Registering never logs you in -- the email must be
-    verified and then an admin (for principals) or a principal (for teachers)
-    has to approve.
+def _notify_already_registered(background: BackgroundTasks, email: str | None, name: str) -> None:
+    # No email on the application means there is nobody to tell -- the
+    # response is the same either way, so nothing leaks.
+    if email:
+        emails.already_registered(background, email, name)
 
-    The response is identical whether or not the email already existed (an
-    "already registered" email goes to the address's owner instead), so this
-    endpoint can't be used to find out who has an account."""
+
+def register(db: Session, payload: RegisterIn, background: BackgroundTasks) -> None:
+    """Create a pending account, or quietly do nothing visible if the account
+    already exists. Registering never logs you in -- a teacher needs their
+    principal's approval; a principal needs an admin's, and a verified email.
+
+    The response is identical whether or not the account already existed (the
+    address's owner is told by email when there is one), so this endpoint can't
+    be used to find out who has an account."""
     school = db.get(School, payload.school_id)
     if school is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That school wasn't found.")
@@ -171,12 +197,19 @@ def register(db: Session, payload: RegisterIn, background: BackgroundTasks) -> N
     email_verified = False
     if payload.google_id_token:
         claims = _verify_google_id_token(payload.google_id_token)
-        if (claims.get("email") or "").strip().lower() != payload.email:
+        if (claims.get("email") or "").strip().lower() != (payload.email or ""):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "The Google account doesn't match this email.")
         google_sub = claims["sub"]
         email_verified = True  # Google has verified this address
 
-    existing = db.query(Teacher).filter(Teacher.email == payload.email).first()
+    # A teacher is matched by email if they gave one, otherwise by phone -- the
+    # phone is their login, so it is the identity that must not be duplicated.
+    existing: Teacher | None = None
+    if payload.email:
+        existing = db.query(Teacher).filter(Teacher.email == payload.email).first()
+    if existing is None:
+        existing = db.query(Teacher).filter(Teacher.phone_number == payload.mobile_number).first()
+
     if existing is not None:
         reapply = (
             existing.approval_status == "rejected"
@@ -184,7 +217,7 @@ def register(db: Session, payload: RegisterIn, background: BackgroundTasks) -> N
             and existing.school_id == payload.school_id
         )
         if not reapply:
-            emails.already_registered(background, payload.email, payload.full_name)
+            _notify_already_registered(background, payload.email, payload.full_name)
             return
         teacher = existing  # a rejected applicant may re-apply to the same school and role
     else:
@@ -194,7 +227,7 @@ def register(db: Session, payload: RegisterIn, background: BackgroundTasks) -> N
     if google_sub is not None:
         conflict = db.query(Teacher).filter(Teacher.google_sub == google_sub).first()
         if conflict is not None and conflict is not teacher:
-            emails.already_registered(background, payload.email, payload.full_name)
+            _notify_already_registered(background, payload.email, payload.full_name)
             db.rollback()
             return
         teacher.google_sub = google_sub
@@ -216,13 +249,13 @@ def register(db: Session, payload: RegisterIn, background: BackgroundTasks) -> N
     try:
         db.commit()
     except IntegrityError:
-        # a concurrent registration (or a reused mobile number) won the race
+        # a concurrent registration (or a reused phone / email) won the race
         db.rollback()
-        emails.already_registered(background, payload.email, payload.full_name)
+        _notify_already_registered(background, payload.email, payload.full_name)
         return
     db.refresh(teacher)
 
-    if teacher.email_verified_at is None:
+    if teacher.email and teacher.email_verified_at is None:
         emails.verification(background, teacher.email, teacher.full_name, tokens.issue(db, teacher, tokens.VERIFY_EMAIL))
 
 
@@ -232,27 +265,27 @@ def register(db: Session, payload: RegisterIn, background: BackgroundTasks) -> N
 def google_login(
     db: Session, raw_id_token: str, device_info: str | None
 ) -> tuple[str, str, int]:
-    """Same three outcomes as `login()` (issued tokens / PENDING_APPROVAL /
-    REGISTRATION_REJECTED), plus a fourth: no account is linked to this Google
-    identity yet, so the client should route to Register (prefilled) rather
-    than treating this as a login failure."""
+    """Google sign-in for principal and admin accounts only. Teachers and
+    students have no Google path: it links by email, and phone-login accounts
+    may not have one. Same outcomes as `login_email()`, plus NOT_REGISTERED so
+    the client can route to Register."""
     claims = _verify_google_id_token(raw_id_token)
     google_sub = claims["sub"]
     email = (claims.get("email") or "").strip().lower()
     full_name = claims.get("name") or (email.split("@")[0] if email else "")
 
-    actor: Teacher | Student | None = db.query(Teacher).filter(
-        Teacher.google_sub == google_sub
-    ).first() or db.query(Student).filter(Student.google_sub == google_sub).first()
+    actor: Teacher | None = db.query(Teacher).filter(
+        Teacher.google_sub == google_sub, Teacher.role.in_(_ADMIN_OR_PRINCIPAL)
+    ).first()
 
     if actor is None and email:
         # Google has verified this person owns `email`. Link it to an existing
         # row with that email -- but if the row's email was never verified,
         # whoever created it (possibly not this person) chose its password, so
         # discard that password: the real owner sets their own via reset.
-        candidate: Teacher | Student | None = db.query(Teacher).filter(Teacher.email == email).first()
-        if candidate is None:
-            candidate = db.query(Student).filter(Student.email == email).first()
+        candidate: Teacher | None = db.query(Teacher).filter(
+            Teacher.email == email, Teacher.role.in_(_ADMIN_OR_PRINCIPAL)
+        ).first()
         if candidate is not None and candidate.google_sub is None:
             if candidate.email_verified_at is None:
                 candidate.password_hash = None
@@ -289,7 +322,22 @@ def _assert_can_sign_in(actor: Teacher | Student) -> None:
         )
 
 
-def login(
+def _check_login_throttle(db: Session, pair_key: str, ip_key: str, identifier: str) -> None:
+    if (
+        throttle.count(db, "login_ip_identifier", pair_key, _LOGIN_WINDOW) >= _LOGIN_PER_IP_IDENTIFIER
+        or throttle.count(db, "login_ip", ip_key, _LOGIN_WINDOW) >= _LOGIN_PER_IP
+        or throttle.count(db, "login_identifier", identifier, _LOGIN_IDENTIFIER_WINDOW) >= _LOGIN_PER_IDENTIFIER
+    ):
+        raise throttle.too_many(_LOGIN_WINDOW)
+
+
+def _record_login_failure(db: Session, pair_key: str, ip_key: str, identifier: str) -> None:
+    throttle.hit(db, "login_ip_identifier", pair_key, _LOGIN_WINDOW)
+    throttle.hit(db, "login_ip", ip_key, _LOGIN_WINDOW)
+    throttle.hit(db, "login_identifier", identifier, _LOGIN_IDENTIFIER_WINDOW)
+
+
+def login_email(
     db: Session,
     email: str,
     password: str,
@@ -297,59 +345,183 @@ def login(
     expected_role: str | None = None,
     ip: str = "unknown",
 ) -> tuple[str, str, int]:
-    pair_key, ip_key = f"{ip}|{email}", ip
-    if (
-        throttle.count(db, "login_ip_email", pair_key, _LOGIN_WINDOW) >= _LOGIN_PER_IP_EMAIL
-        or throttle.count(db, "login_ip", ip_key, _LOGIN_WINDOW) >= _LOGIN_PER_IP
-        or throttle.count(db, "login_email", email, _LOGIN_EMAIL_WINDOW) >= _LOGIN_PER_EMAIL
-    ):
-        raise throttle.too_many(_LOGIN_WINDOW)
+    """Principal and admin login. Teachers and students are not found here:
+    a teacher who types their email into the principal tab gets a wrong-portal
+    error after the password is checked, so it reveals nothing new.
 
-    # A student and a teacher/principal/admin live in independent tables with
-    # independently-unique emails, so the login-screen tab picks which table to
-    # look in -- no tab (or a non-student tab) means "teachers".
-    model = Student if expected_role == "student" else Teacher
-    actor: Teacher | Student | None = db.query(model).filter(model.email == email).first()
-    # a row can exist without a usable credential (e.g. an unverified account
-    # whose password was discarded) -- fall back to the dummy hash so response
-    # time and message match the "no such account" case.
+    `expected_role` is the portal the login came from ("principal" or "admin").
+    Admins sign in only through the /admin/login portal, and that portal admits
+    only admins. A mismatch there gets the generic failure, so neither portal
+    reveals which emails belong to admins."""
+    pair_key = f"{ip}|{email}"
+    _check_login_throttle(db, pair_key, ip, email)
+
+    actor = db.query(Teacher).filter(Teacher.email == email).first()
+    # a row can exist without a usable credential -- fall back to the dummy
+    # hash so response time and message match the "no such account" case.
     stored_hash = actor.password_hash if actor is not None and actor.password_hash else _DUMMY_HASH
-    # Admins sign in only through the dedicated /admin/login portal (role
-    # "admin"), and that portal admits only admins. A mismatch either way gets
-    # the generic failure below rather than ROLE_MISMATCH, so neither form
-    # confirms which emails belong to admins.
     wrong_admin_portal = (
         actor is not None
         and expected_role is not None
         and (expected_role == "admin") != (actor.role == "admin")
     )
-    if (
-        not verify_password(password, stored_hash)
-        or actor is None
-        or not actor.is_active
-        or wrong_admin_portal
-    ):
-        throttle.hit(db, "login_ip_email", pair_key, _LOGIN_WINDOW)
-        throttle.hit(db, "login_ip", ip_key, _LOGIN_WINDOW)
-        throttle.hit(db, "login_email", email, _LOGIN_EMAIL_WINDOW)
-        # same message for missing user and wrong password -- don't reveal
-        # which emails are registered
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password.")
+    if not verify_password(password, stored_hash) or actor is None or not actor.is_active or wrong_admin_portal:
+        _record_login_failure(db, pair_key, ip, email)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, _LOGIN_FAILED)
 
     # The password is right, so this is genuinely their account -- but the
-    # login screen's tab doesn't match the role on file. Reject rather than
-    # silently letting a teacher in through the student tab. (Admin/non-admin
-    # portal mismatches were already rejected above.)
+    # portal doesn't match the role on file. Reject rather than letting an
+    # admin or a non-principal in through the principal tab.
     if expected_role is not None and actor.role != expected_role:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             detail={"code": "ROLE_MISMATCH", "actual_role": actor.role},
         )
 
-    _assert_can_sign_in(actor)
+    if actor.role not in _ADMIN_OR_PRINCIPAL:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={"code": "ROLE_MISMATCH", "actual_role": actor.role},
+        )
 
-    throttle.clear(db, "login_ip_email", pair_key)
+    _assert_can_sign_in(actor)
+    throttle.clear(db, "login_ip_identifier", pair_key)
     return _issue_tokens(db, actor, device_info)
+
+
+def _phone_actor(db: Session, role: str, phone: str, student_id: uuid.UUID | None) -> Teacher | Student | None:
+    """The account a phone login refers to. A student is only found when
+    `student_id` also belongs to `phone` -- so a profile id from some other
+    family's number can never be used here."""
+    if role == "student":
+        if student_id is None:
+            return None
+        return db.query(Student).filter(Student.id == student_id, Student.phone_number == phone).first()
+    return db.query(Teacher).filter(Teacher.phone_number == phone).first()
+
+
+def login_phone(
+    db: Session,
+    phone: str,
+    role: str,
+    student_id: uuid.UUID | None,
+    password: str,
+    device_info: str | None,
+    ip: str = "unknown",
+) -> tuple[str, str, int]:
+    """Teacher and student login by phone. For students the pair key includes
+    the profile, so a parent logging into two children from one device isn't
+    locked out by the other child's typos."""
+    identifier = phone if role == "teacher" else f"{phone}|{student_id}"
+    pair_key = f"{ip}|{identifier}"
+    _check_login_throttle(db, pair_key, ip, phone)
+
+    actor = _phone_actor(db, role, phone, student_id)
+    stored_hash = actor.password_hash if actor is not None and actor.password_hash else _DUMMY_HASH
+    if not verify_password(password, stored_hash) or actor is None or not actor.is_active:
+        _record_login_failure(db, pair_key, ip, phone)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, _PHONE_LOGIN_FAILED)
+
+    # The password is right, so this is genuinely their account -- but the tab
+    # doesn't match the role on file. Same rule as email login; admin has no tab
+    # of its own, so it's exempt.
+    if actor.role != role and actor.role != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={"code": "ROLE_MISMATCH", "actual_role": actor.role},
+        )
+
+    _assert_can_sign_in(actor)
+    throttle.clear(db, "login_ip_identifier", pair_key)
+    return _issue_tokens(db, actor, device_info)
+
+
+# ------------------------------------------------------- student profile lookup
+
+
+def lookup_student_profiles(db: Session, phone: str, ip: str) -> StudentLookupOut:
+    """Every student profile on a phone number, for the picker. Throttled on
+    both the caller's address and the phone, and counted whether or not
+    anything matches -- an empty answer must not be cheaper to probe than a
+    full one."""
+    throttle.enforce(db, "phone_lookup_ip", ip, limit=_LOOKUP_PER_IP, window_seconds=_LOOKUP_WINDOW)
+    throttle.enforce(db, "phone_lookup", phone, limit=_LOOKUP_PER_PHONE, window_seconds=_LOOKUP_WINDOW)
+
+    students = (
+        db.query(Student)
+        .filter(
+            Student.phone_number == phone,
+            Student.approval_status != "rejected",
+            Student.is_active.is_(True),
+        )
+        .order_by(Student.full_name)
+        .all()
+    )
+    profiles: list[StudentProfileOut] = []
+    for student in students:
+        enrollment = current_enrollment(db, student)
+        class_label = roll_number = None
+        if enrollment is not None:
+            section = db.get(ClassSection, enrollment.class_section_id)
+            grade = db.get(Grade, section.grade_id)
+            class_label = f"{grade.label}, Section {section.section}"
+            roll_number = str(enrollment.roll_number)
+        profiles.append(
+            StudentProfileOut(
+                id=student.id,
+                full_name=student.full_name,
+                class_label=class_label,
+                roll_number=roll_number,
+            )
+        )
+    return StudentLookupOut(profiles=profiles)
+
+
+# ------------------------------------------------------ staff-issued reset codes
+
+
+def issue_reset_code(db: Session, staff: Teacher, subject: Teacher | Student) -> ResetCodeOut:
+    """Create a one-time code for `subject`, to be read to them in person. The
+    caller has already checked that `staff` may act on `subject`. Issuing a
+    new code makes any earlier one useless; the event is audited."""
+    if not subject.is_active or subject.approval_status != "approved":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This account isn't approved and active yet, so its password can't be reset.",
+        )
+    expires_at = _now() + tokens.RESET_CODE_TTL
+    code = tokens.issue_code(
+        db, subject, tokens.RESET_PASSWORD, ttl=tokens.RESET_CODE_TTL, commit=False
+    )
+    is_student = isinstance(subject, Student)
+    db.add(
+        AccountAuditEvent(
+            actor_teacher_id=staff.id,
+            subject_teacher_id=None if is_student else subject.id,
+            subject_student_id=subject.id if is_student else None,
+            action="reset_code_issued",
+        )
+    )
+    db.commit()
+    return ResetCodeOut(code=code, expires_at=expires_at, full_name=subject.full_name)
+
+
+def reset_with_code(db: Session, payload: ResetWithCodeIn, ip: str) -> None:
+    """Redeem a staff-issued code and set a new password. Every failure
+    returns the same message, whether the phone, the profile, the code or the
+    account was wrong."""
+    throttle.enforce(db, "reset_code_ip", ip, limit=_RESET_PER_IP, window_seconds=_RESET_WINDOW)
+    throttle.enforce(db, "reset_code_phone", payload.phone, limit=_RESET_PER_PHONE, window_seconds=_RESET_WINDOW)
+
+    invalid = HTTPException(status.HTTP_400_BAD_REQUEST, "That code is invalid or has expired.")
+    actor = _phone_actor(db, payload.role, payload.phone, payload.student_id)
+    if actor is None or actor.role != payload.role or not actor.is_active or actor.approval_status != "approved":
+        raise invalid
+
+    tokens.consume_code(db, actor, payload.code, tokens.RESET_PASSWORD)
+    actor.password_hash = hash_password(payload.new_password)
+    _revoke_all_sessions(db, actor)  # anyone holding an old session is signed out
+    db.commit()
 
 
 # -------------------------------------------------------------------- sessions

@@ -18,7 +18,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { SchoolTypeahead } from "@/components/auth/school-typeahead";
 import { studentRegisterSchema, type StudentRegisterFormValues } from "@/lib/validation/auth";
 
-export function StudentRegisterForm({ onDone }: { onDone: (email: string) => void }) {
+/** `onDone` gets nothing: a student may have no email, and the screen that
+ * follows doesn't need the address. */
+export function StudentRegisterForm({ onDone }: { onDone: () => void }) {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [sections, setSections] = useState<ClassSectionOption[] | null>(null);
 
@@ -33,7 +35,7 @@ export function StudentRegisterForm({ onDone }: { onDone: (email: string) => voi
     defaultValues: {
       role: "student",
       full_name: "",
-      email: "",
+      login_phone: "",
       password: "",
       confirm_password: "",
       school: null,
@@ -82,10 +84,10 @@ export function StudentRegisterForm({ onDone }: { onDone: (email: string) => voi
         guardian_name: values.guardian_name,
         guardian_relation: values.guardian_relation,
         guardian_phone: values.guardian_phone,
-        email: values.email,
+        login_phone: values.login_phone,
         password: values.password,
       });
-      onDone(values.email);
+      onDone();
     } catch (err) {
       form.setError("root", {
         message: err instanceof Error ? err.message : "Could not register.",
@@ -112,13 +114,16 @@ export function StudentRegisterForm({ onDone }: { onDone: (email: string) => voi
 
         <FormField
           control={form.control}
-          name="email"
+          name="login_phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Your mobile number</FormLabel>
               <FormControl>
-                <Input {...field} type="email" autoComplete="email" placeholder="you@example.com" className="h-11 text-base" />
+                <Input {...field} type="tel" inputMode="numeric" autoComplete="tel" placeholder="10-digit number" className="h-11 text-base" />
               </FormControl>
+              <p className="text-xs text-muted-foreground">
+                You log in with this number. Use a number you can keep, since it is how you get back in.
+              </p>
               <FormMessage />
             </FormItem>
           )}

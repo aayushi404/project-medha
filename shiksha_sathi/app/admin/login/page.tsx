@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
  * the backend only admits admin accounts through this portal (role "admin"). */
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { status, teacher, login } = useAuth();
+  const { status, teacher, loginWithEmail } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
     }
     setSubmitting(true);
     try {
-      await login(email.trim(), password, "admin");
+      await loginWithEmail(email.trim(), password, "admin");
       // the effect above routes to /admin once the session is established
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not sign in.");

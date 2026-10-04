@@ -16,6 +16,7 @@ from backend.db.session import SessionLocal
 
 
 def _login(email: str, role: str) -> dict:
+    """Principal/admin accounts: email + password."""
     c = TestClient(app)
     r = c.post("/auth/login", json={"email": email, "password": "Password@123", "role": role})
     if r.status_code != 200:
@@ -23,11 +24,20 @@ def _login(email: str, role: str) -> dict:
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
 
+def _teacher_login(phone: str) -> dict:
+    """Teacher accounts: phone + password."""
+    c = TestClient(app)
+    r = c.post("/auth/login/phone", json={"phone": phone, "password": "Password@123", "role": "teacher"})
+    if r.status_code != 200:
+        raise unittest.SkipTest(f"seed teacher {phone} unavailable")
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+
 class TestScoping(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.client = TestClient(app)
-        cls.anita = _login("anita.science@medhabihar.org", "teacher")  # teaches classes 6-8
+        cls.anita = _teacher_login("+919876543211")  # teaches classes 6-8
         cls.principal = _login("principal.patna@medhabihar.org", "principal")
         db = SessionLocal()
         try:
@@ -74,7 +84,7 @@ class TestUploadsAndCaps(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.client = TestClient(app)
-        cls.anita = _login("anita.science@medhabihar.org", "teacher")
+        cls.anita = _teacher_login("+919876543211")
 
     def test_non_audio_upload_rejected(self):
         r = self.client.post("/speech/transcribe", headers=self.anita, files={"file": ("a.wav", b"this is not audio at all", "audio/wav")})

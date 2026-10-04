@@ -11,6 +11,7 @@ allowed just because you're the homeroom teacher.
 import uuid
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from backend.db.models import AcademicYear, ClassSection, Student, StudentEnrollment, Teacher, TeachingAssignment
@@ -21,6 +22,34 @@ def _get_section(db: Session, teacher: Teacher, class_section_id: uuid.UUID) -> 
     if section is None or section.school_id != teacher.school_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Class not found.")
     return section
+
+
+def teacher_current_section_ids(db: Session, teacher: Teacher) -> set[uuid.UUID]:
+    """Every current-year section this teacher acts on -- the set form of
+    `assert_can_act_on_section`'s rule, for whole lists: a `teaching_assignments`
+    row for the section (any subject), or being its class_teacher. A teacher
+    teaching 6A and 6B gets both."""
+    if teacher.school_id is None:
+        return set()
+    rows = (
+        db.query(ClassSection.id)
+        .join(AcademicYear, ClassSection.academic_year_id == AcademicYear.id)
+        .filter(
+            ClassSection.school_id == teacher.school_id,
+            AcademicYear.is_current.is_(True),
+            or_(
+                ClassSection.class_teacher_id == teacher.id,
+                ClassSection.id.in_(
+                    db.query(TeachingAssignment.class_section_id).filter(
+                        TeachingAssignment.teacher_id == teacher.id,
+                        TeachingAssignment.role == "primary",
+                    )
+                ),
+            ),
+        )
+        .all()
+    )
+    return {sid for (sid,) in rows}
 
 
 def assert_can_act_on_section(
@@ -36,6 +65,7 @@ def assert_can_act_on_section(
         .filter(
             TeachingAssignment.teacher_id == teacher.id,
             TeachingAssignment.class_section_id == class_section_id,
+            TeachingAssignment.role == "primary",
         )
         .first()
         is not None
@@ -72,6 +102,7 @@ def assert_can_act_on_section_and_subject(
         .filter(
             TeachingAssignment.teacher_id == teacher.id,
             TeachingAssignment.class_section_id == class_section_id,
+            TeachingAssignment.role == "primary",
             TeachingAssignment.subject_id == subject_id,
         )
         .first()
@@ -123,7 +154,7 @@ def assert_can_view_student(db: Session, viewer: Teacher, student: Student) -> N
 def teacher_section_ids(db: Session, teacher: Teacher) -> set[uuid.UUID]:
     """Every class_section this teacher teaches in or is class teacher of."""
     assigned = {
-        sid for (sid,) in db.query(TeachingAssignment.class_section_id).filter(TeachingAssignment.teacher_id == teacher.id).all()
+        sid for (sid,) in db.query(TeachingAssignment.class_section_id).filter(TeachingAssignment.teacher_id == teacher.id, TeachingAssignment.role == "primary").all()
     }
     homeroom = {sid for (sid,) in db.query(ClassSection.id).filter(ClassSection.class_teacher_id == teacher.id).all()}
     return assigned | homeroom

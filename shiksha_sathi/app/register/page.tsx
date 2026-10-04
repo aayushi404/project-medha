@@ -58,7 +58,8 @@ function RegisterForm() {
   const [step, setStep] = useState<1 | 2>(initialRole ? 2 : 1);
   const [role, setRole] = useState<FormRole | null>(initialRole);
   const [done, setDone] = useState(false);
-  const [doneEmail, setDoneEmail] = useState("");
+  // whether a verification email went out, so the done screen says the right thing
+  const [doneHasEmail, setDoneHasEmail] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated") router.replace("/home");
@@ -160,22 +161,26 @@ function RegisterForm() {
               {done ? (
                 <PendingScreen
                   approver={approver}
-                  message={`We've emailed a link to ${doneEmail}. Open it to verify your address -- then ${approver} can approve your account.`}
+                  message={
+                    doneHasEmail
+                      ? `We've emailed a link to your address. Open it to verify it -- then ${approver} can approve your account.`
+                      : `Once ${approver} approves your account, log in with your mobile number and password.`
+                  }
                 />
               ) : (
                 <>
                   {isStudent ? (
                     <StudentRegisterForm
-                      onDone={(email) => {
-                        setDoneEmail(email);
+                      onDone={() => {
+                        setDoneHasEmail(false);
                         setDone(true);
                       }}
                     />
                   ) : (
                     <StaffRegisterForm
                       role={role as RegisterRole}
-                      onDone={(email) => {
-                        setDoneEmail(email);
+                      onDone={(hasEmail) => {
+                        setDoneHasEmail(hasEmail);
                         setDone(true);
                       }}
                     />

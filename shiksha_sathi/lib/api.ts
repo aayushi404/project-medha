@@ -484,7 +484,8 @@ export type RegisterRole = "principal" | "teacher";
 export type RegisterInput = {
   role: RegisterRole;
   full_name: string;
-  email: string;
+  /** Required for principals. Optional for teachers, who log in by mobile number. */
+  email?: string | null;
   password: string;
   mobile_number: string;
   school_id: string;
@@ -497,6 +498,23 @@ export type RegisterResult = { status: "pending"; role: string; message: string 
 
 export const register = (input: RegisterInput) =>
   json<RegisterResult>(apiFetch("/auth/register", { method: "POST", body: input }));
+
+// --- phone login: the student profile picker ---
+// Only what the picker shows. The backend returns no guardian data and no emails.
+
+export type StudentProfileSummary = {
+  id: string;
+  full_name: string;
+  class_label: string | null;
+  roll_number: string | null;
+};
+
+/** Every student profile on one phone number (siblings share it). Empty when
+ * the number has none. Throttled per IP and per phone on the server. */
+export const lookupStudentProfiles = (phone: string) =>
+  json<{ profiles: StudentProfileSummary[] }>(
+    apiFetch("/auth/student/lookup", { method: "POST", body: { phone } }),
+  ).then((r) => r.profiles);
 
 // --- admin ---
 
@@ -687,7 +705,7 @@ export type TeacherRosterItem = {
 export type TeacherProfile = {
   id: string;
   full_name: string;
-  email: string;
+  email: string | null;
   mobile_number: string | null;
   employee_code: string | null;
   years_of_experience: number | null;
@@ -743,20 +761,31 @@ export type RosterStudentItem = {
   photo_url: string | null;
 };
 
+/** The one student profile, for teachers and the principal (GET /students/{id}).
+ * `viewer` lists the actions this caller may take; the screen shows only those. */
 export type StudentProfile = {
   id: string;
   full_name: string;
-  admission_number: string | null;
-  status: string;
   photo_url: string | null;
+  approval_status: ApprovalStatus;
+  status: string;
+  login_phone: string | null;
+  email: string | null;
+  class_section_id: string | null;
   grade_label: string | null;
   section: string | null;
   roll_number: number | null;
   academic_year_label: string | null;
   class_teacher_name: string | null;
+  approved_at: string | null;
   guardian_name: string | null;
   guardian_relation: string | null;
   guardian_phone: string | null;
+  viewer: {
+    can_approve: boolean;
+    can_reject: boolean;
+    can_reset_login: boolean;
+  };
 };
 
 export const getClassSections = (token: string | null, academicYearId?: string | null) =>
@@ -774,7 +803,7 @@ export const getSectionRoster = (token: string | null, sectionId: string) =>
   json<RosterStudentItem[]>(apiFetch(`/principal/sections/${sectionId}/students`, { token }));
 
 export const getStudentProfile = (token: string | null, studentId: string) =>
-  json<StudentProfile>(apiFetch(`/principal/students/${studentId}`, { token }));
+  json<StudentProfile>(apiFetch(`/students/${studentId}`, { token }));
 
 // --- principal: school setup (academic years, class sections, teaching assignments) ---
 
@@ -902,7 +931,8 @@ export type StudentRegisterInput = {
   guardian_name: string;
   guardian_relation: GuardianRelation;
   guardian_phone: string;
-  email: string;
+  /** The number the student logs in with. Email is optional and not sent. */
+  login_phone: string;
   password: string;
 };
 
@@ -913,11 +943,12 @@ export type StudentClaimInput = {
   class_section_id: string;
   roll_number: number;
   full_name: string;
-  email: string;
+  /** Must match the number the school recorded, if it recorded one. */
+  login_phone: string;
   password: string;
 };
 
-/** Sets a login on an account a principal imported without an email. */
+/** Sets a login on a profile a principal imported (no password yet). */
 export const claimStudentAccount = (input: StudentClaimInput) =>
   json<{ status: "claimed"; message: string }>(
     apiFetch("/student/claim", { method: "POST", body: input }),
@@ -940,6 +971,7 @@ export type PendingStudent = {
   grade_label: string;
   section: string;
   roll_number: number | null;
+  login_phone: string | null;
   applied_at: string;
 };
 
@@ -951,7 +983,8 @@ export type StudentRosterItem = {
   grade_label: string;
   section: string;
   roll_number: number | null;
-  email: string | null;
+  /** the number the student logs in with. Lists carry no email; the profile does. */
+  login_phone: string | null;
   approved_at: string | null;
   photo_url: string | null;
 };
@@ -970,7 +1003,14 @@ export type TeacherSection = {
   academic_year_label: string;
   is_class_teacher: boolean;
   subjects: TeacherSectionSubject[];
+  /** approved and pending students in this class (current year) */
+  students: number;
+  pending_students: number;
 };
+
+function classQuery(classSectionId?: string | null): string {
+  return classSectionId ? `?class_section_id=${encodeURIComponent(classSectionId)}` : "";
+}
 
 export const getMySections = (token: string | null) =>
   json<TeacherSection[]>(apiFetch("/teacher/sections", { token }));
@@ -978,11 +1018,15 @@ export const getMySections = (token: string | null) =>
 export const getTeacherStudentStats = (token: string | null) =>
   json<TeacherStudentStats>(apiFetch("/teacher/students/stats", { token }));
 
-export const getPendingStudents = (token: string | null) =>
-  json<PendingStudent[]>(apiFetch("/teacher/students/pending", { token }));
+/** Pending registrations in the teacher's classes, or in one class. */
+export const getPendingStudents = (token: string | null, classSectionId?: string | null) =>
+  json<PendingStudent[]>(
+    apiFetch(`/teacher/students/pending${classQuery(classSectionId)}`, { token }),
+  );
 
-export const getStudentRoster = (token: string | null) =>
-  json<StudentRosterItem[]>(apiFetch("/teacher/students", { token }));
+/** Approved students in the teacher's classes, or in one class. */
+export const getStudentRoster = (token: string | null, classSectionId?: string | null) =>
+  json<StudentRosterItem[]>(apiFetch(`/teacher/students${classQuery(classSectionId)}`, { token }));
 
 export const approveStudent = (token: string | null, id: string) =>
   json<ApprovalResult>(
@@ -1593,7 +1637,7 @@ export type StudentImportRow = {
   grade: string | null;
   section: string | null;
   roll_number: string | null;
-  admission_number: string | null;
+  login_phone: string | null;
   email: string | null;
   guardian_name: string | null;
   guardian_relation: string | null;
@@ -1826,3 +1870,449 @@ export const resendVerification = (email: string) => postAuth("/auth/resend-veri
 export const forgotPassword = (email: string) => postAuth("/auth/forgot-password", { email });
 export const resetPassword = (token: string, newPassword: string) =>
   postAuth("/auth/reset-password", { token, new_password: newPassword });
+
+// --- staff-issued reset codes (teachers and students; no SMS yet) ---
+// The principal issues a teacher's code, and the teacher issues a student's
+// code. The code is shown once, on the staff screen, and works once for 15 min.
+
+export type ResetCodeIssued = { code: string; expires_at: string; full_name: string };
+
+export const issueTeacherResetCode = (token: string | null, teacherId: string) =>
+  json<ResetCodeIssued>(apiFetch(`/principal/teachers/${teacherId}/reset-code`, { method: "POST", token }));
+
+export const issueStudentResetCode = (token: string | null, studentId: string) =>
+  json<ResetCodeIssued>(apiFetch(`/teacher/students/${studentId}/reset-code`, { method: "POST", token }));
+
+export type ResetWithCodeInput = {
+  phone: string;
+  role: "teacher" | "student";
+  /** Required for students: the profile the code was issued for. */
+  student_id?: string;
+  code: string;
+  new_password: string;
+};
+
+export const resetWithCode = (input: ResetWithCodeInput) => postAuth("/auth/reset-with-code", input);
+
+// --- principal: timetable planner (docs/phase-2/principal_timetable_planner.md) ---
+
+export type PlannerPeriodSlot = {
+  id: string;
+  day_of_week: number;
+  period_number: number;
+  label: string | null;
+  /** "HH:MM:SS" from the server; null for a break with no times */
+  starts_at: string | null;
+  ends_at: string | null;
+  is_break: boolean;
+};
+
+export type PlannerPeriodSlotInput = {
+  period_number: number;
+  label?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  is_break?: boolean;
+};
+
+export type PlannerTimetable = {
+  id: string;
+  name: string;
+  status: "draft" | "published" | "archived";
+  version: number;
+  academic_year_id: string;
+  academic_year_label: string;
+};
+
+export type PlannerTimetableListItem = PlannerTimetable & { cell_count: number };
+
+export type PlannerSection = {
+  id: string;
+  /** "9 · A" */
+  label: string;
+  grade_label: string;
+  section: string;
+};
+
+export type PlannerSubject = { id: string; name: string };
+
+export type PlannerCell = {
+  class_section_id: string;
+  period_slot_id: string;
+  subject_id: string;
+  subject_name: string;
+  teacher_id: string | null;
+  teacher_name: string | null;
+};
+
+export type PlannerEligibleTeacher = {
+  teacher_id: string;
+  name: string;
+  tier: "assigned" | "qualified";
+  periods_today: number;
+  periods_week: number;
+};
+
+export type PlannerGrid = {
+  timetable_id: string;
+  name: string;
+  status: PlannerTimetable["status"];
+  editable: boolean;
+  version: number;
+  day_of_week: number;
+  period_slots: PlannerPeriodSlot[];
+  class_sections: PlannerSection[];
+  subjects: PlannerSubject[];
+  cells: PlannerCell[];
+  /** keyed "<class_section_id>:<subject_id>" */
+  eligible_teachers: Record<string, PlannerEligibleTeacher[]>;
+};
+
+export type PlannerCellInput = {
+  class_section_id: string;
+  period_slot_id: string;
+  subject_id: string;
+  teacher_id: string | null;
+};
+
+export type PlannerValidationItem = {
+  day_of_week: number;
+  period_number: number;
+  class_label: string;
+  subject_name: string | null;
+};
+
+export type PlannerValidation = {
+  empty_slots: PlannerValidationItem[];
+  no_teacher: PlannerValidationItem[];
+  overloaded: {
+    teacher_id: string;
+    teacher_name: string;
+    day_of_week: number;
+    periods: number;
+    cap: number;
+  }[];
+  daily_cap: number;
+};
+
+export type PlannerCopyDayResult = {
+  grid: PlannerGrid;
+  copied: number;
+  skipped: number;
+};
+
+export const getPlannerSlots = (token: string | null, day: number) =>
+  json<PlannerPeriodSlot[]>(apiFetch(`/principal/period-slots?day=${day}`, { token }));
+
+export const savePlannerSlots = (
+  token: string | null,
+  day: number,
+  slots: PlannerPeriodSlotInput[],
+) =>
+  json<PlannerPeriodSlot[]>(
+    apiFetch(`/principal/period-slots?day=${day}`, { method: "PUT", token, body: { slots } }),
+  );
+
+export const copyPlannerSlots = (token: string | null, fromDay: number, toDays: number[]) =>
+  json<{ copied_to: number[] }>(
+    apiFetch("/principal/period-slots/copy", {
+      method: "POST",
+      token,
+      body: { from_day: fromDay, to_days: toDays },
+    }),
+  );
+
+export const getPlannerTimetables = (token: string | null) =>
+  json<PlannerTimetableListItem[]>(apiFetch("/principal/timetables", { token }));
+
+export const createPlannerTimetable = (
+  token: string | null,
+  input: { name: string; copy_from_id?: string | null },
+) =>
+  json<PlannerTimetable>(apiFetch("/principal/timetables", { method: "POST", token, body: input }));
+
+export const getPlannerGrid = (token: string | null, timetableId: string, day: number) =>
+  json<PlannerGrid>(
+    apiFetch(`/principal/timetables/${timetableId}/grid?day=${day}`, { token }),
+  );
+
+export const savePlannerDay = (
+  token: string | null,
+  timetableId: string,
+  day: number,
+  input: { version: number; cells: PlannerCellInput[] },
+) =>
+  json<PlannerGrid>(
+    apiFetch(`/principal/timetables/${timetableId}/days/${day}`, {
+      method: "PUT",
+      token,
+      body: input,
+    }),
+  );
+
+export const copyPlannerDay = (
+  token: string | null,
+  timetableId: string,
+  day: number,
+  source: number,
+  version: number,
+) =>
+  json<PlannerCopyDayResult>(
+    apiFetch(`/principal/timetables/${timetableId}/days/${day}/copy-from/${source}`, {
+      method: "POST",
+      token,
+      body: { version },
+    }),
+  );
+
+export const getPlannerValidation = (token: string | null, timetableId: string) =>
+  json<PlannerValidation>(apiFetch(`/principal/timetables/${timetableId}/validate`, { token }));
+
+export const publishPlannerTimetable = (token: string | null, timetableId: string, version: number) =>
+  json<PlannerTimetable>(
+    apiFetch(`/principal/timetables/${timetableId}/publish`, {
+      method: "POST",
+      token,
+      body: { version },
+    }),
+  );
+
+// --- principal: daily cover (docs/phase-2/principal_timetable_substitution_architecture.md) ---
+
+export type CoverReason = "sick" | "leave" | "official_duty" | "training";
+
+export type CoverAbsence = {
+  id: string;
+  teacher_id: string;
+  teacher_name: string;
+  date: string;
+  is_full_day: boolean;
+  from_period_number: number | null;
+  to_period_number: number | null;
+  reason: string | null;
+  note: string | null;
+};
+
+export type CoverSubstitution = {
+  id: string;
+  date: string;
+  timetable_cell_id: string | null;
+  status: "assigned" | "self_study" | "cancelled";
+  substitute_teacher_id: string | null;
+  substitute_teacher_name: string | null;
+  note: string | null;
+};
+
+export type CoverCellState = "normal" | "needs_cover" | "covered" | "self_study" | "cancelled";
+
+export type CoverCell = {
+  timetable_cell_id: string;
+  class_section_id: string;
+  period_slot_id: string;
+  subject_id: string;
+  subject_name: string;
+  original_teacher_id: string | null;
+  original_teacher_name: string | null;
+  state: CoverCellState;
+  substitute: CoverSubstitution | null;
+};
+
+export type CoverCandidate = {
+  teacher_id: string;
+  name: string;
+  photo_url: string | null;
+  /** 1 reserve for this class, 2 teaches this subject, 3 free for supervision only */
+  tier: number;
+  teaches_subject: boolean;
+  subjects: string[];
+  periods_today: number;
+  covers_today: number;
+};
+
+export type CoverUnavailable = {
+  teacher_id: string;
+  name: string;
+  photo_url: string | null;
+  reason: string;
+};
+
+export type CoverCandidates = {
+  available: CoverCandidate[];
+  unavailable: CoverUnavailable[];
+};
+
+export type CoverDayBoard = {
+  date: string;
+  day_of_week: number;
+  timetable: { id: string; name: string } | null;
+  summary: { absent_count: number; needs_cover: number; resolved: number };
+  absences: CoverAbsence[];
+  period_slots: PlannerPeriodSlot[];
+  class_sections: PlannerSection[];
+  cells: CoverCell[];
+  /** keyed by timetable_cell_id, only for cells that need cover */
+  candidates: Record<string, CoverCandidates>;
+};
+
+export type CoverSuggestionItem = {
+  timetable_cell_id: string;
+  class_section_id: string;
+  period_slot_id: string;
+  substitute_teacher_id: string | null;
+  substitute_teacher_name: string | null;
+  tier: number | null;
+  reason: string | null;
+};
+
+export type CoverSuggestion = { items: CoverSuggestionItem[] };
+
+export type CoverActionInput = {
+  date: string;
+  timetable_cell_id: string;
+  action: "assign" | "self_study" | "cancel";
+  substitute_teacher_id?: string | null;
+  note?: string | null;
+};
+
+export type ReserveTeacher = {
+  teacher_id: string;
+  full_name: string;
+  photo_url: string | null;
+  primary_subject_name: string | null;
+  classes_count: number;
+};
+
+export const getCoverDay = (token: string | null, date: string) =>
+  json<CoverDayBoard>(apiFetch(`/principal/day?date=${encodeURIComponent(date)}`, { token }));
+
+export const markCoverAbsence = (
+  token: string | null,
+  input: {
+    teacher_id: string;
+    dates: string[];
+    is_full_day: boolean;
+    from_period_number?: number | null;
+    to_period_number?: number | null;
+    reason?: CoverReason | null;
+    note?: string | null;
+  },
+) =>
+  json<{ absences: CoverAbsence[]; released: number }>(
+    apiFetch("/principal/absences", { method: "POST", token, body: input }),
+  );
+
+/** Returns the status instead of throwing, because a 409 ("this absence has
+ * covers, confirm") is an expected answer the screen handles. */
+export async function unmarkCoverAbsence(
+  token: string | null,
+  absenceId: string,
+  force: boolean,
+): Promise<{ status: number; message: string }> {
+  const res = await apiFetch(`/principal/absences/${absenceId}?force=${force}`, { method: "DELETE", token });
+  if (res.ok) return { status: res.status, message: "" };
+  return { status: res.status, message: await extractErrorMessage(res) };
+}
+
+export const applyCover = (token: string | null, input: CoverActionInput) =>
+  json<CoverSubstitution>(apiFetch("/principal/substitutions", { method: "POST", token, body: input }));
+
+export const applyCoverBulk = (token: string | null, date: string, items: CoverActionInput[]) =>
+  json<CoverSubstitution[]>(
+    apiFetch("/principal/substitutions/bulk", { method: "POST", token, body: { date, items } }),
+  );
+
+export const clearCover = async (token: string | null, substitutionId: string) => {
+  const res = await apiFetch(`/principal/substitutions/${substitutionId}`, { method: "DELETE", token });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+};
+
+export const suggestCover = (token: string | null, date: string) =>
+  json<CoverSuggestion>(
+    apiFetch(`/principal/substitutions/suggest?date=${encodeURIComponent(date)}`, { method: "POST", token }),
+  );
+
+export const getReserveTeachers = (token: string | null, sectionId: string) =>
+  json<ReserveTeacher[]>(apiFetch(`/principal/sections/${sectionId}/reserve-teachers`, { token }));
+
+export const addReserveTeacher = (token: string | null, sectionId: string, teacherId: string) =>
+  json<ReserveTeacher[]>(
+    apiFetch(`/principal/sections/${sectionId}/reserve-teachers`, {
+      method: "POST",
+      token,
+      body: { teacher_id: teacherId },
+    }),
+  );
+
+export const removeReserveTeacher = (token: string | null, sectionId: string, teacherId: string) =>
+  json<ReserveTeacher[]>(
+    apiFetch(`/principal/sections/${sectionId}/reserve-teachers/${teacherId}`, {
+      method: "DELETE",
+      token,
+    }),
+  );
+
+// --- the final timetable for a school day (teachers' board) ---
+
+export type FinalDayPeriod = {
+  id: string;
+  period_number: number;
+  label: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  is_break: boolean;
+};
+
+export type FinalDayCell = {
+  class_section_id: string;
+  period_slot_id: string;
+  subject_name: string;
+  base_teacher_id: string | null;
+  base_teacher_name: string | null;
+  /** who takes the period in the final timetable; null for self-study or cancelled */
+  teacher_id: string | null;
+  teacher_name: string | null;
+  state: "normal" | "covered" | "self_study" | "cancelled";
+};
+
+export type FinalDayPayload = {
+  timetable_name: string | null;
+  day_of_week: number;
+  period_slots: FinalDayPeriod[];
+  class_sections: { id: string; label: string; grade_label: string }[];
+  absences: {
+    teacher_id: string;
+    teacher_name: string;
+    is_full_day: boolean;
+    from_period_number: number | null;
+    to_period_number: number | null;
+  }[];
+  cells: FinalDayCell[];
+};
+
+export type FinalDay = {
+  date: string;
+  finalized: boolean;
+  finalized_at: string | null;
+  payload: FinalDayPayload | null;
+};
+
+export type FinalStatus = {
+  date: string;
+  finalized: boolean;
+  version: number | null;
+  finalized_at: string | null;
+  finalized_by_name: string | null;
+  up_to_date: boolean | null;
+  needs_cover: number;
+};
+
+export const getFinalDay = (token: string | null, date: string) =>
+  json<FinalDay>(apiFetch(`/day-timetable?date=${encodeURIComponent(date)}`, { token }));
+
+export const getFinalStatus = (token: string | null, date: string) =>
+  json<FinalStatus>(apiFetch(`/principal/day/final?date=${encodeURIComponent(date)}`, { token }));
+
+export const finalizeDay = (token: string | null, date: string) =>
+  json<FinalStatus>(
+    apiFetch(`/principal/day/finalize?date=${encodeURIComponent(date)}`, { method: "POST", token }),
+  );

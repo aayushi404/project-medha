@@ -1,12 +1,16 @@
-"""Student self-registration -- one step, unauthenticated. A student picks
-their school, grade+section, and a roll number for the current academic
-year, gives guardian details, and sets a login credential immediately.
-A teacher still has to approve the row (see teacher/service.py) before it
-can log in, but there's no separate "activate account" step.
+"""Student self-registration and claiming -- unauthenticated. A student picks
+their school, grade+section, and a roll number for the current academic year,
+gives guardian details, and sets a login phone and password. A teacher still
+has to approve the row (see teacher/service.py) before it can log in.
 
-Identity is keyed on email (a credential exists from the start, unlike the
-old two-phase flow) -- a previously-rejected applicant re-applying with the
-same email reuses and resets that row rather than creating a duplicate.
+Identity: the login phone is what the student types. Email is optional. A
+student who registers with an email is verified by that address. A student
+who doesn't is still fully usable, since no step needs an email.
+
+A rejected applicant may re-apply. The row is found by email when one is
+given, otherwise by the roll slot they're applying for, but only when the
+phone and name also match -- so a re-application can't take over someone
+else's place.
 """
 from datetime import date
 
@@ -25,6 +29,8 @@ from backend.student.schemas import (
     StudentRegisterOut,
 )
 
+_ROLL_TAKEN = "A student with this roll number is already registered for this class."
+
 
 def _school_has_approved_teacher(db: Session, school_id) -> bool:
     return (
@@ -36,6 +42,13 @@ def _school_has_approved_teacher(db: Session, school_id) -> bool:
         )
         .first()
         is not None
+    )
+
+
+def _is_same_person(student: Student, payload: StudentRegisterIn) -> bool:
+    return (
+        student.phone_number == payload.login_phone
+        and student.full_name.lower() == payload.full_name.lower()
     )
 
 
@@ -61,18 +74,45 @@ def register(db: Session, payload: StudentRegisterIn, background: BackgroundTask
         )
 
     ok_message = (
-        "Registration received. Check your email to verify your address; your "
-        "account will then be pending approval from a teacher at your school. "
-        "Once approved, log in with the email and password you just set."
+        "Registration received. Your account will be pending approval from a teacher "
+        "at your school. Once approved, log in with your phone number and the password "
+        "you just set."
     )
-    existing = db.query(Student).filter(Student.email == payload.email).first()
-    if existing is not None and (
-        existing.approval_status != "rejected" or existing.school_id != payload.school_id
-    ):
-        # Same response as a fresh registration: the owner of the address is told
-        # by email, and nobody can use this form to find out who has an account.
-        emails.already_registered(background, payload.email, payload.full_name)
-        return StudentRegisterOut(message=ok_message)
+    if payload.email:
+        ok_message += " We've also sent a link to verify your email address."
+
+    existing: Student | None = None
+    if payload.email:
+        existing = db.query(Student).filter(Student.email == payload.email).first()
+        if existing is not None and (
+            existing.approval_status != "rejected" or existing.school_id != payload.school_id
+        ):
+            # Same response as a fresh registration: the owner of the address is told
+            # by email, and nobody can use this form to find out who has an account.
+            emails.already_registered(background, payload.email, payload.full_name)
+            return StudentRegisterOut(message=ok_message)
+
+    # The roll slot is the other way an earlier registration can be found. It is
+    # only ever reused by a rejected applicant with the same phone and name.
+    slot = (
+        db.query(Student)
+        .join(StudentEnrollment, StudentEnrollment.student_id == Student.id)
+        .filter(
+            StudentEnrollment.class_section_id == section.id,
+            StudentEnrollment.roll_number == payload.roll_number,
+        )
+        .first()
+    )
+    if slot is not None and slot is not existing:
+        reusable = (
+            existing is None
+            and slot.approval_status == "rejected"
+            and slot.school_id == payload.school_id
+            and _is_same_person(slot, payload)
+        )
+        if not reusable:
+            raise HTTPException(status.HTTP_409_CONFLICT, _ROLL_TAKEN)
+        existing = slot
 
     student = existing or Student()
     student.full_name = payload.full_name
@@ -80,6 +120,7 @@ def register(db: Session, payload: StudentRegisterIn, background: BackgroundTask
     student.guardian_name = payload.guardian_name
     student.guardian_relation = payload.guardian_relation
     student.guardian_phone = payload.guardian_phone
+    student.phone_number = payload.login_phone
     student.email = payload.email
     student.password_hash = hash_password(payload.password)
     student.email_verified_at = None
@@ -111,21 +152,20 @@ def register(db: Session, payload: StudentRegisterIn, background: BackgroundTask
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "A student with this roll number is already registered for this class.",
-        ) from exc
+        raise HTTPException(status.HTTP_409_CONFLICT, _ROLL_TAKEN) from exc
 
     db.refresh(student)
-    emails.verification(background, student.email, student.full_name, tokens.issue(db, student, tokens.VERIFY_EMAIL))
+    if student.email:
+        emails.verification(background, student.email, student.full_name, tokens.issue(db, student, tokens.VERIFY_EMAIL))
     return StudentRegisterOut(message=ok_message)
 
 
 def claim(db: Session, payload: StudentClaimIn, background: BackgroundTasks) -> StudentClaimOut:
-    """Attach a credential to a principal-imported student that has none yet
-    (see principal/student_import.py). Identity is the school + section + roll
-    + name the school recorded. An imported row that was given an email never
-    matches here -- it got an emailed "set your password" link instead."""
+    """Attach a password to a principal-imported student (see
+    principal/student_import.py). Identity is the school + section + roll +
+    name the school recorded, and the login phone must be the one the school
+    recorded too. Every student has a phone since 0032, so someone who knows
+    the roll details can't swap in their own number."""
     not_found = HTTPException(
         status.HTTP_404_NOT_FOUND,
         "We couldn't find an account matching those details. Check the class, section, "
@@ -145,6 +185,7 @@ def claim(db: Session, payload: StudentClaimIn, background: BackgroundTasks) -> 
             Student.email.is_(None),
             Student.password_hash.is_(None),
             func.lower(Student.full_name) == payload.full_name.lower(),
+            Student.phone_number == payload.login_phone,
             StudentEnrollment.class_section_id == section.id,
             StudentEnrollment.roll_number == payload.roll_number,
             StudentEnrollment.left_on.is_(None),
@@ -156,22 +197,7 @@ def claim(db: Session, payload: StudentClaimIn, background: BackgroundTasks) -> 
         raise not_found
     student = matches[0]
 
-    email_in_use = HTTPException(
-        status.HTTP_409_CONFLICT,
-        "That email is already used by another student account. Use a different email.",
-    )
-    if db.query(Student.id).filter(Student.email == payload.email).first() is not None:
-        raise email_in_use
-
-    student.email = payload.email
     student.password_hash = hash_password(payload.password)
-    student.email_verified_at = None
-    try:
-        db.commit()
-    except IntegrityError as exc:  # the same email was claimed a moment ago
-        db.rollback()
-        raise email_in_use from exc
+    db.commit()
 
-    db.refresh(student)
-    emails.verification(background, student.email, student.full_name, tokens.issue(db, student, tokens.VERIFY_EMAIL))
-    return StudentClaimOut(message="Your account is ready. Log in with your email and password.")
+    return StudentClaimOut(message="Your account is ready. Log in with your phone number and password.")

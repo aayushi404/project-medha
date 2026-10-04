@@ -28,7 +28,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <SimpleAuthCard title="Forgot your password?" subtitle="We'll email you a link to choose a new one.">
+    <SimpleAuthCard
+      title="Forgot your password?"
+      subtitle="Principals: we'll email you a link to choose a new one."
+    >
       {sent ? (
         <div className="mlogin-form">
           <p className="text-sm text-center">
@@ -60,6 +63,16 @@ export default function ForgotPasswordPage() {
           </Link>
         </form>
       )}
+
+      <div className="mt-6 border-t border-border pt-4 text-center text-sm text-muted-foreground">
+        <p>
+          Teachers and students don&apos;t use email to reset. Ask your principal (for teachers) or
+          your class teacher (for students) for a one-time reset code.
+        </p>
+        <Link href="/reset-with-code" className="mlogin-link mt-2 inline-block">
+          I have a reset code
+        </Link>
+      </div>
     </SimpleAuthCard>
   );
 }

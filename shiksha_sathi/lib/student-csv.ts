@@ -20,9 +20,10 @@ const HEADER_ALIASES: Record<Field, string[]> = {
     "roll", "rollno", "rollnumber", "rollnum", "rollnos",
     "रोल", "रोलनंबर", "रोलनं", "क्रमांक",
   ],
-  admission_number: [
-    "admissionno", "admissionnumber", "admno", "admission", "admissionid", "scholarno",
-    "scholarnumber", "प्रवेशसंख्या", "प्रवेशक्रमांक", "दाखिलानंबर",
+  // The number the student logs in with. Kept apart from the guardian aliases below.
+  login_phone: [
+    "loginphone", "loginmobile", "loginno", "loginnumber", "studentphone", "studentmobile",
+    "लॉगिनफ़ोन", "लॉगिनफोन", "लॉगिनमोबाइल", "छात्रमोबाइल",
   ],
   email: ["email", "emailid", "emailaddress", "studentemail", "mail", "ईमेल"],
   guardian_name: [
@@ -38,14 +39,14 @@ const HEADER_ALIASES: Record<Field, string[]> = {
   ],
 };
 
-export const REQUIRED_FIELDS: Field[] = ["full_name", "grade", "roll_number"];
+export const REQUIRED_FIELDS: Field[] = ["full_name", "grade", "roll_number", "login_phone"];
 
 export const FIELD_LABELS: Record<Field, string> = {
   full_name: "Name",
   grade: "Class",
   section: "Section",
   roll_number: "Roll No",
-  admission_number: "Admission No",
+  login_phone: "Login Phone",
   email: "Email",
   guardian_name: "Guardian Name",
   guardian_relation: "Relation",
@@ -224,7 +225,7 @@ export async function parseStudentCsv(file: File): Promise<ParsedStudentCsv> {
       grade: get(cells, "grade"),
       section: get(cells, "section"),
       roll_number: get(cells, "roll_number"),
-      admission_number: get(cells, "admission_number"),
+      login_phone: get(cells, "login_phone"),
       email: get(cells, "email"),
       guardian_name: guardianName,
       guardian_relation:

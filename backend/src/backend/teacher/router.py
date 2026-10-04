@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.auth.dependencies import require_teacher
+from backend.auth.schemas import ResetCodeOut
 from backend.db.models import Teacher
 from backend.db.session import get_db
 from backend.teacher import service
@@ -37,16 +38,22 @@ def stats(
 
 @router.get("/students", response_model=list[StudentRosterItem])
 def students(
-    teacher: Teacher = Depends(require_teacher), db: Session = Depends(get_db)
+    class_section_id: uuid.UUID | None = Query(default=None),
+    teacher: Teacher = Depends(require_teacher),
+    db: Session = Depends(get_db),
 ) -> list[StudentRosterItem]:
-    return service.list_students(db, teacher)
+    """Approved students in the teacher's classes; narrowed to one class with
+    `class_section_id`. A class they don't teach returns an empty list."""
+    return service.list_students(db, teacher, class_section_id)
 
 
 @router.get("/students/pending", response_model=list[PendingStudent])
 def pending_students(
-    teacher: Teacher = Depends(require_teacher), db: Session = Depends(get_db)
+    class_section_id: uuid.UUID | None = Query(default=None),
+    teacher: Teacher = Depends(require_teacher),
+    db: Session = Depends(get_db),
 ) -> list[PendingStudent]:
-    return service.list_pending_students(db, teacher)
+    return service.list_pending_students(db, teacher, class_section_id)
 
 
 @router.post("/students/{student_id}/approve", response_model=ApprovalResult)
@@ -56,6 +63,15 @@ def approve_student(
     db: Session = Depends(get_db),
 ) -> ApprovalResult:
     return service.approve_student(db, teacher, student_id)
+
+
+@router.post("/students/{student_id}/reset-code", response_model=ResetCodeOut)
+def reset_student_code(
+    student_id: uuid.UUID,
+    teacher: Teacher = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> ResetCodeOut:
+    return service.issue_student_reset_code(db, teacher, student_id)
 
 
 @router.post("/students/{student_id}/reject", response_model=ApprovalResult)

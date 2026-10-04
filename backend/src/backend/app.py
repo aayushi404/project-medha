@@ -31,9 +31,12 @@ from backend.reference.router import router as reference_router
 from backend.report_card.router import router as report_card_router
 from backend.speech.router import router as speech_router
 from backend.timetable.router import router as timetable_router
+from backend.timetable_planner.router import router as timetable_planner_router
+from backend.cover.router import day_board_router, router as cover_router
 from backend.tools.router import router as tools_router
 from backend.student.router import router as student_router
 from backend.teacher.router import router as teacher_router
+from backend.student_profile.router import router as student_profile_router
 from backend.tutor.router import router as tutor_router
 
 configure_logging()
@@ -156,6 +159,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(principal_router)
 app.include_router(teacher_router)
+app.include_router(student_profile_router)
 app.include_router(student_router)
 app.include_router(reference_router)
 app.include_router(onboarding_router)
@@ -176,6 +180,9 @@ app.include_router(absence_calls_router)
 app.include_router(notifications_router)
 app.include_router(homework_router)
 app.include_router(timetable_router)
+app.include_router(timetable_planner_router)
+app.include_router(cover_router)
+app.include_router(day_board_router)
 app.include_router(report_card_router)
 app.include_router(fees_router)
 app.include_router(notes_router)

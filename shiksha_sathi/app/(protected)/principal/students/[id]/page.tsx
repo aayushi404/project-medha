@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 
 import { RoleGate } from "@/components/auth/role-gate";
 import { PrincipalShell } from "@/components/principal/principal-shell";
-import { StudentDetail } from "@/components/principal/student-detail";
+import { StudentProfileView } from "@/components/students/student-profile";
 
 function StudentDetailPageContent() {
   const params = useParams<{ id: string }>();
@@ -12,7 +12,7 @@ function StudentDetailPageContent() {
   return (
     <PrincipalShell activeId="principal-students">
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-8">
-        <StudentDetail studentId={params.id} />
+        <StudentProfileView studentId={params.id} backHref="/principal" />
       </div>
     </PrincipalShell>
   );
