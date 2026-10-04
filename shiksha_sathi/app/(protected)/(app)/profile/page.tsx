@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
-import { SubjectsEditor, type SubjectSelection } from "@/components/profile/subjects-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { getGrades, getSubjects, patchProfile, type Grade, type Subject } from "@/lib/api";
+import { patchProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
 import { useProfile } from "@/lib/profile-context";
@@ -29,26 +28,8 @@ export default function ProfilePage() {
 
   const [fullName, setFullName] = useState("");
   const [language, setLanguage] = useState<string | null>(null);
-  const [selections, setSelections] = useState<SubjectSelection[]>([]);
   const [saving, setSaving] = useState(false);
   const [syncedId, setSyncedId] = useState<string | null>(null);
-
-  const [grades, setGrades] = useState<Grade[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([getGrades(), getSubjects()])
-      .then(([g, s]) => {
-        if (cancelled) return;
-        setGrades(g);
-        setSubjects(s);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // seed the form from the fetched profile once (render-phase, per React docs
   // "adjusting state when a prop changes")
@@ -56,44 +37,9 @@ export default function ProfilePage() {
     setSyncedId(profile.id);
     setFullName(profile.full_name);
     setLanguage(profile.preferred_language);
-    setSelections(
-      profile.subjects.map((s) => ({
-        subject_id: s.subject_id,
-        grade_id: s.grade_id,
-        is_primary: s.is_primary,
-      })),
-    );
   }
 
-  function toggleSelection(subjectId: string, gradeId: string) {
-    setSelections((prev) => {
-      const existing = prev.find((s) => s.subject_id === subjectId && s.grade_id === gradeId);
-      if (existing) {
-        const next = prev.filter(
-          (s) => !(s.subject_id === subjectId && s.grade_id === gradeId),
-        );
-        if (existing.is_primary && next.length > 0) {
-          next[0] = { ...next[0], is_primary: true };
-        }
-        return next;
-      }
-      const isFirst = prev.length === 0;
-      return [...prev, { subject_id: subjectId, grade_id: gradeId, is_primary: isFirst }];
-    });
-  }
-
-  function setPrimary(subjectId: string, gradeId: string) {
-    setSelections((prev) =>
-      prev.map((s) => ({
-        ...s,
-        is_primary: s.subject_id === subjectId && s.grade_id === gradeId,
-      })),
-    );
-  }
-
-  const primaryCount = selections.filter((s) => s.is_primary).length;
-  const subjectsValid = selections.length > 0 && primaryCount === 1;
-  const canSave = !saving && fullName.trim().length > 0 && subjectsValid;
+  const canSave = !saving && fullName.trim().length > 0;
 
   async function save() {
     if (!canSave) return;
@@ -102,7 +48,6 @@ export default function ProfilePage() {
       await patchProfile(accessToken, {
         full_name: fullName.trim(),
         preferred_language: language ?? undefined,
-        subjects: selections,
       });
       refresh();
       toast.success("Profile updated.");
@@ -151,20 +96,28 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="flex flex-col gap-3">
-              <div>
-                <Label>What you teach</Label>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Tap every subject and grade you teach, then pick your primary one.
+            <div className="flex flex-col gap-2">
+              <Label>Your classes and subjects</Label>
+              <p className="text-xs text-muted-foreground">
+                Assigned by your principal. To change them, ask your principal.
+              </p>
+              {profile && profile.subjects.length > 0 ? (
+                <ul className="divide-y divide-border rounded-xl border border-border">
+                  {profile.subjects.map((s) => (
+                    <li key={`${s.grade_id}-${s.subject_id}`} className="flex items-center justify-between px-3 py-2.5 text-sm">
+                      <span className="text-foreground">{s.subject_name}</span>
+                      <span className="text-muted-foreground">
+                        {s.grade_label}
+                        {s.is_primary ? " · primary" : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
+                  Your principal hasn&apos;t assigned your classes yet.
                 </p>
-              </div>
-              <SubjectsEditor
-                grades={grades}
-                subjects={subjects}
-                selections={selections}
-                onToggle={toggleSelection}
-                onSetPrimary={setPrimary}
-              />
+              )}
             </div>
 
             {profile?.school ? (

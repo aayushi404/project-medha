@@ -1,8 +1,17 @@
-from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.db.models import District, Grade, School, Student, Subject, Teacher, TeacherSubject
+from backend.db.models import (
+    AcademicYear,
+    ClassSection,
+    District,
+    Grade,
+    School,
+    Student,
+    Subject,
+    Teacher,
+    TeachingAssignment,
+)
 from backend.profile.schemas import (
     ProfileOut,
     ProfileSubjectOut,
@@ -11,6 +20,68 @@ from backend.profile.schemas import (
     StudentSelfProfileOut,
     StudentSelfProfileUpdateIn,
 )
+
+
+def _assigned_subjects(db: Session, teacher: Teacher) -> list[ProfileSubjectOut]:
+    """The subject-and-grade pairs the principal assigned this teacher in the
+    current year, from teaching_assignments (one per class section). The
+    dashboard's subject and class pickers read this. A teacher can't edit it.
+
+    One pair is primary: the first in order, with the teacher's own class (where
+    they are class teacher) sorted ahead of the rest."""
+    rows = (
+        db.query(
+            TeachingAssignment.subject_id,
+            Subject.name,
+            ClassSection.grade_id,
+            Grade.label,
+            Grade.numeric_level,
+            ClassSection.class_teacher_id,
+        )
+        .join(ClassSection, TeachingAssignment.class_section_id == ClassSection.id)
+        .join(AcademicYear, ClassSection.academic_year_id == AcademicYear.id)
+        .join(Subject, TeachingAssignment.subject_id == Subject.id)
+        .join(Grade, ClassSection.grade_id == Grade.id)
+        .filter(
+            TeachingAssignment.teacher_id == teacher.id,
+            TeachingAssignment.role == "primary",
+            AcademicYear.is_current.is_(True),
+        )
+        .all()
+    )
+
+    pairs: dict[tuple, dict] = {}
+    for subject_id, subject_name, grade_id, grade_label, numeric_level, class_teacher_id in rows:
+        entry = pairs.setdefault(
+            (subject_id, grade_id),
+            {
+                "subject_name": subject_name,
+                "grade_label": grade_label,
+                "numeric_level": numeric_level,
+                "primary": False,
+            },
+        )
+        if class_teacher_id == teacher.id:
+            entry["primary"] = True
+
+    ordered = sorted(
+        pairs.items(),
+        key=lambda kv: (not kv[1]["primary"], kv[1]["numeric_level"], kv[1]["subject_name"]),
+    )
+    # exactly one primary: the first pair in order (a class teacher teaches several
+    # subjects in their own class, so the flag can't mean "all of them")
+    primary_key = ordered[0][0] if ordered else None
+    return [
+        ProfileSubjectOut(
+            subject_id=subject_id,
+            subject_name=entry["subject_name"],
+            grade_id=grade_id,
+            grade_label=entry["grade_label"],
+            numeric_level=entry["numeric_level"],
+            is_primary=(subject_id, grade_id) == primary_key,
+        )
+        for (subject_id, grade_id), entry in ordered
+    ]
 
 
 def _build_profile(db: Session, teacher: Teacher) -> ProfileOut:
@@ -28,25 +99,7 @@ def _build_profile(db: Session, teacher: Teacher) -> ProfileOut:
                 id=school.id, name=school.name, district_name=district_name
             )
 
-    subject_rows = (
-        db.query(TeacherSubject, Subject.name, Grade.label, Grade.numeric_level)
-        .join(Subject, TeacherSubject.subject_id == Subject.id)
-        .join(Grade, TeacherSubject.grade_id == Grade.id)
-        .filter(TeacherSubject.teacher_id == teacher.id)
-        .order_by(TeacherSubject.is_primary.desc(), Grade.numeric_level)
-        .all()
-    )
-    subjects = [
-        ProfileSubjectOut(
-            subject_id=ts.subject_id,
-            subject_name=subject_name,
-            grade_id=ts.grade_id,
-            grade_label=grade_label,
-            numeric_level=numeric_level,
-            is_primary=ts.is_primary,
-        )
-        for ts, subject_name, grade_label, numeric_level in subject_rows
-    ]
+    subjects = _assigned_subjects(db, teacher)
 
     return ProfileOut(
         id=teacher.id,
@@ -70,26 +123,6 @@ def update_profile(db: Session, teacher: Teacher, payload: ProfileUpdateIn) -> P
         teacher.full_name = payload.full_name
     if payload.preferred_language is not None:
         teacher.preferred_language = payload.preferred_language
-
-    if payload.subjects is not None:
-        subject_ids = {s.subject_id for s in payload.subjects}
-        grade_ids = {s.grade_id for s in payload.subjects}
-        if db.query(Subject.id).filter(Subject.id.in_(subject_ids)).count() != len(subject_ids):
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "One or more subjects are invalid.")
-        if db.query(Grade.id).filter(Grade.id.in_(grade_ids)).count() != len(grade_ids):
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "One or more grades are invalid.")
-
-        # replace the whole set
-        db.query(TeacherSubject).filter(TeacherSubject.teacher_id == teacher.id).delete()
-        for item in payload.subjects:
-            db.add(
-                TeacherSubject(
-                    teacher_id=teacher.id,
-                    subject_id=item.subject_id,
-                    grade_id=item.grade_id,
-                    is_primary=item.is_primary,
-                )
-            )
 
     teacher.updated_at = func.now()
     db.commit()

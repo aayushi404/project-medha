@@ -2,9 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, field_validator, model_validator
-
-from backend.onboarding.schemas import TeacherSubjectIn, validate_subject_selection
+from pydantic import BaseModel, field_validator
 
 # Direct generation branches on this in the prompts (docs/phase-1/04), so keep
 # it a closed set rather than free text. "hinglish" is code-mixed Hindi-English
@@ -40,12 +38,12 @@ class ProfileOut(BaseModel):
 
 
 class ProfileUpdateIn(BaseModel):
-    """All fields optional; a field left out is left unchanged. When `subjects`
-    is given it replaces the teacher's full subject/grade set."""
+    """All fields optional; a field left out is left unchanged. A teacher's
+    classes and subjects are assigned by the principal, not edited here, so
+    there is no `subjects` field: anything sent for it is ignored."""
 
     full_name: str | None = None
     preferred_language: Language | None = None
-    subjects: list[TeacherSubjectIn] | None = None
 
     @field_validator("full_name")
     @classmethod
@@ -56,13 +54,6 @@ class ProfileUpdateIn(BaseModel):
         if not v:
             raise ValueError("full_name cannot be empty")
         return v
-
-    @model_validator(mode="after")
-    def _validate_subjects(self) -> "ProfileUpdateIn":
-        if self.subjects is not None:
-            validate_subject_selection(self.subjects)
-        return self
-
 
 class StudentSelfProfileOut(BaseModel):
     """A student's own view of their profile -- lighter than `ProfileOut`

@@ -10,7 +10,7 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, aliased
 
-from backend.db.models import ClassSection, Grade, Subject, Teacher, TeacherSubject, TeachingAssignment, TimetableEntry
+from backend.db.models import ClassSection, Grade, Subject, Teacher, TeachingAssignment, TimetableEntry
 from backend.timetable.schemas import TimetableOut, TimetableSetIn, TimetableSlotOut
 
 
@@ -57,12 +57,8 @@ def set_grid(db: Session, user: Teacher, payload: TimetableSetIn) -> TimetableOu
 
     # A principal manages every grade; a teacher only grades they actually teach.
     if user.role != "principal":
+        # the principal's assignments are the only source of "teaches this class"
         teaches = (
-            db.query(TeacherSubject.id)
-            .filter(TeacherSubject.teacher_id == user.id, TeacherSubject.grade_id == payload.grade_id)
-            .first()
-            is not None
-        ) or (
             db.query(TeachingAssignment.id)
             .join(ClassSection, ClassSection.id == TeachingAssignment.class_section_id)
             .filter(TeachingAssignment.teacher_id == user.id, ClassSection.grade_id == payload.grade_id)

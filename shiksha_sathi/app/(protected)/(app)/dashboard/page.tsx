@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 
 import { AskMedhaBar } from "@/components/app/ask-medha-bar";
 import { SchoolNoticeBanner } from "@/components/app/school-notice-banner";
-import { WorkUpdateButton } from "@/components/dashboard/work-update-modal";
 import { GenerationRow } from "@/components/generation/generation-row";
 import { QuickActionCard } from "@/components/generation/quick-action-card";
 import { listGenerations, type GenerationListItem } from "@/lib/api";
@@ -75,7 +74,6 @@ export default function DashboardHomePage() {
           {/* Hero header */}
           <section className="flex min-h-[168px] flex-col pb-1">
             <div className="flex items-center justify-end gap-2">
-              <WorkUpdateButton />
               <button
                 type="button"
                 aria-label={copy.dashboard.notifications}

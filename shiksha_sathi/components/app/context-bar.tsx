@@ -1,6 +1,5 @@
 "use client";
 
-import { WorkUpdateButton } from "@/components/dashboard/work-update-modal";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useLessonContext } from "@/lib/lesson-context";
@@ -103,9 +102,6 @@ export function ContextBar() {
         />
       </div>
 
-      <div className="flex items-center gap-2">
-        <WorkUpdateButton />
-      </div>
     </div>
   );
 }

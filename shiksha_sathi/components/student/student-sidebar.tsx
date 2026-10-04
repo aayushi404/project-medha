@@ -9,7 +9,9 @@ import {
   ClipboardCheck,
   ClipboardList,
   Code2,
+  Award,
   FlaskConical,
+  FolderOpen,
   IndianRupee,
   Languages,
   Library,
@@ -20,16 +22,17 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PencilRuler,
+  School,
   Sparkles,
   LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NavAccordion, NavLink, isActivePath, useNavGroupState } from "@/components/app/sidebar-nav";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy, useCurriculumT } from "@/lib/copy";
@@ -38,23 +41,47 @@ import { useStudentData } from "@/lib/student-context";
 import { cn } from "@/lib/utils";
 import { SchoolCardPanel } from "@/components/school/school-card-panel";
 
-const NAV: { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon }[] = [
-  { href: "/learn", navKey: "ask", icon: MessagesSquare },
-  { href: "/bihar-darpan", navKey: "biharDarpan", icon: Sparkles },
-  { href: "/english", navKey: "english", icon: Languages },
-  { href: "/my-practice", navKey: "practice", icon: PencilRuler },
-  { href: "/my-notes", navKey: "notes", icon: NotebookText },
-  { href: "/library", navKey: "library", icon: BookOpen },
-  { href: "/learn-lab", navKey: "simulations", icon: FlaskConical },
-  { href: "/coding", navKey: "codingHub", icon: Code2 },
-  { href: "/skills", navKey: "skillsHub", icon: Briefcase },
-  { href: "/my-homework", navKey: "homework", icon: NotebookPen },
-  { href: "/my-attendance", navKey: "attendance", icon: ClipboardCheck },
-  { href: "/my-timetable", navKey: "timetable", icon: CalendarDays },
-  { href: "/my-report-card", navKey: "reportCard", icon: ClipboardList }
-  //{ href: "/my-resources", navKey: "resources", icon: Library },
-  //{ href: "/fees", navKey: "fees", icon: IndianRupee },
+type StudentNavItem = { href: string; navKey: keyof Copy["studentNav"]; icon: LucideIcon };
+type StudentNavGroup = { key: "academics" | "resources" | "exams"; icon: LucideIcon; items: StudentNavItem[] };
+
+/** Always open, at the top of the menu. */
+const NAV_TOP: StudentNavItem[] = [{ href: "/learn", navKey: "ask", icon: MessagesSquare }];
+
+/** Collapsible groups, mirroring the teacher menu's Academics, Resources and Exams. */
+const NAV_GROUPS: StudentNavGroup[] = [
+  {
+    key: "academics",
+    icon: School,
+    items: [
+      { href: "/my-homework", navKey: "homework", icon: NotebookPen },
+      { href: "/my-attendance", navKey: "attendance", icon: ClipboardCheck },
+      { href: "/my-timetable", navKey: "timetable", icon: CalendarDays },
+    ],
+  },
+  {
+    key: "resources",
+    icon: FolderOpen,
+    items: [
+      { href: "/bihar-darpan", navKey: "biharDarpan", icon: Sparkles },
+      { href: "/english", navKey: "english", icon: Languages },
+      { href: "/my-practice", navKey: "practice", icon: PencilRuler },
+      { href: "/my-notes", navKey: "notes", icon: NotebookText },
+      { href: "/library", navKey: "library", icon: BookOpen },
+      { href: "/learn-lab", navKey: "simulations", icon: FlaskConical },
+      { href: "/coding", navKey: "codingHub", icon: Code2 },
+      { href: "/skills", navKey: "skillsHub", icon: Briefcase },
+      //{ href: "/my-resources", navKey: "resources", icon: Library },
+      //{ href: "/fees", navKey: "fees", icon: IndianRupee },
+    ],
+  },
+  {
+    key: "exams",
+    icon: Award,
+    items: [{ href: "/my-report-card", navKey: "reportCard", icon: ClipboardList }],
+  },
 ];
+
+const STUDENT_GROUPS_KEY = "medha.studentSidebarGroups";
 
 const COLLAPSE_KEY = "medha.studentSidebarCollapsed";
 
@@ -85,17 +112,37 @@ function NavList({
   onNavigate,
   collapsed,
   scroll = true,
+  groupOpen,
+  onToggleGroup,
 }: {
   onNavigate?: () => void;
   collapsed?: boolean;
   /** When true (mobile drawer) the nav is itself the scroll region. On desktop
    *  it shares one scroll container with the quote/art, so pass false. */
   scroll?: boolean;
+  groupOpen: Record<string, boolean>;
+  onToggleGroup: (key: string, open: boolean) => void;
 }) {
   const copy = useCopy();
   const pathname = usePathname();
+
+  function link(item: StudentNavItem) {
+    return (
+      <NavLink
+        key={item.href}
+        href={item.href}
+        label={copy.studentNav[item.navKey]}
+        icon={item.icon}
+        pathname={pathname}
+        collapsed={collapsed}
+        onNavigate={onNavigate}
+      />
+    );
+  }
+
   return (
     <nav
+      aria-label={copy.navMain}
       className={cn(
         "flex flex-col gap-1 p-2",
         scroll ? "min-h-0 flex-1 overflow-y-auto" : "shrink-0",
@@ -104,26 +151,29 @@ function NavList({
       {collapsed ? null : (
         <span className="eyebrow px-3 pt-1 pb-1 text-muted-foreground">{copy.navMain}</span>
       )}
-      {NAV.map(({ href, navKey, icon: Icon }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`);
-        const label = copy.studentNav[navKey];
+      {NAV_TOP.map(link)}
+
+      {NAV_GROUPS.map((group) => {
+        if (collapsed) {
+          // the icon rail has no room for headers: show the links, split by a rule
+          return (
+            <div key={group.key} className="mt-1 flex flex-col gap-1 border-t border-sidebar-border pt-1">
+              {group.items.map(link)}
+            </div>
+          );
+        }
+        const containsCurrent = group.items.some((item) => isActivePath(pathname, item.href));
+        const open = groupOpen[group.key] ?? containsCurrent;
         return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            title={collapsed ? label : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors",
-              collapsed && "justify-center px-0",
-              active
-                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-            )}
+          <NavAccordion
+            key={group.key}
+            label={copy.navGroup[group.key]}
+            icon={group.icon}
+            open={open}
+            onToggle={() => onToggleGroup(group.key, !open)}
           >
-            <Icon className="size-4 shrink-0" />
-            {collapsed ? null : label}
-          </Link>
+            {group.items.map(link)}
+          </NavAccordion>
         );
       })}
     </nav>
@@ -239,6 +289,7 @@ function SidebarFooter({ collapsed }: { collapsed?: boolean }) {
 export function StudentSidebar() {
   // drawer closes via onNavigate (link click) and Base UI's own backdrop/esc
   const [open, setOpen] = useState(false);
+  const { groupOpen, toggleGroup } = useNavGroupState(STUDENT_GROUPS_KEY);
   // Lazy-init from localStorage: safe because this only ever mounts
   // client-side, after auth resolves -- no SSR mismatch. Mirrors AppSidebar.
   const [collapsed, setCollapsed] = useState(() => {
@@ -271,7 +322,7 @@ export function StudentSidebar() {
           <SchoolCardPanel collapsed={collapsed} />
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <NavList collapsed={collapsed} scroll={false} />
+          <NavList collapsed={collapsed} scroll={false} groupOpen={groupOpen} onToggleGroup={toggleGroup} />
           {collapsed ? null : (
             <div className="mt-3 flex shrink-0 flex-col gap-0">
               <SidebarQuote />
@@ -311,7 +362,7 @@ export function StudentSidebar() {
               <div className="px-3 pb-3">
                 <SchoolCardPanel collapsed={false} />
               </div>
-              <NavList onNavigate={() => setOpen(false)} />
+              <NavList onNavigate={() => setOpen(false)} groupOpen={groupOpen} onToggleGroup={toggleGroup} />
               <SidebarFooter />
             </Dialog.Popup>
           </Dialog.Portal>

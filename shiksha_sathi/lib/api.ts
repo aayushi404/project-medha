@@ -332,18 +332,11 @@ export type ModuleDetail = {
 export const getProfile = (token: string | null) =>
   json<Profile>(apiFetch("/profile", { token }));
 
-export type SubjectSelectionInput = {
-  subject_id: string;
-  grade_id: string;
-  is_primary: boolean;
-};
-
 export const patchProfile = (
   token: string | null,
   body: {
     full_name?: string;
     preferred_language?: string;
-    subjects?: SubjectSelectionInput[];
   },
 ) => json<Profile>(apiFetch("/profile", { method: "PATCH", token, body }));
 
