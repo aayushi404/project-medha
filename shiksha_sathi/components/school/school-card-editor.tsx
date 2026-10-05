@@ -8,6 +8,7 @@ import { CalendarClock, Check, Loader2, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
+  createAcademicYear,
   getAcademicYears,
   removeSchoolLogo,
   renameSchool,
@@ -216,6 +217,32 @@ function AcademicYearSection({ token, onChanged }: { token: string | null; onCha
   const [years, setYears] = useState<AcademicYear[] | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState({ label: "", startsOn: "", endsOn: "" });
+  const [saving, setSaving] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  async function create() {
+    setSaving(true);
+    setCreateError(null);
+    try {
+      const year = await createAcademicYear(token, {
+        label: draft.label.trim(),
+        starts_on: draft.startsOn,
+        ends_on: draft.endsOn,
+        set_current: true,
+      });
+      toast.success(`${year.label} created and set as current`);
+      setDraft({ label: "", startsOn: "", endsOn: "" });
+      setCreating(false);
+      load();
+      onChanged();
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Could not create the academic year.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function load() {
     getAcademicYears(token)
@@ -246,10 +273,80 @@ function AcademicYearSection({ token, onChanged }: { token: string | null; onCha
 
   return (
     <Section title="Academic year" hint="The current year is the one rosters, timetables and attendance show.">
+      {creating ? (
+        <form
+          className="flex flex-col gap-3 rounded-xl border border-border p-3"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void create();
+          }}
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="ay-label" className="text-xs font-medium text-muted-foreground">Label</label>
+              <Input
+                id="ay-label"
+                placeholder="2026-27"
+                maxLength={20}
+                value={draft.label}
+                onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="ay-start" className="text-xs font-medium text-muted-foreground">Starts</label>
+              <Input
+                id="ay-start"
+                type="date"
+                value={draft.startsOn}
+                onChange={(e) => setDraft({ ...draft, startsOn: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="ay-end" className="text-xs font-medium text-muted-foreground">Ends</label>
+              <Input
+                id="ay-end"
+                type="date"
+                value={draft.endsOn}
+                onChange={(e) => setDraft({ ...draft, endsOn: e.target.value })}
+              />
+            </div>
+          </div>
+          {createError ? <p className="text-xs text-destructive">{createError}</p> : null}
+          <p className="text-xs text-muted-foreground">The new year becomes the current one for everyone.</p>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={saving || !draft.label.trim() || !draft.startsOn || !draft.endsOn}
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+              Create and set current
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={saving}
+              onClick={() => {
+                setCreating(false);
+                setCreateError(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <Button size="sm" variant="outline" onClick={() => setCreating(true)}>
+          <CalendarClock className="size-4" />
+          New academic year
+        </Button>
+      )}
       {years === null ? (
         <p className="text-xs text-muted-foreground">Loading…</p>
       ) : years.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No academic years yet. Add one from the Classes page.</p>
+        <p className="text-xs text-muted-foreground">No academic years yet. Create the first one above.</p>
       ) : (
         <ul className="divide-y divide-border rounded-xl border border-border">
           {years.map((y) => (

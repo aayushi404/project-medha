@@ -11,7 +11,6 @@ import { ChapterHistory } from "@/components/dashboard/chapter-history";
 import { Composer } from "@/components/dashboard/composer";
 import { LibrarySuggestions } from "@/components/dashboard/library-suggestions";
 import { MessageThread, type UiMessage } from "@/components/dashboard/message-thread";
-import { VoiceChatLauncher } from "@/components/voice/voice-chat-panel";
 import {
   createSession,
   type ActivityContent,
@@ -267,22 +266,15 @@ function AskPageInner() {
         </>
       )}
 
+      {/* Voice assistant is hidden for teachers for now. VoiceChatLauncher and
+          the composer mic are kept in code; re-enable both to bring them back. */}
       <Composer
         disabled={busy}
         onSend={(t) => void runMessage(t)}
         accessToken={accessToken}
         language={profile?.preferred_language}
         initialValue={initialQuery || undefined}
-      />
-
-      <VoiceChatLauncher
-        config={{
-          accessToken,
-          language: profile?.preferred_language,
-          ensureSession,
-          converse: true,
-          peekSession: () => sessionId,
-        }}
+        enableVoice={false}
       />
     </main>
   );

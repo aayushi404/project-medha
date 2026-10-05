@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useCopy } from "@/lib/copy";
@@ -46,15 +46,6 @@ export function AskMedhaBar({
         )}
       >
         {copy.askMedhaBarPlaceholder}
-      </span>
-      <span
-        aria-label={copy.askMedhaBarMic}
-        className={cn(
-          "flex shrink-0 items-center justify-center rounded-full text-violet transition-colors hover:bg-violet/10",
-          lg ? "size-9" : "size-7",
-        )}
-      >
-        <Mic className={cn(lg ? "size-[18px]" : "size-4")} />
       </span>
     </button>
   );

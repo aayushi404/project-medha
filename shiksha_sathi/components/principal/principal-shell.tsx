@@ -330,8 +330,24 @@ function PrincipalShellFrame({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/Logo.jpeg" alt="Medha" className="h-16 w-auto object-contain" />
               </div>
+              <div className="px-3 pb-2">
+                <SchoolCardPanel collapsed={false} />
+              </div>
               <div className="flex-1 overflow-y-auto">{renderNavItems()}</div>
-              <div className="border-t border-sidebar-border p-3">
+              <div className="flex flex-col gap-2 border-t border-sidebar-border p-3">
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-2 text-left">
+                  <Link
+                    href="/principal/profile"
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="flex min-w-0 flex-1 items-center gap-2"
+                  >
+                    <ProfileImage url={teacher?.photo_url ?? null} name={principalName} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold text-foreground">{principalName}</span>
+                      <span className="block truncate text-[10px] text-muted-foreground">{principalEmail}</span>
+                    </div>
+                  </Link>
+                </div>
                 <button
                   type="button"
                   onClick={() => void logout()}
