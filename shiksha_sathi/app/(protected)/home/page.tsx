@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 /**
  * Post-login router: the public landing page owns "/", so a freshly
  * authenticated user is sent here and forwarded by role -- admins to the admin
- * console, principals to theirs, teachers into onboarding or the dashboard.
+ * console, principals to theirs, teachers to the dashboard.
  */
 export default function HomePage() {
   const { teacher } = useAuth();
@@ -24,7 +24,7 @@ export default function HomePage() {
     } else if (teacher.role === "student") {
       router.replace("/learn");
     } else {
-      router.replace(teacher.onboarded_at ? "/dashboard" : "/onboarding");
+      router.replace("/dashboard");
     }
   }, [teacher, router]);
 

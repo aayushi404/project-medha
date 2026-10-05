@@ -11,8 +11,9 @@ import { SchoolProvider } from "@/lib/school-context";
 
 /**
  * Shell for the signed-in app screens (Dashboard, My Modules). Nests inside the
- * (protected) auth gate and adds chrome + the shared providers. The
- * onboarding-not-done redirect lives here so both screens are covered once.
+ * (protected) auth gate and adds chrome + the shared providers. Teachers are
+ * assigned their school and classes by the principal, so there is no
+ * onboarding step to wait for here.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { teacher } = useAuth();
@@ -22,7 +23,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     if (!teacher) return;
     // admins/principals have their own consoles -- send them back to the role router
     if (teacher.role !== "teacher") router.replace("/home");
-    else if (!teacher.onboarded_at) router.replace("/onboarding");
   }, [teacher, router]);
 
   // Base UI portals (Select popups, dialogs, the ProfileMenu popover) mount
@@ -34,7 +34,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return () => document.body.classList.remove("app-shell");
   }, []);
 
-  if (!teacher || teacher.role !== "teacher" || !teacher.onboarded_at) return null;
+  if (!teacher || teacher.role !== "teacher") return null;
 
   return (
     <SchoolProvider>
