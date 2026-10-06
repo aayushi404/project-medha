@@ -210,3 +210,62 @@ Free web services spin down after 15 min idle and take 30–60 s to wake. For yo
 4. Render: set `FRONTEND_ORIGIN` to the Vercel URL → Manual Deploy.
 5. Run the §8 checklist.
 6. Warm the free tier before demoing, or move to `starter` before a real teacher sees it.
+7. Create the first admin account (§10) so principal applications can be approved.
+
+---
+
+## 10. Creating the first admin account (production)
+
+Admins are never self-registered — there is no sign-up form for them. The account is created once with `backend/scripts/seed_admin.py`, which inserts an already-approved, email-verified `admin` row. Admins sign in at their own page, **`/admin/login`** (students, teachers and principals use `/login`; the backend rejects an admin on the public tabs and a non-admin on the admin page).
+
+**Real links (this deployment)**
+
+| What | Link |
+|---|---|
+| Backend (Render) | https://project-medha-rp84.onrender.com |
+| Backend health check | https://project-medha-rp84.onrender.com/health → `{"status":"ok"}` |
+| Admin sign-in | `<VERCEL_URL>/admin/login` |
+
+(`/docs` and `/openapi.json` are disabled in production, so a 404 there is expected.)
+
+**Variables the script reads**
+
+| Variable | Value | Notes |
+|---|---|---|
+| `DATABASE_URL` | the **Neon** Postgres URL: `postgresql+psycopg2://<USER>:<PASSWORD>@<ep-xxxx>-pooler.<region>.aws.neon.tech/neondb?sslmode=require` | Copy it from Render → backend service → Environment → `DATABASE_URL`, or Neon → Connect. It is **not** the Render web URL — pasting `https://…onrender.com` here is the most common mistake. Use `postgresql+psycopg2://`, not `postgres://`. |
+| `ADMIN_EMAIL` | the admin's real email, e.g. `yadavmannunsy@gmail.com` | Defaults to `admin@medha.app` if unset. Stored lower-cased. |
+| `ADMIN_PASSWORD` | a long, unique password | Never reuse the email as the password. If unset, the script generates one and prints it **once**. |
+
+**Option A — run from your machine (PowerShell)**
+
+```powershell
+cd "D:\Project Medha Bihar Education\project-medha\backend"
+$env:DATABASE_URL = "<NEON_DATABASE_URL>"
+$env:ADMIN_EMAIL = "<ADMIN_EMAIL>"
+$env:ADMIN_PASSWORD = "<A_STRONG_PASSWORD>"
+.\.venv\Scripts\python.exe scripts\seed_admin.py
+```
+
+(bash: `DATABASE_URL='…' ADMIN_EMAIL='…' ADMIN_PASSWORD='…' uv run python scripts/seed_admin.py`)
+
+**Option B — Render Shell** (if your plan has the Shell tab): open the backend service → Shell and run `ADMIN_EMAIL='<ADMIN_EMAIL>' ADMIN_PASSWORD='<A_STRONG_PASSWORD>' python scripts/seed_admin.py`. `DATABASE_URL` is already in the service's environment, so you don't paste it anywhere.
+
+**Check the output**
+
+1. `target database:` must name your Neon host (`…neon.tech`), **not** `localhost` — otherwise you seeded your local DB.
+2. `created  admin      <ADMIN_EMAIL>` means it worked. `exists … unchanged` means that email already has an account; the script never overwrites an existing password.
+3. Sign in at `<VERCEL_URL>/admin/login`.
+
+**Afterwards**
+
+- Close the terminal so the `$env:` variables disappear, and never commit or paste the Neon URL or admin password into chat, issues or this repo.
+- Lost the password? Use **Forgot password** on the login page. Seeding again will not reset it.
+- Further admins: run the script again with a different `ADMIN_EMAIL`.
+
+**If login fails**
+
+| Symptom | Cause |
+|---|---|
+| "Request validation failed." | Render is still on a build from before the admin login route (`2be7ed6`). Redeploy the latest commit. |
+| "Invalid email or password." | Wrong password, or the account was seeded into the wrong database (check the `target database:` line). |
+| Connection error from the script | `DATABASE_URL` is not a Postgres URL, or is missing `?sslmode=require`. |
