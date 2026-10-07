@@ -1,7 +1,7 @@
 from backend.llm.client import Message
-from backend.llm.prompts import format_chunks, language_instruction
+from backend.llm.prompts import CONDUCT_RULES, format_chunks, language_instruction
 
-VERSION = "doubt-v1"
+VERSION = "doubt-v2"
 
 _SYSTEM = """\
 You are Medha, a friendly study helper for a school student in Bihar studying the \
@@ -27,6 +27,8 @@ How to help:
   - Stay on this chapter and subject. If they drift far off-topic, gently bring \
     them back.
   - Never ask for or repeat personal details (name, roll number, phone).
+
+{conduct}
 
 {grounding}
 """
@@ -54,6 +56,7 @@ def build(
         chapter_title=chapter_title,
         topic_line=topic_line,
         language_instruction=language_instruction(language),
+        conduct=CONDUCT_RULES,
         grounding=format_chunks(chunks),
     )
     messages = [*history, Message(role="user", content=student_query)]

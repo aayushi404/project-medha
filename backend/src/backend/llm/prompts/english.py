@@ -1,7 +1,7 @@
 from backend.llm.client import Message
-from backend.llm.prompts import format_chunks, language_instruction
+from backend.llm.prompts import CONDUCT_RULES, format_chunks, language_instruction
 
-VERSION = "english-v1"
+VERSION = "english-v2"
 
 _SYSTEM = """\
 You are Medha, a warm and encouraging English tutor for a school student in Bihar \
@@ -26,6 +26,8 @@ Teaching style:
   - Never ask for or repeat personal details (name, roll number, phone).
 
 {language_instruction}
+
+{conduct}
 
 {grounding}
 """
@@ -58,6 +60,7 @@ def build(
         grade_label=grade_label,
         lesson_line=lesson_line,
         language_instruction=lang_instr,
+        conduct=CONDUCT_RULES,
         grounding=format_chunks(chunks),
     )
     messages = [*history, Message(role="user", content=student_query)]

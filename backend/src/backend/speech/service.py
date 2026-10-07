@@ -33,6 +33,7 @@ from backend.db.models import (
     VoiceTurn,
 )
 from backend.llm import LLMError, StreamEnd, TokenDelta, get_llm_client
+from backend.llm import safety
 from backend.llm.client import Message
 from backend.llm.prompts import voice as voice_prompt
 from backend.llm.prompts import voice_doubt as voice_doubt_prompt
@@ -245,7 +246,9 @@ async def stream_converse(
 
     client = get_llm_client()
     parts: list[str] = []
-    pending = ""  # streamed text not yet handed to TTS
+    pending = ""  # sanitized text not yet handed to TTS
+    safety_buf = ""  # raw text not yet checked -- see llm.safety.split_safe_prefix
+    caught_words: list[str] = []
     tokens_out: int | None = None
     seq = 0
     tts_ms_total = 0
@@ -265,23 +268,42 @@ async def stream_converse(
         seq += 1
         yield frame
 
+    async def _handle_clean(ready: str):
+        """A chunk that has passed the word-boundary safety check: caption it
+        and feed it to the TTS sentence buffer."""
+        nonlocal pending
+        clean, caught = safety.sanitize(ready)
+        caught_words.extend(caught)
+        parts.append(clean)
+        pending += clean
+        yield _sse("token", {"text": clean})
+        split = _next_spoken_chunk(pending)
+        if split is not None:
+            chunk, pending = split
+            async for frame in _emit(chunk):
+                yield frame
+
     try:
         async for event in client.stream(system=system, messages=messages, max_tokens=max_tokens):
             if isinstance(event, TokenDelta):
-                parts.append(event.text)
-                pending += event.text
-                yield _sse("token", {"text": event.text})
-                split = _next_spoken_chunk(pending)
-                if split is not None:
-                    chunk, pending = split
-                    async for frame in _emit(chunk):
-                        yield frame
+                safety_buf += event.text
+                split = safety.split_safe_prefix(safety_buf)
+                if split is None:
+                    continue
+                ready, safety_buf = split
+                async for out in _handle_clean(ready):
+                    yield out
             elif isinstance(event, StreamEnd):
                 tokens_out = event.usage.output_tokens
     except LLMError as exc:
         logger.warning("voice generation failed: %s", exc)
         yield _sse("error", {"message": _ERR_GENERATION, "fallback": "type_instead"})
         return
+    if safety_buf:
+        async for out in _handle_clean(safety_buf):
+            yield out
+    if caught_words:
+        logger.warning("voice reply sanitized session=%s words=%s", session.id, caught_words)
     llm_ms = int((time.monotonic() - llm_started) * 1000)
 
     reply = "".join(parts).strip()

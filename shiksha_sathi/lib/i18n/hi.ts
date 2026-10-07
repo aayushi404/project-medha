@@ -266,6 +266,11 @@ export const hi: Copy = {
     pickPlaceholder: "पहले विषय और अध्याय चुनें",
     pickSubjectChapterToast: "पहले विषय और अध्याय चुनें।",
     couldNotStart: "शुरू नहीं हो सका।",
+    contentLanguageLabel: "भाषा",
+    contentLanguageHindi: "हिंदी",
+    contentLanguageHinglish: "Hinglish",
+    contentLanguageUpdated: "अब जवाब इसी भाषा में लिखे जाएंगे।",
+    contentLanguageFailed: "भाषा बदल नहीं सकी। फिर से कोशिश करें।",
 
     notesTitle: "नोट्स",
     notesSub: "हर अध्याय के लिए छोटे, रिवीज़न के लिए तैयार नोट्स।",

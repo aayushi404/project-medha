@@ -14,6 +14,7 @@ from backend.core.section_access import current_enrollment
 from backend.db.models import ChatMessage, ChatSession, ClassSection, Grade, Student, Subject
 from backend.english.schemas import EnglishSessionCreateIn
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
+from backend.llm import safety
 from backend.llm.prompts import english as english_prompt
 
 logger = logging.getLogger("backend.english")
@@ -121,11 +122,20 @@ async def stream_message(
     client = get_llm_client()
     parts: list[str] = []
     output_tokens: int | None = None
+    buf = ""  # held back until a word boundary -- see tutor/service.py
+    caught_words: list[str] = []
     try:
         async for event in client.stream(system=system, messages=messages):
             if isinstance(event, TokenDelta):
-                parts.append(event.text)
-                yield _sse("token", {"text": event.text})
+                buf += event.text
+                split = safety.split_safe_prefix(buf)
+                if split is None:
+                    continue
+                ready, buf = split
+                clean, caught = safety.sanitize(ready)
+                caught_words.extend(caught)
+                parts.append(clean)
+                yield _sse("token", {"text": clean})
             elif isinstance(event, StreamEnd):
                 output_tokens = event.usage.output_tokens
     except LLMRateLimitError as exc:
@@ -136,6 +146,14 @@ async def stream_message(
         logger.warning("english generation failed: %s", exc)
         yield _sse("error", {"message": _ERR_GENERATION})
         return
+
+    if buf:
+        clean, caught = safety.sanitize(buf)
+        caught_words.extend(caught)
+        parts.append(clean)
+        yield _sse("token", {"text": clean})
+    if caught_words:
+        logger.warning("english reply sanitized session=%s words=%s", session.id, caught_words)
 
     full_text = "".join(parts).strip()
     if not full_text:

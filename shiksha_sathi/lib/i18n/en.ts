@@ -271,6 +271,11 @@ export const en = {
     pickPlaceholder: "Pick a subject and chapter first",
     pickSubjectChapterToast: "Pick a subject and chapter first.",
     couldNotStart: "Couldn't start.",
+    contentLanguageLabel: "Written in",
+    contentLanguageHindi: "Hindi",
+    contentLanguageHinglish: "Hinglish",
+    contentLanguageUpdated: "Answers will now be written in this language.",
+    contentLanguageFailed: "Couldn't change the language. Try again.",
 
     notesTitle: "Notes",
     notesSub: "Short, revision-ready notes for every chapter.",
