@@ -11,15 +11,23 @@ Shared context keys used across builders:
 _LANGUAGE_INSTRUCTION = {
     "hi-BiharBoli": (
         "Reply in simple, everyday Hindi with a natural Bihari conversational "
-        "tone. Use short sentences a Class 6-10 teacher can read aloud."
+        "tone. Use short sentences a Class 6-10 teacher can read aloud. Write "
+        "entirely in Devanagari script (हिंदी) -- never in Roman/Latin letters, "
+        "even for a word you'd normally mix in while speaking."
     ),
-    "hi": "Reply in simple, standard Hindi. Use short, clear sentences.",
+    "hi": (
+        "Reply in simple, standard Hindi. Use short, clear sentences. Write "
+        "entirely in Devanagari script (हिंदी) -- never in Roman/Latin letters."
+    ),
     "en": "Reply in simple English. Use short, clear sentences.",
     "hinglish": (
-        "Reply in Hinglish -- code-mixed Hindi-English written in Latin script, "
-        "the way teachers actually text each other (e.g. 'Aaj hum photosynthesis "
-        "padhayenge'). Not pure transliterated Hindi and not pure English -- mix "
-        "naturally. Use short, clear sentences."
+        "Reply in Hinglish: English is the base language -- English grammar, "
+        "most of the vocabulary -- written in Roman script, with Hindi words "
+        "mixed in naturally for warmth and local flavour, the way Bihar "
+        "teachers actually text each other (e.g. 'Today we'll study "
+        "photosynthesis, bahut interesting chapter hai'). This is English "
+        "with a Hinglish flavour, not a 50-50 code-mix and never Devanagari "
+        "script. Use short, clear sentences."
     ),
 }
 

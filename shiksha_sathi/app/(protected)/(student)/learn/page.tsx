@@ -38,7 +38,13 @@ function uid() {
 export default function LearnPage() {
   const copy = useCopy();
   const { accessToken } = useAuth();
-  const { firstName } = useStudentData();
+  const { firstName, contentLanguage } = useStudentData();
+  // The voice provider only speaks Hindi or English, never a true code-mixed
+  // "Hinglish" -- so the Hinglish choice falls back to English for voice
+  // (both the spoken reply and its on-screen caption), while Hindi stays
+  // Hindi. The written chat, by contrast, really does write Hinglish --
+  // see llm/prompts.language_instruction on the backend.
+  const voiceLanguage = contentLanguage === "hinglish" ? "en" : "hi-BiharBoli";
   const picker = useSubjectChapter();
   const { subjectId, chapterId } = picker;
 
@@ -195,13 +201,13 @@ export default function LearnPage() {
         placeholder={canAsk ? copy.student.askPlaceholder : copy.student.pickPlaceholder}
         onSend={(t) => void runMessage(t)}
         accessToken={accessToken}
-        language="hi-BiharBoli"
+        language={voiceLanguage}
       />
 
       <VoiceChatLauncher
         config={{
           accessToken,
-          language: "hi-BiharBoli",
+          language: voiceLanguage,
           ensureSession,
           converse: true,
           peekSession: () => sessionId,
