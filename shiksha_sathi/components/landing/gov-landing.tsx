@@ -386,10 +386,17 @@ export function GovLanding() {
 
             </div>
 
-            <a href="#resources" className="text-link">
-              Explore the platform
-              <ArrowRight size={15} />
-            </a>
+            <div className="hero-buttons">
+              <a href="#resources" className="text-link">
+                Explore the platform
+                <ArrowRight size={15} />
+              </a>
+
+              <Link href="/team/founder" className="secondary-btn">
+                Founder&apos;s Vision
+                <ChevronRight size={16} />
+              </Link>
+            </div>
 
           </div>
 
