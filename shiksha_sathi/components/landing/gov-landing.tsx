@@ -1408,6 +1408,7 @@ export function GovLanding() {
             <a href="#about">About MEDHA</a>
             <a href="#resources">Resources</a>
             <a href="#content">e-Content</a>
+            <Link href="/team/founder">Founder</Link>
           </div>
 
           <div>
