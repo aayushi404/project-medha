@@ -519,6 +519,166 @@
   opacity: 1;
 }
 
+/* "About MEDHA" hover menu -- a nav item that reveals a panel of related
+   pages (founder, and later blog posts / other team members) instead of
+   linking straight to one place.
+
+   This never changes .main-nav's own height: the panel is position:absolute
+   against .nav-dropdown (the nearest `position: relative` ancestor), so it
+   paints as a floating overlay on top of the hero section below, not as
+   in-flow content that would push the page down. */
+.nav-dropdown {
+  position: relative;
+  /* matches .nav-inner's min-height: 100% would need a definite height on
+     an ancestor that only sets min-height, so it's pinned to the same value
+     instead -- fills the full nav row so the pointer never has to cross a
+     gap between the trigger and the panel below it */
+  display: flex;
+  align-items: center;
+  height: 46px;
+}
+
+.nav-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.nav-dropdown-chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.nav-dropdown-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+/* A small triangular caret connecting the panel back to the word above it,
+   so it reads as one floating dialog rather than an unrelated box. */
+.nav-dropdown-panel {
+  position: absolute;
+  top: 100%;
+  left: -14px;
+  margin-top: 14px;
+  min-width: 270px;
+  padding: 10px;
+  background: var(--ink);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  border-radius: 12px;
+  box-shadow: 0 20px 45px oklch(0 0 0 / 0.3);
+  z-index: 30;
+  animation: nav-dropdown-in 0.16s ease both;
+}
+
+.nav-dropdown-panel::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 18px;
+  border: 7px solid transparent;
+  border-bottom-color: var(--ink);
+}
+
+/* the 14px gap between trigger and panel (for the caret) would otherwise
+   break the hover chain -- this invisible strip bridges it so the pointer
+   never "leaves" .nav-dropdown while crossing from one to the other */
+.nav-dropdown-panel::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  height: 14px;
+}
+
+@keyframes nav-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-dropdown-eyebrow {
+  padding: 6px 10px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: oklch(1 0 0 / 0.5);
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: white;
+  opacity: 1;
+  transition: background 0.12s ease;
+}
+
+.nav-dropdown-item:hover,
+.nav-dropdown-item:focus-visible {
+  background: oklch(1 0 0 / 0.08);
+}
+
+.nav-dropdown-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--medha-blue);
+  color: white;
+}
+
+.nav-dropdown-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nav-dropdown-item-text strong {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.nav-dropdown-item-text span {
+  font-size: 10.5px;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+
+.mobile-submenu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 36px !important;
+  background: oklch(0 0 0 / 0.12);
+  font-size: 10.5px !important;
+  opacity: 0.85;
+}
+
+/* Between the hard mobile cutoff (760px) and a comfortable desktop width,
+   tighten the nav row so the dropdown trigger's icon never wraps onto its
+   own line -- the exact bug this guards against was caught by testing the
+   dropdown at in-between widths. */
+@media (max-width: 1050px) and (min-width: 761px) {
+  .desktop-nav {
+    gap: 16px;
+    font-size: 11px;
+  }
+}
+
 .nav-actions {
   display: flex;
   align-items: center;

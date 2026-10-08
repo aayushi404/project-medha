@@ -6,6 +6,7 @@ import {
   BookOpen,
   Brain,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   GraduationCap,
   Landmark,
@@ -25,6 +26,26 @@ import {
   Clock,
 } from "lucide-react";
 import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
+
+type AboutMenuItem = {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+  description: string;
+};
+
+// The "About MEDHA" hover menu -- grows here as more pages are added (blog
+// posts, other team members). Each entry is a real route, not an in-page
+// anchor, since these are standalone pages of their own.
+const ABOUT_MENU_ITEMS: AboutMenuItem[] = [
+  {
+    icon: GraduationCap,
+    label: "Founder's Vision",
+    href: "/team/founder",
+    description: "The person and the idea behind Project Medha",
+  },
+];
 
 const features = [
   {
@@ -103,6 +124,7 @@ const studentFeatures = [
 
 export function GovLanding() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [aboutMenuOpen, setAboutMenuOpen] = useState(false);
   const [activeTeacherTab, setActiveTeacherTab] = useState("attendance");
   const [attendanceStatus, setAttendanceStatus] = useState("present");
   const [attendanceNote, setAttendanceNote] = useState("");
@@ -152,7 +174,42 @@ export function GovLanding() {
 
           <div className="desktop-nav">
             <Link href="/">Home</Link>
-            <a href="#about">About MEDHA</a>
+            <div
+              className="nav-dropdown"
+              onMouseEnter={() => setAboutMenuOpen(true)}
+              onMouseLeave={() => setAboutMenuOpen(false)}
+            >
+              <a href="#about" className="nav-dropdown-trigger">
+                About MEDHA
+                <ChevronDown
+                  size={13}
+                  className={aboutMenuOpen ? "nav-dropdown-chevron is-open" : "nav-dropdown-chevron"}
+                  aria-hidden
+                />
+              </a>
+              {aboutMenuOpen && (
+                <div className="nav-dropdown-panel" role="menu">
+                  <div className="nav-dropdown-eyebrow">About Medha</div>
+                  {ABOUT_MENU_ITEMS.map(({ icon: Icon, label, href, description }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className="nav-dropdown-item"
+                      role="menuitem"
+                      onClick={() => setAboutMenuOpen(false)}
+                    >
+                      <span className="nav-dropdown-item-icon">
+                        <Icon size={16} aria-hidden />
+                      </span>
+                      <span className="nav-dropdown-item-text">
+                        <strong>{label}</strong>
+                        <span>{description}</span>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
             <a href="#resources">Resources</a>
             <a href="#teachers">For Teachers</a>
             <a href="#students">For Students</a>
@@ -191,6 +248,17 @@ export function GovLanding() {
         {mobileOpen && (
           <div className="mobile-menu">
             <a href="#about" onClick={() => setMobileOpen(false)}>About MEDHA</a>
+            {ABOUT_MENU_ITEMS.map(({ icon: Icon, label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className="mobile-submenu-item"
+                onClick={() => setMobileOpen(false)}
+              >
+                <Icon size={13} aria-hidden />
+                {label}
+              </Link>
+            ))}
             <a href="#resources" onClick={() => setMobileOpen(false)}>Resources</a>
             <a href="#teachers" onClick={() => setMobileOpen(false)}>For Teachers</a>
             <a href="#students" onClick={() => setMobileOpen(false)}>For Students</a>
