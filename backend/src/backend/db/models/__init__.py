@@ -40,6 +40,7 @@ from backend.db.models.teacher import (
 )
 from backend.db.models.timetable import TimetableEntry
 from backend.db.models.timetable_planner import PeriodSlot, Timetable, TimetableCell
+from backend.db.models.work_update import WorkUpdate, WorkUpdateReaction
 from backend.db.models.substitution import DailyTimetable, PeriodSubstitution, TeacherAbsence
 
 __all__ = [
@@ -75,6 +76,8 @@ __all__ = [
     "DeviceToken",
     "Homework",
     "HomeworkStatus",
+    "WorkUpdate",
+    "WorkUpdateReaction",
     "TimetableEntry",
     "PeriodSlot",
     "Timetable",

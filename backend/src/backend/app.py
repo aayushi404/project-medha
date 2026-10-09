@@ -19,6 +19,7 @@ from backend.english.router import router as english_router
 from backend.fees.router import router as fees_router
 from backend.generation.router import router as generation_router
 from backend.homework.router import router as homework_router
+from backend.work_updates.router import router as work_updates_router
 from backend.library.router import router as library_router
 from backend.modules.router import router as modules_router
 from backend.notes.router import router as notes_router
@@ -180,6 +181,7 @@ app.include_router(attendance_router)
 app.include_router(absence_calls_router)
 app.include_router(notifications_router)
 app.include_router(homework_router)
+app.include_router(work_updates_router)
 app.include_router(timetable_router)
 app.include_router(timetable_planner_router)
 app.include_router(cover_router)

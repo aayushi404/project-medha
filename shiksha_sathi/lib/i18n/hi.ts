@@ -34,6 +34,7 @@ export const hi: Copy = {
     library: "लाइब्रेरी",
     english: "अंग्रेज़ी सीखें",
     homework: "गृहकार्य",
+    classUpdates: "कक्षा अपडेट",
     timetable: "समय सारिणी",
     reportCard: "रिपोर्ट कार्ड",
     resources: "ई-लाइब्रेरी",
