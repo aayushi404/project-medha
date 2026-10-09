@@ -5,15 +5,17 @@ import {
   Award,
   BookOpen,
   Calendar,
-  Check,
-  CheckCircle2,
   ChevronDown,
+  Flag,
   MessageSquare,
   Sparkles,
+  ThumbsDown,
   ThumbsUp,
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+
+import { ReactionNames } from "@/components/dashboard/work-update-modal";
 
 import {
   AI_USEFULNESS_OPTIONS,
@@ -25,10 +27,9 @@ import {
 } from "@/lib/work-update-store";
 
 export function PrincipalWorkUpdatesFeed() {
-  const { updates, acknowledgeUpdate } = useWorkUpdates();
+  const { updates, giveFeedback } = useWorkUpdates();
   const [filterTeacher, setFilterTeacher] = useState<string>("all");
   const [filterDate, setFilterDate] = useState<string>("all");
-  const [actingId, setActingId] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -48,9 +49,29 @@ export function PrincipalWorkUpdatesFeed() {
 
   const todayCount = updates.filter((u) => u.date === today).length;
 
-  function handleAck(item: TeacherWorkUpdate, badge: PrincipalFeedback["badge"]) {
-    acknowledgeUpdate(item.id, badge);
-    toast.success(`Appreciation sent to ${item.teacher_name}! ${PRINCIPAL_BADGES[badge].emoji}`);
+  async function saveFeedback(
+    item: TeacherWorkUpdate,
+    next: { badge?: PrincipalFeedback["badge"] | null; note?: string; flagged?: boolean },
+  ) {
+    const fb = item.principal_feedback;
+    const flagged = next.flagged ?? fb?.flagged ?? false;
+    const note = next.note ?? fb?.note ?? "";
+    if (flagged && !note.trim()) {
+      toast.error("Add a note explaining why you are flagging this.");
+      return;
+    }
+    try {
+      await giveFeedback(item.id, {
+        note: note.trim() || null,
+        flagged,
+        badge: next.badge === undefined ? (fb?.badge ?? null) : next.badge,
+      });
+      toast.success(
+        flagged ? `Flagged. ${item.teacher_name} can see your note.` : `Feedback sent to ${item.teacher_name}.`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save feedback.");
+    }
   }
 
   return (
@@ -186,7 +207,26 @@ export function PrincipalWorkUpdatesFeed() {
                     </div>
                   </div>
 
-                  {/* Teacher's note if provided */}
+                  {(item.topics.length > 0 || item.other_topics) && (
+                    <div className="mt-2.5 text-xs text-foreground/85">
+                      <span className="font-semibold">Sub-topics: </span>
+                      {[...item.topics, ...(item.other_topics ? [item.other_topics] : [])].join(" · ")}
+                    </div>
+                  )}
+                  {item.activity_detail && (
+                    <div className="mt-1.5 text-xs text-foreground/85">
+                      <span className="font-semibold">Class activity: </span>
+                      {item.activity_detail}
+                    </div>
+                  )}
+                  {item.homework.length > 0 && (
+                    <div className="mt-1.5 text-xs text-foreground/85">
+                      <span className="font-semibold">Homework: </span>
+                      {item.homework.map((h) => h.title).join(" · ")}
+                    </div>
+                  )}
+
+                  {/* Teacher's note */}
                   {item.note && (
                     <div className="mt-3 flex items-start gap-1.5 rounded-lg border border-border/50 bg-background/50 p-2 text-xs text-foreground/85">
                       <MessageSquare className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
@@ -208,67 +248,130 @@ export function PrincipalWorkUpdatesFeed() {
                     </span>
                   </div>
 
-                  {/* 1-Click Principal Acknowledgment & Praise */}
-                  <div className="rounded-lg bg-muted/40 p-2 text-xs">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Principal Appreciation:
-                      </span>
-                      {badgeMeta && (
-                        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.2 text-[10px] font-semibold ${badgeMeta.color}`}>
-                          <span>{badgeMeta.emoji}</span>
-                          <span>{badgeMeta.label.split(" (")[0]}</span>
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleAck(item, "approved_great")}
-                        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
-                          currentBadge === "approved_great"
-                            ? "border-emerald-500 bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-300"
-                            : "border-border bg-card text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <span>👏</span>
-                        <span>Approved</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleAck(item, "star_teacher")}
-                        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
-                          currentBadge === "star_teacher"
-                            ? "border-amber-500 bg-amber-500/15 font-semibold text-amber-700 dark:text-amber-300"
-                            : "border-border bg-card text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <span>⭐</span>
-                        <span>Star Teaching</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleAck(item, "well_done")}
-                        className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
-                          currentBadge === "well_done"
-                            ? "border-blue-500 bg-blue-500/15 font-semibold text-blue-700 dark:text-blue-300"
-                            : "border-border bg-card text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <span>👍</span>
-                        <span>Well Done</span>
-                      </button>
-                    </div>
+                  {/* Student verification */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <ReactionNames
+                      icon={<ThumbsUp className="size-3 text-emerald-600" />}
+                      label="Students approved"
+                      names={item.reactions.filter((r) => r.value === "approve").map((r) => r.student_name)}
+                    />
+                    <ReactionNames
+                      icon={<ThumbsDown className="size-3 text-rose-600" />}
+                      label="Students disapproved"
+                      names={item.reactions.filter((r) => r.value === "disapprove").map((r) => r.student_name)}
+                    />
                   </div>
+
+                  <FeedbackBox
+                    key={`${item.id}-${item.principal_feedback?.acknowledged_at ?? ""}`}
+                    item={item}
+                    badgeMeta={badgeMeta}
+                    onSave={(next) => saveFeedback(item, next)}
+                  />
                 </div>
               </div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+type BadgeMeta = (typeof PRINCIPAL_BADGES)[keyof typeof PRINCIPAL_BADGES];
+
+function FeedbackBox({
+  item,
+  badgeMeta,
+  onSave,
+}: {
+  item: TeacherWorkUpdate;
+  badgeMeta: BadgeMeta | null;
+  onSave: (next: {
+    badge?: PrincipalFeedback["badge"] | null;
+    note?: string;
+    flagged?: boolean;
+  }) => Promise<void>;
+}) {
+  const fb = item.principal_feedback;
+  const [note, setNote] = useState(fb?.note ?? "");
+  const [flagged, setFlagged] = useState(fb?.flagged ?? false);
+  const [saving, setSaving] = useState(false);
+  const badges: { id: NonNullable<PrincipalFeedback["badge"]>; emoji: string; label: string }[] = [
+    { id: "approved_great", emoji: "👏", label: "Approved" },
+    { id: "star_teacher", emoji: "⭐", label: "Star Teaching" },
+    { id: "well_done", emoji: "👍", label: "Well Done" },
+  ];
+
+  async function save(extra: { badge?: PrincipalFeedback["badge"] | null } = {}) {
+    setSaving(true);
+    try {
+      await onSave({ note, flagged, ...extra });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg bg-muted/40 p-2 text-xs">
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Principal feedback
+        </span>
+        {badgeMeta && (
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2 text-[10px] font-semibold ${badgeMeta.color}`}>
+            {badgeMeta.emoji} {badgeMeta.label.split(" (")[0]}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {badges.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            disabled={saving}
+            onClick={() => save({ badge: fb?.badge === b.id ? null : b.id })}
+            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
+              fb?.badge === b.id
+                ? "border-primary bg-primary/10 font-semibold text-foreground"
+                : "border-border bg-card text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <span>{b.emoji}</span>
+            <span>{b.label}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setFlagged((v) => !v)}
+          className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors ${
+            flagged
+              ? "border-rose-500 bg-rose-500/15 font-semibold text-rose-700 dark:text-rose-300"
+              : "border-border bg-card text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          <Flag className="size-3" />
+          <span>{flagged ? "Flagged" : "Flag teacher"}</span>
+        </button>
+      </div>
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={500}
+        rows={2}
+        placeholder={flagged ? "Why are you flagging this? (required)" : "Add a note for the teacher (visible to them)..."}
+        className="mt-2 w-full resize-none rounded-md border border-border bg-background px-2 py-1.5 text-xs focus:border-terracotta focus:outline-none focus:ring-1 focus:ring-terracotta"
+      />
+      <div className="mt-1.5 flex justify-end">
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => save()}
+          className="rounded-md bg-terracotta px-3 py-1 text-[11px] font-semibold text-white hover:bg-terracotta/90 disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save feedback"}
+        </button>
+      </div>
     </div>
   );
 }

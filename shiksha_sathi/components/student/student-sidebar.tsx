@@ -54,6 +54,7 @@ const NAV_GROUPS: StudentNavGroup[] = [
     icon: School,
     items: [
       { href: "/my-homework", navKey: "homework", icon: NotebookPen },
+      { href: "/my-work-updates", navKey: "classUpdates", icon: ClipboardList },
       { href: "/my-attendance", navKey: "attendance", icon: ClipboardCheck },
       { href: "/my-timetable", navKey: "timetable", icon: CalendarDays },
     ],

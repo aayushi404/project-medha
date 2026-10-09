@@ -36,6 +36,7 @@ export const en = {
     library: "Library",
     english: "Learn English",
     homework: "Homework",
+    classUpdates: "Class Updates",
     timetable: "Timetable",
     reportCard: "Report Card",
     resources: "E-Library",

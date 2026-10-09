@@ -576,6 +576,7 @@ export type SchoolDetail = {
   udise_code: string | null;
   school_type: string | null;
   medium_of_instruction: string;
+  district_id: string;
   district_name: string;
   block_name: string | null;
   class_count: number;
@@ -658,6 +659,127 @@ export const rejectPrincipal = (token: string | null, id: string, reason: string
 export const revokePrincipal = (token: string | null, id: string, reason: string) =>
   json<ApprovalResult>(
     apiFetch(`/admin/principals/${id}/revoke`, { method: "POST", token, body: { reason } }),
+  );
+
+export type AttentionKind =
+  | "no_principal"
+  | "pending_principal"
+  | "no_teachers"
+  | "attendance_not_marked";
+
+export type AttentionItem = {
+  kind: AttentionKind;
+  school_id: string;
+  school_name: string;
+  district_name: string;
+};
+
+export type AttendanceSchoolRow = {
+  school_id: string;
+  school_name: string;
+  district_name: string;
+  students: number;
+  marked: boolean;
+  present: number;
+  absent: number;
+  day_pct: number | null;
+  week_pct: number | null;
+};
+
+export type AttendanceOverview = { day: string; rows: AttendanceSchoolRow[] };
+
+export type StaffListItem = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  mobile_number: string | null;
+  role: "principal" | "teacher";
+  approval_status: ApprovalStatus;
+  qualification: string | null;
+  school_id: string | null;
+  school_name: string | null;
+  district_name: string | null;
+  applied_at: string;
+};
+
+export type SchoolInput = {
+  name: string;
+  district_id: string;
+  block_name?: string | null;
+  udise_code?: string | null;
+  school_type?: string | null;
+  medium_of_instruction: string;
+};
+
+export type AdminAudience = "principals" | "teachers" | "principals_and_teachers";
+
+export type AdminAnnouncement = {
+  title: string;
+  body: string;
+  audience: AdminAudience | null;
+  district_name: string | null;
+  recipients: number;
+  created_at: string;
+};
+
+export const getAdminAttention = (token: string | null) =>
+  json<AttentionItem[]>(apiFetch("/admin/attention", { token }));
+
+export const getAdminAttendance = (
+  token: string | null,
+  opts: { day?: string; districtId?: string } = {},
+) => {
+  const qs = new URLSearchParams();
+  if (opts.day) qs.set("day", opts.day);
+  if (opts.districtId) qs.set("district_id", opts.districtId);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return json<AttendanceOverview>(apiFetch(`/admin/attendance${suffix}`, { token }));
+};
+
+export const getAdminStaff = (
+  token: string | null,
+  opts: {
+    q?: string;
+    role?: "principal" | "teacher";
+    status?: ApprovalStatus;
+    districtId?: string;
+  } = {},
+) => {
+  const qs = new URLSearchParams();
+  if (opts.q?.trim()) qs.set("q", opts.q.trim());
+  if (opts.role) qs.set("role", opts.role);
+  if (opts.status) qs.set("approval_status", opts.status);
+  if (opts.districtId) qs.set("district_id", opts.districtId);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return json<StaffListItem[]>(apiFetch(`/admin/staff${suffix}`, { token }));
+};
+
+export const createAdminSchool = (token: string | null, input: SchoolInput) =>
+  json<SchoolDetail>(apiFetch("/admin/schools", { method: "POST", token, body: input }));
+
+export const updateAdminSchool = (
+  token: string | null,
+  schoolId: string,
+  input: Partial<SchoolInput>,
+) =>
+  json<SchoolDetail>(
+    apiFetch(`/admin/schools/${schoolId}`, { method: "PATCH", token, body: input }),
+  );
+
+export const createAdminDistrict = (token: string | null, name: string) =>
+  json<DistrictSummary>(
+    apiFetch("/admin/districts", { method: "POST", token, body: { name } }),
+  );
+
+export const getAdminAnnouncements = (token: string | null) =>
+  json<AdminAnnouncement[]>(apiFetch("/admin/announcements", { token }));
+
+export const sendAdminAnnouncement = (
+  token: string | null,
+  input: { title: string; body: string; audience: AdminAudience; district_id?: string | null },
+) =>
+  json<{ recipients: number }>(
+    apiFetch("/admin/announcements", { method: "POST", token, body: input }),
   );
 
 // --- principal ---
@@ -1334,6 +1456,104 @@ export const markHomeworkDone = (token: string | null, id: string) =>
 
 export const markHomeworkUndone = (token: string | null, id: string) =>
   json<HomeworkStudentItem>(apiFetch(`/homework/${id}/undone`, { method: "POST", token }));
+
+// ---------------------------------------------------------------------------
+// Work updates: a teacher's daily report; the principal adds notes/flags;
+// students approve or disapprove, and staff see who reacted how.
+// ---------------------------------------------------------------------------
+
+export type WorkUpdateReaction = {
+  student_id: string;
+  student_name: string;
+  value: "approve" | "disapprove";
+};
+
+export type WorkUpdateHomeworkRef = { id: string; title: string };
+
+export type WorkUpdateApi = {
+  id: string;
+  teacher_id: string;
+  teacher_name: string;
+  work_date: string;
+  created_at: string;
+  grade_label: string;
+  subject_name: string;
+  chapter_title: string;
+  activities: string[];
+  topics: string[];
+  other_topics: string | null;
+  activity_detail: string | null;
+  homework: WorkUpdateHomeworkRef[];
+  ai_usefulness: string;
+  note: string;
+  principal_note: string | null;
+  principal_badge: string | null;
+  flagged: boolean;
+  feedback_at: string | null;
+  reactions: WorkUpdateReaction[];
+};
+
+export type WorkUpdateStudentItem = {
+  id: string;
+  teacher_name: string;
+  work_date: string;
+  created_at: string;
+  grade_label: string;
+  subject_name: string;
+  chapter_title: string;
+  activities: string[];
+  topics: string[];
+  other_topics: string | null;
+  activity_detail: string | null;
+  homework: WorkUpdateHomeworkRef[];
+  approve_count: number;
+  disapprove_count: number;
+  my_reaction: "approve" | "disapprove" | null;
+};
+
+export type WorkUpdateCreateInput = {
+  grade_id: string;
+  subject_id: string;
+  chapter_id: string;
+  activities: string[];
+  topics: string[];
+  other_topics?: string | null;
+  activity_detail?: string | null;
+  ai_usefulness: string;
+  note: string;
+};
+
+export const createWorkUpdate = (token: string | null, body: WorkUpdateCreateInput) =>
+  json<WorkUpdateApi>(apiFetch("/work-updates", { method: "POST", token, body }));
+
+export const listWorkUpdates = (token: string | null) =>
+  json<WorkUpdateApi[]>(apiFetch("/work-updates", { token }));
+
+export const getHomeworkToday = (token: string | null, gradeId: string, subjectId: string) =>
+  json<WorkUpdateHomeworkRef[]>(
+    apiFetch(
+      `/work-updates/homework-today?grade_id=${encodeURIComponent(gradeId)}&subject_id=${encodeURIComponent(subjectId)}`,
+      { token },
+    ),
+  );
+
+export const listMyWorkUpdates = (token: string | null) =>
+  json<WorkUpdateStudentItem[]>(apiFetch("/work-updates/mine", { token }));
+
+export const reactToWorkUpdate = (
+  token: string | null,
+  id: string,
+  value: "approve" | "disapprove" | null,
+) =>
+  json<WorkUpdateStudentItem>(
+    apiFetch(`/work-updates/${id}/react`, { method: "POST", token, body: { value } }),
+  );
+
+export const sendWorkUpdateFeedback = (
+  token: string | null,
+  id: string,
+  body: { note?: string | null; flagged: boolean; badge?: string | null },
+) => json<WorkUpdateApi>(apiFetch(`/work-updates/${id}/feedback`, { method: "POST", token, body }));
 
 // ---------------------------------------------------------------------------
 // Timetable: one weekly grid per grade (Mon-Sat x periods), read by anyone at

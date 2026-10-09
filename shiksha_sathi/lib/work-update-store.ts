@@ -1,8 +1,16 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "medha.teacher_work_updates.v1";
+import {
+  createWorkUpdate,
+  listWorkUpdates,
+  sendWorkUpdateFeedback,
+  type WorkUpdateApi,
+  type WorkUpdateCreateInput,
+  type WorkUpdateReaction,
+} from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 const NOTICES_KEY = "medha.school_notices.v1";
 
 export type AiHelpfulnessRating = "very_helpful" | "somewhat_helpful" | "neutral" | "not_needed";
@@ -16,27 +24,33 @@ export type QuickWorkActivity =
   | "revision_done"
   | "used_ai_slides";
 
+export type BadgeId = "approved_great" | "star_teacher" | "well_done" | "needs_focus";
+
 export type PrincipalFeedback = {
   acknowledged_at: string;
-  badge: "approved_great" | "star_teacher" | "well_done" | "needs_focus";
+  badge?: BadgeId;
   note?: string;
+  flagged: boolean;
 };
 
 export type TeacherWorkUpdate = {
   id: string;
   teacher_id: string;
   teacher_name: string;
-  school_id: string;
-  school_name?: string;
   date: string; // YYYY-MM-DD
   created_at: string; // ISO timestamp
   grade_label: string; // e.g. "Class 9"
   subject_name: string; // e.g. "Science"
   chapter_title: string; // e.g. "Matter in Our Surroundings"
   activities: QuickWorkActivity[];
+  topics: string[];
+  other_topics?: string;
+  activity_detail?: string;
+  homework: { id: string; title: string }[];
   ai_usefulness: AiHelpfulnessRating;
-  note?: string; // Optional short 1-line note
+  note: string;
   principal_feedback?: PrincipalFeedback;
+  reactions: WorkUpdateReaction[];
 };
 
 export type SchoolNotice = {
@@ -68,7 +82,7 @@ export const AI_USEFULNESS_OPTIONS: { id: AiHelpfulnessRating; label: string; la
 ];
 
 export const PRINCIPAL_BADGES: Record<
-  PrincipalFeedback["badge"],
+  BadgeId,
   { label: string; labelHi: string; emoji: string; color: string }
 > = {
   approved_great: {
@@ -96,48 +110,6 @@ export const PRINCIPAL_BADGES: Record<
     color: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
   },
 };
-
-const DEFAULT_SEEDS: TeacherWorkUpdate[] = [
-  {
-    id: "upd-seed-1",
-    teacher_id: "0f9e8ac3-2b84-4516-8596-f15a747ffd98",
-    teacher_name: "Nidhi Priya",
-    school_id: "sch-10280105528",
-    school_name: "Govt. Girls High School Patna City",
-    date: new Date().toISOString().slice(0, 10),
-    created_at: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
-    grade_label: "Class 9",
-    subject_name: "Science",
-    chapter_title: "Matter in Our Surroundings",
-    activities: ["taught_chapter", "conducted_quiz", "used_ai_slides"],
-    ai_usefulness: "very_helpful",
-    note: "Used Medha teaching strategy for evaporation vs boiling; students understood quickly.",
-    principal_feedback: {
-      acknowledged_at: new Date(Date.now() - 3600 * 1000 * 1).toISOString(),
-      badge: "star_teacher",
-      note: "Very good concept clarity and engagement!",
-    },
-  },
-  {
-    id: "upd-seed-2",
-    teacher_id: "usr-teacher-1",
-    teacher_name: "Sunita Kumari",
-    school_id: "sch-10280105528",
-    school_name: "Govt. Girls High School Patna City",
-    date: new Date().toISOString().slice(0, 10),
-    created_at: new Date(Date.now() - 3600 * 1000 * 4).toISOString(),
-    grade_label: "Class 10",
-    subject_name: "Mathematics",
-    chapter_title: "Real Numbers",
-    activities: ["taught_chapter", "cleared_doubts", "homework_given"],
-    ai_usefulness: "somewhat_helpful",
-    note: "Practiced Euclid's division lemma questions generated from Medha.",
-    principal_feedback: {
-      acknowledged_at: new Date(Date.now() - 3600 * 1000 * 2).toISOString(),
-      badge: "approved_great",
-    },
-  },
-];
 
 const DEFAULT_NOTICES: SchoolNotice[] = [
   {
@@ -172,29 +144,6 @@ function parseList<T>(raw: string, fallback: T[]): T[] {
   return Array.isArray(parsed) ? (parsed as T[]) : fallback; // never trust stored shape
 }
 
-function readStorage(): TeacherWorkUpdate[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const seeds = SHOW_DEMO_CONTENT ? DEFAULT_SEEDS : [];
-    if (!raw) {
-      if (seeds.length) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(seeds));
-      return seeds;
-    }
-    return parseList<TeacherWorkUpdate>(raw, seeds);
-  } catch {
-    return SHOW_DEMO_CONTENT ? DEFAULT_SEEDS : [];
-  }
-}
-
-function writeStorage(updates: TeacherWorkUpdate[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updates));
-    window.dispatchEvent(new Event("medha:work_updates_changed"));
-  } catch {}
-}
-
 function readNotices(): SchoolNotice[] {
   if (typeof window === "undefined") return [];
   try {
@@ -218,7 +167,6 @@ function writeNotices(notices: SchoolNotice[]) {
   } catch {}
 }
 
-let cachedUpdates: TeacherWorkUpdate[] = [];
 let cachedNotices: SchoolNotice[] = [];
 let cachedSnapshot: { updates: TeacherWorkUpdate[]; notices: SchoolNotice[] } = {
   updates: [],
@@ -227,15 +175,71 @@ let cachedSnapshot: { updates: TeacherWorkUpdate[]; notices: SchoolNotice[] } = 
 let cacheLoaded = false;
 const listeners = new Set<() => void>();
 
-function updateSnapshot() {
-  cachedUpdates = readStorage();
+function emptyUpdates(): TeacherWorkUpdate[] {
+  return cachedSnapshot.updates;
+}
+
+function updateSnapshot(updates: TeacherWorkUpdate[] = emptyUpdates()) {
   cachedNotices = readNotices();
-  cachedSnapshot = { updates: cachedUpdates, notices: cachedNotices };
+  cachedSnapshot = { updates, notices: cachedNotices };
 }
 
 function notify() {
-  updateSnapshot();
   for (const listener of listeners) listener();
+}
+
+function fromApi(u: WorkUpdateApi): TeacherWorkUpdate {
+  return {
+    id: u.id,
+    teacher_id: u.teacher_id,
+    teacher_name: u.teacher_name,
+    date: u.work_date,
+    created_at: u.created_at,
+    grade_label: u.grade_label,
+    subject_name: u.subject_name,
+    chapter_title: u.chapter_title,
+    activities: u.activities as QuickWorkActivity[],
+    topics: u.topics,
+    other_topics: u.other_topics ?? undefined,
+    activity_detail: u.activity_detail ?? undefined,
+    homework: u.homework,
+    ai_usefulness: u.ai_usefulness as AiHelpfulnessRating,
+    note: u.note,
+    reactions: u.reactions,
+    principal_feedback:
+      u.feedback_at != null
+        ? {
+            acknowledged_at: u.feedback_at,
+            badge: (u.principal_badge as PrincipalFeedback["badge"]) ?? undefined,
+            note: u.principal_note ?? undefined,
+            flagged: u.flagged,
+          }
+        : undefined,
+  };
+}
+
+function setUpdates(list: WorkUpdateApi[]) {
+  updateSnapshot(list.map(fromApi));
+  notify();
+}
+
+function upsertUpdate(u: WorkUpdateApi) {
+  const mapped = fromApi(u);
+  const rest = cachedSnapshot.updates.filter((x) => x.id !== mapped.id);
+  updateSnapshot([mapped, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at)));
+  notify();
+}
+
+let inflight: Promise<void> | null = null;
+export function refreshWorkUpdates(token: string | null): Promise<void> {
+  if (!token) return Promise.resolve();
+  inflight ??= listWorkUpdates(token)
+    .then(setUpdates)
+    .catch(() => {})
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
 }
 
 function subscribe(callback: () => void) {
@@ -245,17 +249,15 @@ function subscribe(callback: () => void) {
     callback();
   };
   const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY || e.key === NOTICES_KEY) {
+    if (e.key === NOTICES_KEY) {
       updateSnapshot();
       callback();
     }
   };
-  window.addEventListener("medha:work_updates_changed", onCustom);
   window.addEventListener("medha:notices_changed", onCustom);
   window.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(callback);
-    window.removeEventListener("medha:work_updates_changed", onCustom);
     window.removeEventListener("medha:notices_changed", onCustom);
     window.removeEventListener("storage", onStorage);
   };
@@ -282,44 +284,29 @@ export function useWorkUpdates() {
   const store = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const { updates, notices } = store;
 
+  const { accessToken } = useAuth();
+  useEffect(() => {
+    void refreshWorkUpdates(accessToken);
+  }, [accessToken]);
+
   const addWorkUpdate = useCallback(
-    (payload: Omit<TeacherWorkUpdate, "id" | "created_at">) => {
-      const current = readStorage();
-      const newEntry: TeacherWorkUpdate = {
-        ...payload,
-        id: `upd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        created_at: new Date().toISOString(),
-      };
-      const updated = [newEntry, ...current];
-      cachedUpdates = updated;
-      writeStorage(updated);
-      notify();
-      return newEntry;
+    async (payload: WorkUpdateCreateInput) => {
+      const created = await createWorkUpdate(accessToken, payload);
+      upsertUpdate(created);
+      return created;
     },
-    [],
+    [accessToken],
   );
 
-  const acknowledgeUpdate = useCallback(
-    (updateId: string, badge: PrincipalFeedback["badge"], note?: string) => {
-      const current = readStorage();
-      const updated = current.map((u) => {
-        if (u.id === updateId) {
-          return {
-            ...u,
-            principal_feedback: {
-              acknowledged_at: new Date().toISOString(),
-              badge,
-              note: note?.trim() || undefined,
-            },
-          };
-        }
-        return u;
-      });
-      cachedUpdates = updated;
-      writeStorage(updated);
-      notify();
+  const giveFeedback = useCallback(
+    async (
+      updateId: string,
+      body: { note?: string | null; flagged: boolean; badge?: string | null },
+    ) => {
+      const updated = await sendWorkUpdateFeedback(accessToken, updateId, body);
+      upsertUpdate(updated);
     },
-    [],
+    [accessToken],
   );
 
   const addNotice = useCallback(
@@ -334,6 +321,7 @@ export function useWorkUpdates() {
       const updated = [newNotice, ...current];
       cachedNotices = updated;
       writeNotices(updated);
+      updateSnapshot();
       notify();
       return newNotice;
     },
@@ -346,6 +334,7 @@ export function useWorkUpdates() {
       const updated = current.filter((n) => n.id !== noticeId);
       cachedNotices = updated;
       writeNotices(updated);
+      updateSnapshot();
       notify();
     },
     [],
@@ -374,7 +363,7 @@ export function useWorkUpdates() {
     updates,
     notices,
     addWorkUpdate,
-    acknowledgeUpdate,
+    giveFeedback,
     addNotice,
     deleteNotice,
     getUpdatesForTeacher,
