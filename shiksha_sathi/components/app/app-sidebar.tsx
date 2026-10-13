@@ -190,7 +190,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
 
 /** Early-access rollout: everything but Home and Ask Medha previews locked.
  * Work Update is its own sidebar row (not a route), so it's unaffected. */
-const UNLOCKED_HREFS = new Set(["/dashboard", "/ask"]);
+const UNLOCKED_HREFS = new Set(["/dashboard", "/ask", "/history"]);
 
 /** One nav link, plus the Work Update row that follows Homework. */
 function NavRows({
