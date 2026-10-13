@@ -11,13 +11,14 @@ import { ProfileProvider } from "@/lib/profile-context";
 import { SchoolProvider } from "@/lib/school-context";
 
 /**
- * Early-access rollout: only Ask Medha and Work Update (reached from the
- * sidebar inside Homework, not its own route) are live for teachers at
- * launch. Everything else still renders for real underneath a lock overlay
- * (see FeatureLockOverlay) so it previews rather than disappears. Profile
- * stays open since it's account settings, not a content feature.
+ * Early-access rollout: only Ask Medha, Work Update (reached from the
+ * sidebar inside Homework, not its own route) and Lesson Plan are live for
+ * teachers at launch. Everything else still renders for real underneath a
+ * lock overlay (see FeatureLockOverlay) so it previews rather than
+ * disappears. Profile stays open since it's account settings, not a content
+ * feature.
  */
-const TEACHER_UNLOCKED_PREFIXES = ["/dashboard", "/ask", "/profile"];
+const TEACHER_UNLOCKED_PREFIXES = ["/dashboard", "/ask", "/profile", "/lesson-plan"];
 
 function isTeacherRouteLocked(pathname: string): boolean {
   return !TEACHER_UNLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

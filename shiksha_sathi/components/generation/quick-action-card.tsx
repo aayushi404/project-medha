@@ -41,6 +41,10 @@ const HREF: Partial<Record<GenerationType, string>> = {
   question_paper: "/question-paper",
 };
 
+// Early-access rollout: Lesson Plan is live; the other quick-action tiles
+// still lead to a feature that previews locked for now.
+const LOCKED_TYPES = new Set<GenerationType>(["presentation", "question_paper", "quiz", "notes"]);
+
 /** A single illustrated Quick Action tile on the dashboard. `wide` lays it out
  *  as a row (used for the full-width Notes card); the default stacks the art
  *  above the copy with the arrow pinned bottom-right. */
@@ -86,14 +90,14 @@ export function QuickActionCard({
         <ArrowRight className="size-4" />
       </span>
 
-      {/* Early-access rollout: every quick-action tile leads to a feature that
-       * previews locked for now -- flag it here so it isn't mistaken for a bug. */}
-      <span
-        className="absolute top-3 right-3 flex size-6 items-center justify-center rounded-full bg-background/80 text-foreground/60 shadow-xs"
-        title="Coming soon"
-      >
-        <Lock className="size-3" aria-hidden />
-      </span>
+      {LOCKED_TYPES.has(type) && (
+        <span
+          className="absolute top-3 right-3 flex size-6 items-center justify-center rounded-full bg-background/80 text-foreground/60 shadow-xs"
+          title="Coming soon"
+        >
+          <Lock className="size-3" aria-hidden />
+        </span>
+      )}
     </Link>
   );
 }
