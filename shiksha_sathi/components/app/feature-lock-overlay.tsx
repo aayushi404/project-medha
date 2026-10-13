@@ -32,13 +32,13 @@ export function FeatureLockOverlay({
       <div
         aria-hidden
         inert
-        className="pointer-events-none flex min-h-0 flex-1 flex-col overflow-hidden blur-[3px] grayscale-[0.2] select-none"
+        className="pointer-events-none flex min-h-0 flex-1 flex-col overflow-hidden blur-[1px] select-none"
       >
         {children}
       </div>
       <div
         className={cn(
-          "absolute inset-0 z-20 flex items-center justify-center bg-background/60 p-4 backdrop-blur-[1px]",
+          "absolute inset-0 z-20 flex items-center justify-center bg-background/30 p-4",
           compact && "p-3",
         )}
       >
