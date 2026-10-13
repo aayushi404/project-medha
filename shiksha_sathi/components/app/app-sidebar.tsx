@@ -109,11 +109,12 @@ const COLLAPSE_KEY = "medha.sidebarCollapsed";
 function SidebarWorkUpdateItem({
   collapsed,
   onNavigate,
+  onOpenWorkUpdate,
 }: {
   collapsed?: boolean;
   onNavigate?: () => void;
+  onOpenWorkUpdate: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const { teacher } = useAuth();
   const { getTodayUpdateForTeacher } = useWorkUpdates();
   const copy = useCopy();
@@ -125,48 +126,44 @@ function SidebarWorkUpdateItem({
   const label = copy.nav.workUpdate;
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(true);
-          onNavigate?.();
-        }}
-        title={collapsed ? label : undefined}
-        className={cn(
-          "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors text-left",
-          collapsed && "justify-center px-0",
-          "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+    <button
+      type="button"
+      onClick={() => {
+        onOpenWorkUpdate();
+        onNavigate?.();
+      }}
+      title={collapsed ? label : undefined}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors text-left",
+        collapsed && "justify-center px-0",
+        "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+      )}
+    >
+      <div className="relative flex size-4 shrink-0 items-center justify-center">
+        <ClipboardPenLine className="size-4 text-terracotta" />
+        {todayUpdate && (
+          <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-emerald-500 ring-2 ring-background" />
         )}
-      >
-        <div className="relative flex size-4 shrink-0 items-center justify-center">
-          <ClipboardPenLine className="size-4 text-terracotta" />
-          {todayUpdate && (
-            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-emerald-500 ring-2 ring-background" />
+      </div>
+      {collapsed ? null : (
+        <div className="flex flex-1 items-center justify-between">
+          <span className="truncate">{label}</span>
+          {badgeInfo ? (
+            <span className="inline-flex items-center gap-0.5 text-xs font-semibold" title={badgeInfo.label}>
+              <span>{badgeInfo.emoji}</span>
+            </span>
+          ) : todayUpdate ? (
+            <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+              ✓ Done
+            </span>
+          ) : (
+            <span className="rounded-full bg-terracotta/15 px-1.5 py-0.2 text-[10px] font-semibold text-terracotta">
+              + New
+            </span>
           )}
         </div>
-        {collapsed ? null : (
-          <div className="flex flex-1 items-center justify-between">
-            <span className="truncate">{label}</span>
-            {badgeInfo ? (
-              <span className="inline-flex items-center gap-0.5 text-xs font-semibold" title={badgeInfo.label}>
-                <span>{badgeInfo.emoji}</span>
-              </span>
-            ) : todayUpdate ? (
-              <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                ✓ Done
-              </span>
-            ) : (
-              <span className="rounded-full bg-terracotta/15 px-1.5 py-0.2 text-[10px] font-semibold text-terracotta">
-                + New
-              </span>
-            )}
-          </div>
-        )}
-      </button>
-
-      <WorkUpdateModal open={open} onClose={() => setOpen(false)} />
-    </>
+      )}
+    </button>
   );
 }
 
@@ -194,11 +191,13 @@ function NavRows({
   collapsed,
   onNavigate,
   pathname,
+  onOpenWorkUpdate,
 }: {
   item: NavItem;
   collapsed?: boolean;
   onNavigate?: () => void;
   pathname: string;
+  onOpenWorkUpdate: () => void;
 }) {
   const copy = useCopy();
   const { href, navKey, icon } = item;
@@ -211,7 +210,9 @@ function NavRows({
       collapsed={collapsed}
       onNavigate={onNavigate}
     >
-      {navKey === "homework" && <SidebarWorkUpdateItem collapsed={collapsed} onNavigate={onNavigate} />}
+      {navKey === "homework" && (
+        <SidebarWorkUpdateItem collapsed={collapsed} onNavigate={onNavigate} onOpenWorkUpdate={onOpenWorkUpdate} />
+      )}
     </NavLink>
   );
 }
@@ -222,6 +223,7 @@ function NavList({
   scroll = true,
   groupOpen,
   onToggleGroup,
+  onOpenWorkUpdate,
 }: {
   onNavigate?: () => void;
   collapsed?: boolean;
@@ -232,6 +234,10 @@ function NavList({
    * only when the current page is one of its links. */
   groupOpen: Partial<Record<NavGroupKey, boolean>>;
   onToggleGroup: (key: NavGroupKey, open: boolean) => void;
+  /** Opens the Work Update modal. Owned by AppSidebar, outside the mobile
+   * drawer's Dialog.Root, so the modal survives the drawer closing (see
+   * SidebarWorkUpdateItem). */
+  onOpenWorkUpdate: () => void;
 }) {
   const copy = useCopy();
   const pathname = usePathname();
@@ -248,7 +254,7 @@ function NavList({
         <span className="eyebrow px-3 pt-1 pb-1 text-muted-foreground">{copy.navMain}</span>
       )}
       {NAV_TOP.map((item) => (
-        <NavRows key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} />
+        <NavRows key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} onOpenWorkUpdate={onOpenWorkUpdate} />
       ))}
 
       {NAV_GROUPS.map((group) => {
@@ -257,7 +263,7 @@ function NavList({
           return (
             <div key={group.key} className="mt-1 flex flex-col gap-1 border-t border-sidebar-border pt-1">
               {group.items.map((item) => (
-                <NavRows key={item.href} item={item} collapsed onNavigate={onNavigate} pathname={pathname} />
+                <NavRows key={item.href} item={item} collapsed onNavigate={onNavigate} pathname={pathname} onOpenWorkUpdate={onOpenWorkUpdate} />
               ))}
             </div>
           );
@@ -273,14 +279,14 @@ function NavList({
             onToggle={() => onToggleGroup(group.key, !open)}
           >
             {group.items.map((item) => (
-              <NavRows key={item.href} item={item} onNavigate={onNavigate} pathname={pathname} />
+              <NavRows key={item.href} item={item} onNavigate={onNavigate} pathname={pathname} onOpenWorkUpdate={onOpenWorkUpdate} />
             ))}
           </NavAccordion>
         );
       })}
 
       {NAV_BOTTOM.map((item) => (
-        <NavRows key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} />
+        <NavRows key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} onOpenWorkUpdate={onOpenWorkUpdate} />
       ))}
     </nav>
   );
@@ -340,6 +346,10 @@ function SidebarFooter({ collapsed }: { collapsed?: boolean }) {
 export function AppSidebar() {
   // drawer closes via onNavigate (link click) and Base UI's own backdrop/esc
   const [open, setOpen] = useState(false);
+  // Owned here, above the mobile drawer's Dialog.Root, so closing the drawer
+  // (which unmounts its whole subtree once its close transition ends) can't
+  // tear down this modal along with it -- see SidebarWorkUpdateItem.
+  const [workUpdateOpen, setWorkUpdateOpen] = useState(false);
   // Lazy-init from localStorage: safe because this component only ever
   // mounts client-side, after auth resolves (see lib/lesson-context.tsx's
   // readInitial() for the same established pattern) -- no SSR mismatch.
@@ -420,7 +430,13 @@ export function AppSidebar() {
           <SchoolCardPanel collapsed={collapsed} />
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <NavList collapsed={collapsed} scroll={false} groupOpen={groupOpen} onToggleGroup={toggleGroup} />
+          <NavList
+            collapsed={collapsed}
+            scroll={false}
+            groupOpen={groupOpen}
+            onToggleGroup={toggleGroup}
+            onOpenWorkUpdate={() => setWorkUpdateOpen(true)}
+          />
           {collapsed ? null : (
             <div className="mt-3 flex shrink-0 flex-col gap-0">
               <SidebarQuote />
@@ -490,7 +506,12 @@ export function AppSidebar() {
               <div className="px-3 pb-3">
                 <SchoolCardPanel collapsed={false} />
               </div>
-              <NavList onNavigate={() => setOpen(false)} groupOpen={groupOpen} onToggleGroup={toggleGroup} />
+              <NavList
+                onNavigate={() => setOpen(false)}
+                groupOpen={groupOpen}
+                onToggleGroup={toggleGroup}
+                onOpenWorkUpdate={() => setWorkUpdateOpen(true)}
+              />
               <SidebarFooter />
             </Dialog.Popup>
           </Dialog.Portal>
@@ -500,6 +521,8 @@ export function AppSidebar() {
         <NotificationBell className="ml-auto" />
         <LanguageToggle />
       </div>
+
+      <WorkUpdateModal open={workUpdateOpen} onClose={() => setWorkUpdateOpen(false)} />
     </>
   );
 }
