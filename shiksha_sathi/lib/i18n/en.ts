@@ -943,6 +943,11 @@ export const en = {
     attribution:
       "Simulations by PhET Interactive Simulations, University of Colorado Boulder, licensed under CC BY 4.0.",
   },
+  featureLock: {
+    title: "Coming soon to your school",
+    body: "This is a preview of how it will look. We're rolling features out one at a time, and this one isn't switched on yet.",
+    badge: "Launching soon",
+  },
 };
 
 export type Copy = typeof en;

@@ -935,4 +935,9 @@ export const hi: Copy = {
     attribution:
       "सिमुलेशन: PhET Interactive Simulations, University of Colorado Boulder — CC BY 4.0 के अंतर्गत।",
   },
+  featureLock: {
+    title: "आपके विद्यालय के लिए जल्द आ रहा है",
+    body: "यह झलक है कि यह फीचर कैसा दिखेगा। हम फीचर्स को चरणबद्ध तरीके से शुरू कर रहे हैं, और यह अभी शुरू नहीं हुआ है।",
+    badge: "जल्द शुरू हो रहा है",
+  },
 };

@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { AppSidebar } from "@/components/app/app-sidebar";
+import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
 import { useAuth } from "@/lib/auth-context";
 import { LessonProvider } from "@/lib/lesson-context";
 import { ProfileProvider } from "@/lib/profile-context";
 import { SchoolProvider } from "@/lib/school-context";
+
+/**
+ * Early-access rollout: only Ask Medha and Work Update (reached from the
+ * sidebar inside Homework, not its own route) are live for teachers at
+ * launch. Everything else still renders for real underneath a lock overlay
+ * (see FeatureLockOverlay) so it previews rather than disappears. Profile
+ * stays open since it's account settings, not a content feature.
+ */
+const TEACHER_UNLOCKED_PREFIXES = ["/dashboard", "/ask", "/profile"];
+
+function isTeacherRouteLocked(pathname: string): boolean {
+  return !TEACHER_UNLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 /**
  * Shell for the signed-in app screens (Dashboard, My Modules). Nests inside the
@@ -18,6 +32,7 @@ import { SchoolProvider } from "@/lib/school-context";
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { teacher } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!teacher) return;
@@ -45,7 +60,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="app-shell flex h-dvh flex-col overflow-hidden md:flex-row">
           <AppSidebar />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            {children}
+            {isTeacherRouteLocked(pathname) ? (
+              <FeatureLockOverlay>{children}</FeatureLockOverlay>
+            ) : (
+              children
+            )}
           </div>
         </div>
       </LessonProvider>

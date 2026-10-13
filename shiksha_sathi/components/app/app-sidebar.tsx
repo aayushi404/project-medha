@@ -188,6 +188,10 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
   );
 }
 
+/** Early-access rollout: everything but Home and Ask Medha previews locked.
+ * Work Update is its own sidebar row (not a route), so it's unaffected. */
+const UNLOCKED_HREFS = new Set(["/dashboard", "/ask"]);
+
 /** One nav link, plus the Work Update row that follows Homework. */
 function NavRows({
   item,
@@ -210,6 +214,7 @@ function NavRows({
       pathname={pathname}
       collapsed={collapsed}
       onNavigate={onNavigate}
+      locked={!UNLOCKED_HREFS.has(href)}
     >
       {navKey === "homework" && <SidebarWorkUpdateItem collapsed={collapsed} onNavigate={onNavigate} />}
     </NavLink>

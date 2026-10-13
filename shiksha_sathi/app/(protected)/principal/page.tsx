@@ -29,6 +29,7 @@ import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytic
 import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
 import { PrincipalShell } from "@/components/principal/principal-shell";
 import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
+import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
 
 function ClassesSummaryCard() {
   const { accessToken } = useAuth();
@@ -287,61 +288,71 @@ function PrincipalDashboard() {
             </div>
           )}
 
-          {/* Feature 1: School Attendance & Syllabus Analytics (Smart graphs & percentages) */}
+          {/* Feature 1: School Attendance & Syllabus Analytics (Smart graphs & percentages) -- locked at launch */}
           <section id="principal-analytics" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <PrincipalAnalyticsHub />
+            <FeatureLockOverlay compact>
+              <PrincipalAnalyticsHub />
+            </FeatureLockOverlay>
           </section>
 
-          {/* Feature 2: Official School Notice Board (Quick Notice / Circular) */}
+          {/* Feature 2: Official School Notice Board (Quick Notice / Circular) -- locked at launch */}
           <section id="principal-notices" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <PrincipalNoticeBoard />
+            <FeatureLockOverlay compact>
+              <PrincipalNoticeBoard />
+            </FeatureLockOverlay>
           </section>
 
-          {/* Feature 3 & 4: Teacher Work Updates Feed & 1-Click Appreciation */}
+          {/* Feature 3 & 4: Teacher Work Updates Feed & 1-Click Appreciation -- live at launch */}
           <section id="principal-work-updates" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
             <PrincipalWorkUpdatesFeed />
           </section>
 
 
-          {/* Feature 7a: Class Sections -> now their own route (see sidebar "Classes") */}
+          {/* Feature 7a: Class Sections -> now their own route (see sidebar "Classes") -- locked at launch */}
           <section className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                {isHi ? "कक्षाएँ" : "Classes"}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {isHi
-                  ? "कक्षा प्रबंधन, कक्षा शिक्षक व विषय शिक्षक अब अपने अलग पृष्ठ पर हैं"
-                  : "Class management, class teachers and subject teachers now live on their own page"}
-              </p>
-            </div>
-            <ClassesSummaryCard />
+            <FeatureLockOverlay compact>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                  {isHi ? "कक्षाएँ" : "Classes"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {isHi
+                    ? "कक्षा प्रबंधन, कक्षा शिक्षक व विषय शिक्षक अब अपने अलग पृष्ठ पर हैं"
+                    : "Class management, class teachers and subject teachers now live on their own page"}
+                </p>
+              </div>
+              <ClassesSummaryCard />
+            </FeatureLockOverlay>
           </section>
 
-          {/* Feature 8: Direct Announcements */}
+          {/* Feature 8: Direct Announcements -- locked at launch */}
           <section id="principal-announcements" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                {isHi ? "सीधी घोषणा (Direct Announcement)" : "Direct Announcement"}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {isHi ? "शिक्षकों या विद्यार्थियों को सीधा संदेश भेजें" : "Broadcast direct notices to staff or students"}
-              </p>
-            </div>
-            <AnnounceForm target={{ kind: "audience" }} />
+            <FeatureLockOverlay compact>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                  {isHi ? "सीधी घोषणा (Direct Announcement)" : "Direct Announcement"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {isHi ? "शिक्षकों या विद्यार्थियों को सीधा संदेश भेजें" : "Broadcast direct notices to staff or students"}
+                </p>
+              </div>
+              <AnnounceForm target={{ kind: "audience" }} />
+            </FeatureLockOverlay>
           </section>
 
-          {/* Feature 9: Fee Management */}
+          {/* Feature 9: Fee Management -- locked at launch */}
           <section id="principal-fees" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                {isHi ? "शुल्क प्रबंधन (Fees)" : "Fee Management"}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {isHi ? "छात्रों के शुल्क भुगतान की रसीद दर्ज करें और देखें" : "Log student fee payments and view records"}
-              </p>
-            </div>
-            <FeeLogSection />
+            <FeatureLockOverlay compact>
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                  {isHi ? "शुल्क प्रबंधन (Fees)" : "Fee Management"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {isHi ? "छात्रों के शुल्क भुगतान की रसीद दर्ज करें और देखें" : "Log student fee payments and view records"}
+                </p>
+              </div>
+              <FeeLogSection />
+            </FeatureLockOverlay>
           </section>
         </div>
     </PrincipalShell>

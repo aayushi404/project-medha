@@ -13,6 +13,7 @@ import {
   IndianRupee,
   LayoutDashboard,
   LayoutGrid,
+  Lock,
   LogOut,
   Megaphone,
   Menu,
@@ -31,6 +32,21 @@ import { SchoolCardPanel } from "@/components/school/school-card-panel";
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ProfileImage } from "@/components/ui/profile-image";
+import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
+
+/**
+ * Early-access rollout: only the Work Update feed on /principal itself (see
+ * principal/page.tsx, which locks its other sections individually) stays
+ * live. Every standalone principal route -- Teachers, Classes, Timetable,
+ * Cover, Admission, the full Attendance screen, student/teacher profile
+ * drill-ins -- renders for real but inert under a lock overlay. /principal
+ * and /principal/profile (account settings) are exempt since they're handled
+ * elsewhere or aren't a "feature" to gate.
+ */
+function isPrincipalRouteLocked(pathname: string): boolean {
+  if (pathname === "/principal" || pathname === "/principal/profile") return false;
+  return pathname.startsWith("/principal/");
+}
 
 interface PrincipalNavItem {
   id: string;
@@ -41,19 +57,21 @@ interface PrincipalNavItem {
   /** True for items that are their own route rather than an anchor on the
    * main /principal dashboard. */
   ownRoute?: boolean;
+  /** Early-access rollout hint: still navigable, just previews locked. */
+  locked?: boolean;
 }
 
 const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-overview", href: "/principal#principal-overview", labelEn: "Overview", labelHi: "डैशबोर्ड सारांश", icon: LayoutDashboard },
-  { id: "principal-attendance-full", href: "/principal/attendance", labelEn: "Attendance", labelHi: "उपस्थिति", icon: CalendarCheck, ownRoute: true },
-  { id: "principal-notices", href: "/principal#principal-notices", labelEn: "Notice Board", labelHi: "सूचना पट्ट (Notices)", icon: Megaphone },
+  { id: "principal-attendance-full", href: "/principal/attendance", labelEn: "Attendance", labelHi: "उपस्थिति", icon: CalendarCheck, ownRoute: true, locked: true },
+  { id: "principal-notices", href: "/principal#principal-notices", labelEn: "Notice Board", labelHi: "सूचना पट्ट (Notices)", icon: Megaphone, locked: true },
   { id: "principal-work-updates", href: "/principal#principal-work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
-  { id: "principal-teachers", href: "/principal/teachers", labelEn: "Teachers", labelHi: "शिक्षक", icon: Users, ownRoute: true },
-  { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true },
-  { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true },
-  { id: "principal-cover", href: "/principal/cover", labelEn: "Daily Cover", labelHi: "आज का कवर", icon: UserX, ownRoute: true },
-  { id: "principal-admission", href: "/principal/admission", labelEn: "Admission", labelHi: "प्रवेश", icon: GraduationCap, ownRoute: true },
-  { id: "principal-fees", href: "/principal#principal-fees", labelEn: "Fee Records", labelHi: "शुल्क विवरण", icon: IndianRupee },
+  { id: "principal-teachers", href: "/principal/teachers", labelEn: "Teachers", labelHi: "शिक्षक", icon: Users, ownRoute: true, locked: true },
+  { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true, locked: true },
+  { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true, locked: true },
+  { id: "principal-cover", href: "/principal/cover", labelEn: "Daily Cover", labelHi: "आज का कवर", icon: UserX, ownRoute: true, locked: true },
+  { id: "principal-admission", href: "/principal/admission", labelEn: "Admission", labelHi: "प्रवेश", icon: GraduationCap, ownRoute: true, locked: true },
+  { id: "principal-fees", href: "/principal#principal-fees", labelEn: "Fee Records", labelHi: "शुल्क विवरण", icon: IndianRupee, locked: true },
 ];
 
 const COLLAPSE_KEY = "medha.principalSidebarCollapsed";
@@ -183,6 +201,7 @@ function PrincipalShellFrame({
                     {badge}
                   </span>
                 )}
+                {item.locked && <Lock className="size-3 shrink-0 text-sidebar-foreground/40" aria-hidden />}
               </div>
             )}
           </Link>
@@ -371,7 +390,7 @@ function PrincipalShellFrame({
 
       {/* Main scrollable content */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto bg-background">
-        {children}
+        {isPrincipalRouteLocked(pathname) ? <FeatureLockOverlay>{children}</FeatureLockOverlay> : children}
       </div>
     </div>
   );

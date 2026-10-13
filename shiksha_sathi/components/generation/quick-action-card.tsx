@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
 
 import { useCopy } from "@/lib/copy";
@@ -84,6 +84,15 @@ export function QuickActionCard({
         )}
       >
         <ArrowRight className="size-4" />
+      </span>
+
+      {/* Early-access rollout: every quick-action tile leads to a feature that
+       * previews locked for now -- flag it here so it isn't mistaken for a bug. */}
+      <span
+        className="absolute top-3 right-3 flex size-6 items-center justify-center rounded-full bg-background/80 text-foreground/60 shadow-xs"
+        title="Coming soon"
+      >
+        <Lock className="size-3" aria-hidden />
       </span>
     </Link>
   );

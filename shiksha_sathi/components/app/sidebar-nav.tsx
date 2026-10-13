@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Lock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useState, type ReactNode } from "react";
 
@@ -54,6 +54,7 @@ export function NavLink({
   collapsed,
   onNavigate,
   children,
+  locked,
 }: {
   href: string;
   label: string;
@@ -63,6 +64,10 @@ export function NavLink({
   onNavigate?: () => void;
   /** anything that belongs under this link, e.g. a row that follows it */
   children?: ReactNode;
+  /** Early-access rollout hint: still navigable, the destination just shows a
+   * locked preview -- this only adds a small lock glyph so it isn't mistaken
+   * for a bug. */
+  locked?: boolean;
 }) {
   const active = isActivePath(pathname, href);
   return (
@@ -70,7 +75,7 @@ export function NavLink({
       <Link
         href={href}
         onClick={onNavigate}
-        title={collapsed ? label : undefined}
+        title={collapsed ? `${label}${locked ? " (coming soon)" : ""}` : undefined}
         aria-current={active ? "page" : undefined}
         className={cn(
           "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors",
@@ -81,7 +86,12 @@ export function NavLink({
         )}
       >
         <Icon className="size-4 shrink-0" />
-        {collapsed ? null : label}
+        {collapsed ? null : (
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <span className="truncate">{label}</span>
+            {locked && <Lock className="size-3 shrink-0 text-muted-foreground/70" aria-hidden />}
+          </span>
+        )}
       </Link>
       {children}
     </div>

@@ -137,6 +137,7 @@ function NavList({
         pathname={pathname}
         collapsed={collapsed}
         onNavigate={onNavigate}
+        locked={item.href !== "/learn"}
       />
     );
   }
