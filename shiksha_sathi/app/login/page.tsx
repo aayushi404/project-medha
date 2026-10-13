@@ -261,7 +261,9 @@ function TeacherLoginForm({ submitting, onSubmit }: FormProps<PhoneLoginFormValu
           )}
         />
 
-        <p className="self-end text-xs text-muted-foreground">{copy.login.forgotTeacher}</p>
+        <Link href="/reset-with-code" className="mlogin-link-muted self-end text-xs">
+          {copy.login.forgotTeacher}
+        </Link>
 
         <SubmitButton submitting={submitting} />
         <RegisterHints />

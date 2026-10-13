@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -122,7 +123,9 @@ export default function StudentPasswordPage() {
             )}
           />
 
-          <p className="self-end text-xs text-muted-foreground">{copy.login.forgotStudent}</p>
+          <Link href="/reset-with-code" className="mlogin-link-muted self-end text-xs">
+            {copy.login.forgotStudent}
+          </Link>
 
           <button type="submit" disabled={submitting} className="mlogin-submit">
             {submitting ? (
