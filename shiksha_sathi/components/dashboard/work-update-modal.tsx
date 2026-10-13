@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Check,
   CheckCircle2,
@@ -232,7 +233,15 @@ export function WorkUpdateModal({
 
   const mine = getUpdatesForTeacher(teacher?.id).slice(0, 20);
 
-  return (
+  // Portalled straight to <body>: this is opened from inside the mobile nav
+  // drawer (a Base UI Dialog), which also closes itself on the same click
+  // (see SidebarWorkUpdateItem's onNavigate in app-sidebar.tsx). Base UI's
+  // DialogPortal unmounts its whole subtree once that drawer finishes
+  // closing -- without this portal, this modal was a DOM descendant of that
+  // subtree and got unmounted along with it before it could ever show on
+  // mobile, even though `open` was true. Rendering directly on <body> makes
+  // this modal's lifecycle independent of whatever triggered it.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-2xl">
         <button
@@ -537,7 +546,8 @@ export function WorkUpdateModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
