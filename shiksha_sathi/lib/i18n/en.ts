@@ -73,6 +73,8 @@ export const en = {
       chapters: "Chapters",
       chaptersHint: "Select one chapter.",
       noChapters: "No chapters found for this class and subject.",
+      noAssignment:
+        "You don't have a class or subject assigned yet. Ask your Principal to add you as the subject teacher under \"Classes\".",
       continue: "Continue",
       back: "Back",
       periodsLabel: "Number of Periods",

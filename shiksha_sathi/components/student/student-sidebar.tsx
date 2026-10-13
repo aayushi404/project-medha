@@ -127,6 +127,8 @@ function NavList({
   const copy = useCopy();
   const pathname = usePathname();
 
+  // Early-access rollout: keep this in sync with STUDENT_UNLOCKED_PREFIXES
+  // in app/(protected)/(student)/layout.tsx.
   function link(item: StudentNavItem) {
     return (
       <NavLink
@@ -137,7 +139,7 @@ function NavList({
         pathname={pathname}
         collapsed={collapsed}
         onNavigate={onNavigate}
-        locked={item.href !== "/learn"}
+        locked={item.href !== "/learn" && item.href !== "/my-work-updates"}
       />
     );
   }

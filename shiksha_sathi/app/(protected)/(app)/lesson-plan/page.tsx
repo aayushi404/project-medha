@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, FileText, Layers, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, Flag, Layers, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
@@ -156,6 +156,14 @@ function LessonPlanWizard() {
 
         {step === 1 ? (
           <div className="mt-8 flex flex-col gap-5">
+            {gradeOptions.length === 0 && (
+              // No `teaching_assignments` row yet -- the pickers below would
+              // otherwise just sit empty with nothing to pick.
+              <div className="flex items-start gap-2.5 rounded-xl border border-violet/25 bg-violet-muted/40 p-3 text-sm text-foreground">
+                <Flag className="mt-0.5 size-4 shrink-0 text-violet" />
+                <p>{w.noAssignment}</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">{w.selectClass}</span>

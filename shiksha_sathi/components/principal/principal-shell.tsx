@@ -37,14 +37,32 @@ import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
 /**
  * Early-access rollout: only the Work Update feed on /principal itself (see
  * principal/page.tsx, which locks its other sections individually) stays
- * live. Every standalone principal route -- Teachers, Classes, Timetable,
- * Cover, Admission, the full Attendance screen, student/teacher profile
- * drill-ins -- renders for real but inert under a lock overlay. /principal
- * and /principal/profile (account settings) are exempt since they're handled
+ * live. Every standalone principal route -- Teachers, Timetable, Cover,
+ * Admission, the full Attendance screen, student/teacher profile drill-ins --
+ * renders for real but inert under a lock overlay. /principal and
+ * /principal/profile (account settings) are exempt since they're handled
  * elsewhere or aren't a "feature" to gate.
+ *
+ * /principal/classes is ALSO exempt: Work Update requires a teacher to have
+ * a `teaching_assignments` row (which `/profile`'s assigned-subjects list --
+ * and the backend's own server-side check in work_updates/service.py -- both
+ * read from), and the only UI that creates/edits that row is the
+ * subject-teacher picker on this route (components/principal/class-detail.tsx).
+ * Locking Classes would make Work Update a dead end for any teacher without
+ * an existing assignment, so the whole route stays live rather than being
+ * surgically picked apart (section/academic-year setup are prerequisites to
+ * even reach that picker, so a partial unlock would just relocate the dead
+ * end).
  */
 function isPrincipalRouteLocked(pathname: string): boolean {
-  if (pathname === "/principal" || pathname === "/principal/profile") return false;
+  if (
+    pathname === "/principal" ||
+    pathname === "/principal/profile" ||
+    pathname === "/principal/classes" ||
+    pathname.startsWith("/principal/classes/")
+  ) {
+    return false;
+  }
   return pathname.startsWith("/principal/");
 }
 
@@ -67,7 +85,7 @@ const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-notices", href: "/principal#principal-notices", labelEn: "Notice Board", labelHi: "सूचना पट्ट (Notices)", icon: Megaphone, locked: true },
   { id: "principal-work-updates", href: "/principal#principal-work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
   { id: "principal-teachers", href: "/principal/teachers", labelEn: "Teachers", labelHi: "शिक्षक", icon: Users, ownRoute: true, locked: true },
-  { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true, locked: true },
+  { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true },
   { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true, locked: true },
   { id: "principal-cover", href: "/principal/cover", labelEn: "Daily Cover", labelHi: "आज का कवर", icon: UserX, ownRoute: true, locked: true },
   { id: "principal-admission", href: "/principal/admission", labelEn: "Admission", labelHi: "प्रवेश", icon: GraduationCap, ownRoute: true, locked: true },

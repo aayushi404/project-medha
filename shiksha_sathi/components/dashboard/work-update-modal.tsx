@@ -278,6 +278,17 @@ export function WorkUpdateModal({
 
         {tab === "mine" ? (
           <MyUpdates items={mine} isHi={isHi} />
+        ) : grades.length === 0 ? (
+          // No `teaching_assignments` row yet -- the class/subject pickers
+          // below would otherwise just sit empty with nothing to pick.
+          <div className="mt-3.5 flex items-start gap-2.5 rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs text-foreground">
+            <Flag className="mt-0.5 size-4 shrink-0 text-terracotta" />
+            <p>
+              {isHi
+                ? "आपको अभी कोई कक्षा/विषय नहीं सौंपा गया है। अपने प्रधानाचार्य से \"कक्षाएँ\" में आपको विषय शिक्षक के रूप में जोड़ने के लिए कहें।"
+                : "You don't have a class or subject assigned yet. Ask your Principal to add you as the subject teacher under \"Classes\"."}
+            </p>
+          </div>
         ) : (
           <>
             {/* Class / Subject / Chapter pickers */}

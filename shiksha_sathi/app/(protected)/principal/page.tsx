@@ -308,21 +308,20 @@ function PrincipalDashboard() {
           </section>
 
 
-          {/* Feature 7a: Class Sections -> now their own route (see sidebar "Classes") -- locked at launch */}
+          {/* Feature 7a: Class Sections -> now their own route (see sidebar "Classes") --
+              live at launch: Work Update needs the subject-teacher picker there. */}
           <section className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <FeatureLockOverlay compact>
-              <div className="mb-3">
-                <h2 className="text-sm font-semibold tracking-wide text-foreground">
-                  {isHi ? "कक्षाएँ" : "Classes"}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {isHi
-                    ? "कक्षा प्रबंधन, कक्षा शिक्षक व विषय शिक्षक अब अपने अलग पृष्ठ पर हैं"
-                    : "Class management, class teachers and subject teachers now live on their own page"}
-                </p>
-              </div>
-              <ClassesSummaryCard />
-            </FeatureLockOverlay>
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold tracking-wide text-foreground">
+                {isHi ? "कक्षाएँ" : "Classes"}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {isHi
+                  ? "कक्षा प्रबंधन, कक्षा शिक्षक व विषय शिक्षक अब अपने अलग पृष्ठ पर हैं"
+                  : "Class management, class teachers and subject teachers now live on their own page"}
+              </p>
+            </div>
+            <ClassesSummaryCard />
           </section>
 
           {/* Feature 8: Direct Announcements -- locked at launch */}

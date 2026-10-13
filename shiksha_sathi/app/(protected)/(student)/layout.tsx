@@ -9,9 +9,12 @@ import { StudentSidebar } from "@/components/student/student-sidebar";
 import { SchoolProvider } from "@/lib/school-context";
 import { StudentDataProvider } from "@/lib/student-context";
 
-/** Early-access rollout: only Ask Medha (/learn, also the student landing
- * page) is live at launch. See the matching note in the teacher (app) layout. */
-const STUDENT_UNLOCKED_PREFIXES = ["/learn"];
+/** Early-access rollout: Ask Medha (/learn, also the student landing page) is
+ * live at launch, plus /my-work-updates -- Work Update's loop (teacher
+ * creates -> principal feedback -> student approves/disapproves) is only
+ * complete if students can reach the approve/disapprove screen too. See the
+ * matching note in the teacher (app) layout. */
+const STUDENT_UNLOCKED_PREFIXES = ["/learn", "/my-work-updates"];
 
 function isStudentRouteLocked(pathname: string): boolean {
   return !STUDENT_UNLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
