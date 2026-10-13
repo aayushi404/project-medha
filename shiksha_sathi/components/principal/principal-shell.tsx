@@ -53,13 +53,21 @@ import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
  * surgically picked apart (section/academic-year setup are prerequisites to
  * even reach that picker, so a partial unlock would just relocate the dead
  * end).
+ *
+ * /principal/teachers is ALSO exempt: it's the roster + per-teacher profile
+ * (components/principal/teacher-detail.tsx) a principal uses to issue a
+ * teacher a login reset code (auth/service.py's issue_reset_code), which is
+ * the feature that lets a principal get a teacher a new, easy-to-remember
+ * password without needing database access.
  */
 function isPrincipalRouteLocked(pathname: string): boolean {
   if (
     pathname === "/principal" ||
     pathname === "/principal/profile" ||
     pathname === "/principal/classes" ||
-    pathname.startsWith("/principal/classes/")
+    pathname.startsWith("/principal/classes/") ||
+    pathname === "/principal/teachers" ||
+    pathname.startsWith("/principal/teachers/")
   ) {
     return false;
   }
@@ -84,7 +92,7 @@ const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-attendance-full", href: "/principal/attendance", labelEn: "Attendance", labelHi: "उपस्थिति", icon: CalendarCheck, ownRoute: true, locked: true },
   { id: "principal-notices", href: "/principal#principal-notices", labelEn: "Notice Board", labelHi: "सूचना पट्ट (Notices)", icon: Megaphone, locked: true },
   { id: "principal-work-updates", href: "/principal#principal-work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
-  { id: "principal-teachers", href: "/principal/teachers", labelEn: "Teachers", labelHi: "शिक्षक", icon: Users, ownRoute: true, locked: true },
+  { id: "principal-teachers", href: "/principal/teachers", labelEn: "Teachers", labelHi: "शिक्षक", icon: Users, ownRoute: true },
   { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true },
   { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true, locked: true },
   { id: "principal-cover", href: "/principal/cover", labelEn: "Daily Cover", labelHi: "आज का कवर", icon: UserX, ownRoute: true, locked: true },
