@@ -59,7 +59,7 @@ class NotesParams(BaseModel):
 class LessonPlanParams(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    periods: int = Field(default=3, ge=1, le=8)
+    periods: int = Field(default=3, ge=1, le=25)
     focus: str = Field(default="", max_length=500)
 
 
@@ -291,7 +291,7 @@ class LessonPlanContent(BaseModel):
     @field_validator("periods_detail", mode="before")
     @classmethod
     def _cap(cls, v: object) -> object:
-        return v[:8] if isinstance(v, list) else v
+        return v[:25] if isinstance(v, list) else v
 
     @field_validator("homework", mode="before")
     @classmethod

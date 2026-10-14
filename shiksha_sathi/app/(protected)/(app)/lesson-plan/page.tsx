@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, FileText, Layers, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Check, FileText, Layers, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
@@ -16,6 +16,32 @@ import { streamGeneration } from "@/lib/sse";
 import { cn } from "@/lib/utils";
 
 const PERIOD_CHOICES = [1, 2, 3, 4, 5, 6, 7, 8];
+const MAX_PERIODS = 25;
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3.5 py-1.5 text-[13px] transition-colors",
+        active
+          ? "border-transparent bg-violet text-violet-foreground"
+          : "border-border text-foreground hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 function StepPills({ step }: { step: 1 | 2 }) {
   const w = useCopy().lessonPlan.wizard;
@@ -59,7 +85,7 @@ function LessonPlanWizard() {
   const router = useRouter();
   const { accessToken } = useAuth();
   const { profile } = useProfile();
-  const { topicId } = useLessonContext();
+  const { topicId, setTopic, options } = useLessonContext();
   const {
     gradeId,
     subjectId,
@@ -71,9 +97,11 @@ function LessonPlanWizard() {
     setChapter,
     chapters,
   } = useContextOptions();
+  const topics = options.topics;
 
   const [step, setStep] = useState<1 | 2>(1);
   const [periods, setPeriods] = useState(3);
+  const [customPeriods, setCustomPeriods] = useState(false);
   const [objective, setObjective] = useState("");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState("");
@@ -220,6 +248,31 @@ function LessonPlanWizard() {
               )}
             </div>
 
+            {chapterId && topics.length > 0 ? (
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-violet-muted/60 text-violet">
+                    <BookOpen className="size-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium">{w.topicLabel}</p>
+                    <p className="text-xs text-muted-foreground">{w.topicHint}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Chip active={topicId === null} onClick={() => setTopic(null)}>
+                    {w.wholeChapter}
+                  </Chip>
+                  {topics.map((tp) => (
+                    <Chip key={tp.id} active={topicId === tp.id} onClick={() => setTopic(tp.id)}>
+                      {t.topic(tp.title)}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{w.chaptersHint}</span>
               <button
@@ -235,18 +288,40 @@ function LessonPlanWizard() {
           </div>
         ) : (
           <div className="mt-8 flex flex-col gap-5">
-            <label className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">
                 {w.periodsLabel} <span className="text-destructive">*</span>
               </span>
-              <Select
-                ariaLabel={w.periodsLabel}
-                value={String(periods)}
-                options={PERIOD_CHOICES.map((n) => ({ value: String(n), label: w.periodOption(n) }))}
-                onValueChange={(v) => setPeriods(Number(v))}
-                className="w-48"
-              />
-            </label>
+              <div className="flex flex-wrap items-center gap-2">
+                {PERIOD_CHOICES.map((n) => (
+                  <Chip
+                    key={n}
+                    active={!customPeriods && periods === n}
+                    onClick={() => {
+                      setCustomPeriods(false);
+                      setPeriods(n);
+                    }}
+                  >
+                    {n}
+                  </Chip>
+                ))}
+                <Chip active={customPeriods} onClick={() => setCustomPeriods(true)}>
+                  {w.custom}
+                </Chip>
+                {customPeriods ? (
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_PERIODS}
+                    value={periods}
+                    onChange={(e) =>
+                      setPeriods(Math.min(MAX_PERIODS, Math.max(1, Number(e.target.value) || 1)))
+                    }
+                    className="w-20 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-ring"
+                  />
+                ) : null}
+              </div>
+            </div>
 
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">{w.objectiveLabel}</span>

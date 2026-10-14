@@ -90,7 +90,9 @@ class Settings(BaseSettings):
     generation_legacy_read: bool = False
     generation_rate_limit_per_min: int = 4
     generation_rate_limit_per_day: int = 120
-    generation_max_tokens_lesson_plan: int = 4000
+    # 4000 covered the old 8-period cap (~500 tokens/period); scaled up for
+    # the 25-period cap, same per-period budget plus headroom.
+    generation_max_tokens_lesson_plan: int = 12000
     generation_max_tokens_question_paper: int = 4000
     generation_max_tokens_notes: int = 1800
     generation_max_tokens_quiz: int = 2000
