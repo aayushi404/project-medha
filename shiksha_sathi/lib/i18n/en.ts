@@ -77,8 +77,12 @@ export const en = {
         "You don't have a class or subject assigned yet. Ask your Principal to add you as the subject teacher under \"Classes\".",
       continue: "Continue",
       back: "Back",
+      topicLabel: "Subtopic (optional)",
+      topicHint: "If this chapter is taught in parts, pick a subtopic. Otherwise plan the whole chapter.",
+      wholeChapter: "Whole chapter",
       periodsLabel: "Number of Periods",
       periodOption: (n: number) => `${n} period${n === 1 ? "" : "s"}`,
+      custom: "Custom",
       objectiveLabel: "Lesson objective (optional)",
       objectivePlaceholder:
         "Share how you'd like this lesson to be taught (e.g., through activities, examples, or skills-based learning).",
