@@ -1,0 +1,754 @@
+BIHAR e-LOTS — CLASS 9 & CLASS 10 TEXTBOOK CHAPTERS AND SUBTOPICS
+Prepared from the Bihar e-LOTS (e-Library of Teachers & Students) portal.
+Official portal: https://bepclots.bihar.gov.in
+
+CLASS 9
+
+SUBJECT: MATHEMATICS
+
+Official page: https://bepclots.bihar.gov.in/class-ix-maths/
+
+Chapter 1: Number Systems
+  • Rational and irrational numbers
+  • Real numbers and their decimal expansions
+  • Representing real numbers on the number line
+  • Laws of exponents for real numbers
+
+Chapter 2: Polynomials
+  • Polynomials in one variable
+  • Coefficients, terms, degree and types of polynomials
+  • Zeros of a polynomial
+  • Remainder and factor ideas; algebraic identities
+
+Chapter 3: Coordinate Geometry
+  • Cartesian plane
+  • Coordinates of a point
+  • Axes, origin and quadrants
+
+Chapter 4: Linear Equations in Two Variables
+  • Linear equations in two variables
+  • Solutions and solution pairs
+  • Graphs of linear equations
+  • Equations of the form ax + by + c = 0
+
+Chapter 5: Introduction to Euclid’s Geometry
+  • Definitions, axioms and postulates
+  • Euclid’s five postulates
+  • Equivalent versions of axioms
+  • Basic reasoning in geometry
+
+Chapter 6: Lines and Angles
+  • Basic terms and angle pairs
+  • Intersecting lines and vertically opposite angles
+  • Parallel lines and a transversal
+  • Angle-sum properties
+
+Chapter 7: Triangles
+  • Congruence of triangles
+  • Criteria for triangle congruence
+  • Properties of isosceles triangles
+  • Inequalities in a triangle
+
+Chapter 8: Quadrilaterals
+  • Angle-sum property of a quadrilateral
+  • Properties of parallelograms
+  • Conditions for a quadrilateral to be a parallelogram
+  • Midpoint theorem
+
+Chapter 9: Areas of Parallelograms and Triangles
+  • Figures on the same base and between the same parallels
+  • Equal-area triangles and parallelograms
+  • Applying area properties in geometric proofs
+
+Chapter 10: Circles
+  • Chords and their properties
+  • Angles subtended by a chord
+  • Perpendicular from the centre to a chord
+  • Equal chords and equal distances from the centre
+  • Cyclic quadrilaterals
+
+Chapter 11: Constructions
+  • Basic construction tools and methods
+  • Bisecting angles and line segments
+  • Constructing triangles under given conditions
+
+Chapter 12: Heron’s Formula
+  • Semi-perimeter of a triangle
+  • Heron’s formula for area
+  • Applications to triangles and quadrilaterals
+
+Chapter 13: Surface Areas and Volumes
+  • Surface area and volume of cuboids and cubes
+  • Cylinders, cones and spheres
+  • Hemisphere calculations
+  • Conversions and practical word problems
+
+Chapter 14: Statistics
+  • Collection and presentation of data
+  • Frequency tables and graphical representation
+  • Bar graphs and histograms
+  • Mean, median and mode
+
+Chapter 15: Probability
+  • Experimental probability
+  • Outcomes and events
+  • Probability of simple events
+  • Comparing experimental results
+
+SUBJECT: SCIENCE
+Official page: https://bepclots.bihar.gov.in/class-ix-science/
+
+Chapter 1: Matter in Our Surroundings
+  • Physical nature of matter
+  • Particles of matter and their characteristics
+  • States of matter and change of state
+  • Evaporation and factors affecting it
+  • Latent heat and temperature
+
+Chapter 2: Is Matter Around Us Pure?
+  • Pure substances and mixtures
+  • Solutions, suspensions and colloids
+  • Concentration of a solution
+  • Physical and chemical changes
+  • Separation techniques
+
+Chapter 3: Atoms and Molecules
+  • Laws of chemical combination
+  • Dalton’s atomic theory
+  • Atoms, molecules and ions
+  • Chemical formulae
+  • Atomic mass, molecular mass and mole concept
+
+Chapter 4: Structure of the Atom
+  • Discovery of electrons, protons and neutrons
+  • Thomson’s, Rutherford’s and Bohr’s models
+  • Atomic number and mass number
+  • Isotopes and isobars
+  • Electronic configuration and valency
+
+Chapter 5: The Fundamental Unit of Life
+  • Cell as the basic unit of life
+  • Cell membrane and cell wall
+  • Nucleus and cytoplasm
+  • Cell organelles and their functions
+  • Plant and animal cells
+
+Chapter 6: Tissues
+  • Plant tissues: meristematic and permanent
+  • Simple and complex permanent tissues
+  • Animal epithelial, connective, muscular and nervous tissues
+  • Functions and locations of tissues
+
+Chapter 7: Diversity in Living Organisms
+  • Need for classification
+  • Classification hierarchy and five-kingdom system
+  • Major groups of plants
+  • Major groups of animals
+  • Basis of classification and evolutionary relationships
+
+Chapter 8: Motion
+  • Distance and displacement
+  • Speed, velocity and acceleration
+  • Uniform and non-uniform motion
+  • Distance-time and velocity-time graphs
+  • Equations of motion and circular motion
+
+Chapter 9: Force and Laws of Motion
+  • Balanced and unbalanced forces
+  • Newton’s laws of motion
+  • Inertia and mass
+  • Momentum and conservation of momentum
+  • Applications of the laws of motion
+
+Chapter 10: Gravitation
+  • Universal law of gravitation
+  • Free fall and acceleration due to gravity
+  • Mass and weight
+  • Thrust and pressure
+  • Buoyancy, Archimedes’ principle and relative density
+
+Chapter 11: Work and Energy
+  • Work done by a force
+  • Kinetic and potential energy
+  • Work-energy relationship
+  • Conservation of energy
+  • Power and commercial unit of energy
+
+Chapter 12: Sound
+  • Production and propagation of sound
+  • Longitudinal waves, frequency, amplitude and wavelength
+  • Speed of sound
+  • Reflection of sound, echoes and reverberation
+  • Ultrasound and the human ear
+
+Chapter 13: Why Do We Fall Ill?
+  • Health and its significance
+  • Acute and chronic diseases
+  • Infectious and non-infectious diseases
+  • Causes, spread and prevention of infectious diseases
+  • Immunisation and public health
+
+Chapter 14: Natural Resources
+  • The atmosphere and its role
+  • Air, water and soil pollution
+  • Water cycle and nitrogen cycle
+  • Carbon and oxygen cycles
+  • Greenhouse effect, ozone layer and sustainable resource use
+
+SUBJECT: SOCIAL SCIENCE
+
+Note: Bihar e-LOTS presents Social Science as separate History, Geography, Political Science/Civics and Economics textbook pages.
+
+HISTORY — History of the World / Itihas ki Duniya
+
+Official Class 9 History page: https://bepclots.bihar.gov.in/class-ix-history/
+
+Chapter 1: The French Revolution
+  • French society and the Old Regime
+  • Causes of the revolution and financial crisis
+  • Estates-General, National Assembly and the Bastille
+  • Constitutional monarchy and the republic
+  • Reign of Terror and the revolution’s legacy
+
+Chapter 2: Socialism in Europe and the Russian Revolution
+  • Liberal, radical and conservative ideas
+  • Socialism and workers’ movements
+  • Russian society before 1917
+  • February and October Revolutions
+  • Formation of the Soviet state and its consequences
+
+Chapter 3: Nazism and the Rise of Hitler
+  • Germany after the First World War
+  • Weimar Republic and economic crisis
+  • Hitler’s rise and Nazi ideology
+  • Persecution, propaganda and the Holocaust
+  • Effects of Nazism and the Second World War
+
+Chapter 4: Forest Society and Colonialism
+  • Forest communities and their livelihoods
+  • Colonial forest laws and commercial forestry
+  • Effects on shifting cultivation and local communities
+  • Resistance and forest movements
+  • Examples from India and other regions
+
+Chapter 5: Pastoralists in the Modern World
+  • Pastoral communities and seasonal movement
+  • Colonial policies and restrictions
+  • Changes in grazing routes and livelihoods
+  • Pastoralism in Africa and India
+  • Adaptation and survival strategies
+
+GEOGRAPHY — India: Land and People
+
+Official Class 9 Geography page: https://bepclots.bihar.gov.in/class-ix-geography/
+
+Chapter 1: India — Size and Location
+  • India’s location, extent and neighbouring countries
+  • Latitudes, longitudes and standard time
+  • India’s position in Asia and the Indian Ocean
+
+Chapter 2: Physical Features of India
+  • Formation and major physiographic divisions
+  • Himalayas and Northern Plains
+  • Peninsular Plateau
+  • Indian Desert, Coastal Plains and Islands
+
+Chapter 3: Drainage
+  • Drainage basins and drainage patterns
+  • Himalayan river systems
+  • Peninsular river systems
+  • Lakes, rivers and their economic importance
+  • River pollution and conservation
+
+Chapter 4: Climate
+  • Weather and climate
+  • Factors controlling India’s climate
+  • Monsoon mechanism and seasons
+  • Distribution of rainfall
+  • Climate and daily life
+
+Chapter 5: Natural Vegetation and Wildlife
+  • Factors affecting natural vegetation
+  • Major vegetation types
+  • Wildlife distribution
+  • Biodiversity loss and conservation
+
+Chapter 6: Population
+  • Population size, distribution and density
+  • Population growth and change
+  • Age composition, sex ratio and literacy
+  • Occupational structure and health
+  • Population as a resource
+
+POLITICAL SCIENCE / CIVICS
+
+Official Class 9 Political Science page: https://bepclots.bihar.gov.in/class-ix-political-science/
+
+Chapter 1: What Is Democracy? Why Democracy?
+  • Meaning and key features of democracy
+  • Democratic and non-democratic government
+  • Arguments for and against democracy
+  • Outcomes and accountability
+
+Chapter 2: Constitutional Design
+  • Need for a constitution
+  • Apartheid and South Africa’s transition
+  • Making of the Indian Constitution
+  • Constitutional values and the Preamble
+
+Chapter 3: Electoral Politics
+  • Need for elections
+  • Electoral constituencies and voter lists
+  • Nomination, campaigning and polling
+  • Election Commission and free, fair elections
+
+Chapter 4: Working of Institutions
+  • Parliament and law-making
+  • President, Prime Minister and Council of Ministers
+  • Political executive and permanent executive
+  • Courts and judicial independence
+
+Chapter 5: Democratic Rights
+  • Fundamental rights
+  • Right to Equality and Right to Freedom
+  • Right against Exploitation
+  • Freedom of Religion, Cultural and Educational Rights
+  • Constitutional remedies and human rights
+
+ECONOMICS
+
+Official Class 9 Economics page: https://bepclots.bihar.gov.in/class-ix-economics-2/
+
+Chapter 1: The Story of a Village Economy
+  • Production and factors of production
+  • Farming and non-farm activities
+  • Land, labour, physical capital and human capital
+  • Small farmers, large farmers and rural markets
+
+Chapter 2: People as Resource
+  • Population as human capital
+  • Education and health
+  • Economic activities and unemployment
+  • Quality of population and development
+
+Chapter 3: Poverty as a Challenge
+  • Poverty and its indicators
+  • Poverty trends and vulnerable groups
+  • Causes of poverty
+  • Anti-poverty measures
+
+Chapter 4: Food Security in India
+  • Meaning and dimensions of food security
+  • Availability, accessibility and affordability
+  • Buffer stock and public distribution system
+  • Food insecurity and government programmes
+
+
+
+
+
+
+CLASS 10
+
+
+
+SUBJECT: MATHEMATICS
+
+Official page: https://bepclots.bihar.gov.in/class-x-math/
+
+Chapter 1: Real Numbers
+  • Euclid’s division lemma
+  • Fundamental theorem of arithmetic
+  • HCF and LCM
+  • Irrationality proofs and decimal expansions
+
+Chapter 2: Polynomials
+  • Geometrical meaning of zeros
+  • Relationship between zeros and coefficients
+  • Division algorithm for polynomials
+
+Chapter 3: Pair of Linear Equations in Two Variables
+  • Graphical solution
+  • Algebraic solution by substitution and elimination
+  • Consistency and number of solutions
+  • Word problems reducible to linear equations
+
+Chapter 4: Quadratic Equations
+  • Standard form and factorisation
+  • Completing the square
+  • Quadratic formula and discriminant
+  • Nature of roots and word problems
+
+Chapter 5: Arithmetic Progressions
+  • Identifying an arithmetic progression
+  • nth term of an AP
+  • Sum of the first n terms
+  • Applications and word problems
+
+Chapter 6: Triangles
+  • Similar figures and similar triangles
+  • Basic proportionality theorem and converse
+  • Criteria for similarity
+  • Areas of similar triangles
+  • Pythagoras theorem and converse
+
+Chapter 7: Coordinate Geometry
+  • Distance formula
+  • Section formula
+  • Midpoint and coordinates of points
+
+Chapter 8: Introduction to Trigonometry
+  • Trigonometric ratios in a right triangle
+  • Ratios for standard angles
+  • Complementary angles
+  • Trigonometric identities
+
+Chapter 9: Some Applications of Trigonometry
+  • Angles of elevation and depression
+  • Heights and distances
+  • Solving practical problems using trigonometric ratios
+
+Chapter 10: Circles
+  • Tangent to a circle
+  • Tangent perpendicular to the radius
+  • Tangents from an external point
+  • Lengths of tangents
+
+Chapter 11: Constructions
+  • Dividing a line segment in a given ratio
+  • Constructing similar triangles
+  • Constructing tangents to a circle
+
+Chapter 12: Areas Related to Circles
+  • Circumference and area of a circle
+  • Sector and segment of a circle
+  • Areas of combinations of plane figures
+
+Chapter 13: Surface Areas and Volumes
+  • Surface area and volume of combinations of solids
+  • Conversion between solids
+  • Frustum of a cone (where included in the edition)
+  • Practical applications
+
+Chapter 14: Statistics
+  • Grouped frequency distributions
+  • Mean by direct, assumed-mean and step-deviation methods
+  • Mode of grouped data
+  • Median of grouped data and ogives
+
+Chapter 15: Probability
+  • Classical probability
+  • Sample spaces and outcomes
+  • Probability of simple events
+  • Complementary events
+
+SUBJECT: SCIENCE
+
+Official page: https://bepclots.bihar.gov.in/class-x-science/
+
+Chapter 1: Chemical Reactions and Equations
+  • Chemical equations
+  • Writing and balancing chemical equations
+  • Types of chemical reactions: combination, decomposition, displacement and double displacement
+  • Exothermic and endothermic reactions
+  • Oxidation, reduction and redox reactions
+
+Chapter 2: Acids, Bases and Salts
+  • Chemical properties of acids and bases
+  • Reactions with metals, carbonates and indicators
+  • Similarities and differences among acids and bases
+  • Strength of acid or base solutions and the pH scale
+  • Importance of pH in everyday life
+  • Common salt and products: sodium hydroxide, bleaching powder, baking soda, washing soda and plaster of Paris
+
+Chapter 3: Metals and Non-metals
+  • Physical and chemical properties of metals and non-metals
+  • Reactions with oxygen, water and acids
+  • Reactivity series
+  • Formation and properties of ionic compounds
+  • Occurrence of metals and basic metallurgical processes
+  • Corrosion and its prevention
+
+Chapter 4: Carbon and Its Compounds
+  • Covalent bonding and properties of carbon
+  • Versatile nature of carbon and catenation
+  • Saturated and unsaturated hydrocarbons
+  • Homologous series and nomenclature
+  • Functional groups and chemical properties
+  • Ethanol, ethanoic acid, soaps and detergents
+
+Chapter 5: Periodic Classification of Elements
+  • Early attempts at classification
+  • Mendeleev’s periodic table
+  • Modern periodic law and periodic table
+  • Groups, periods and electronic configuration
+  • Trends in valency, atomic size and metallic character
+
+Chapter 6: Life Processes
+  • Nutrition: autotrophic and heterotrophic
+  • Human digestion and nutrition
+  • Respiration: aerobic and anaerobic
+  • Transportation in plants and animals
+  • Excretion in plants and animals
+
+Chapter 7: Control and Coordination
+  • Nervous system and reflex action
+  • Human brain and spinal cord
+  • Coordination in plants
+  • Plant hormones
+  • Animal hormones and endocrine glands
+
+Chapter 8: How Do Organisms Reproduce?
+  • Asexual reproduction
+  • Sexual reproduction in flowering plants
+  • Human reproductive systems
+  • Reproductive health and contraception
+
+Chapter 9: Heredity and Evolution
+  • Inherited and acquired traits
+  • Mendel’s experiments and laws of inheritance
+  • Dominant and recessive traits
+  • Sex determination in humans
+  • Evolution, fossils and evidence for evolutionary relationships
+
+Chapter 10: Light — Reflection and Refraction
+  • Reflection by spherical mirrors
+  • Mirror formula and magnification
+  • Refraction and refractive index
+  • Refraction through lenses
+  • Lens formula, magnification and power of a lens
+
+Chapter 11: The Human Eye and the Colourful World
+  • Structure and working of the human eye
+  • Accommodation and near/far points
+  • Myopia, hypermetropia and their correction
+  • Refraction through a prism and dispersion
+  • Atmospheric refraction and scattering of light
+
+Chapter 12: Electricity
+  • Electric current and potential difference
+  • Ohm’s law and resistance
+  • Factors affecting resistance and resistivity
+  • Resistors in series and parallel
+  • Heating effect of current and electric power
+
+Chapter 13: Magnetic Effects of Electric Current
+  • Magnetic field and field lines
+  • Magnetic field due to a current-carrying conductor
+  • Force on a current-carrying conductor
+  • Electric motor and electromagnetic induction
+  • Electric generator, domestic circuits and safety
+
+Chapter 14: Sources of Energy
+  • Conventional and non-conventional energy sources
+  • Fossil fuels and thermal power
+  • Solar, wind, hydro, biomass and nuclear energy
+  • Renewable versus non-renewable sources
+  • Environmental consequences and energy choices
+
+Chapter 15: Our Environment
+  • Ecosystems and food chains
+  • Trophic levels and energy flow
+  • Biodegradable and non-biodegradable waste
+  • Ozone layer and its depletion
+  • Waste management and environmental protection
+
+SUBJECT: SOCIAL SCIENCE
+
+Note: e-LOTS provides separate History, Geography, Political Science/Civics and Economics pages.
+
+HISTORY — India and the Contemporary World
+
+Official Class 10 History page: https://bepclots.bihar.gov.in/class-x-history/
+
+Chapter 1: The Rise of Nationalism in Europe
+  • The French Revolution and the idea of the nation
+  • Liberal nationalism and revolutions
+  • Unification of Germany and Italy
+  • Nationalism and imperialism in the Balkans
+
+Chapter 2: Nationalism in India
+  • First World War and its effects
+  • Rowlatt Act, Jallianwala Bagh and Khilafat
+  • Non-Cooperation and Civil Disobedience movements
+  • Different social groups in the national movement
+  • Limits of the movement and sense of collective belonging
+
+Chapter 3: The Making of a Global World
+  • Early trade and pre-modern global connections
+  • Nineteenth-century world economy
+  • Colonialism, indentured labour and migration
+  • Great Depression and post-war reconstruction
+  • Globalisation and changing economic connections
+
+Chapter 4: The Age of Industrialisation
+  • Proto-industrialisation
+  • Factories and industrial production
+  • Industrialisation in Britain and India
+  • Workers, entrepreneurs and industrial markets
+  • Advertisements and consumer culture
+
+Chapter 5: Print Culture and the Modern World
+  • Early print technology and print in Europe
+  • Print revolution and reading publics
+  • Print in India and religious/social reform
+  • Print, censorship and nationalism
+
+GEOGRAPHY — India: Resources and Utilisation
+
+Official Class 10 Geography page: https://bepclots.bihar.gov.in/class-x-geography/
+
+Chapter 1: Resources and Development
+  • Types and classification of resources
+  • Resource planning and sustainable development
+  • Land resources and land degradation
+  • Soil types, erosion and conservation
+
+Chapter 2: Forest and Wildlife Resources
+  • Biodiversity and its importance
+  • Causes of depletion of forests and wildlife
+  • Conservation categories and protected areas
+  • Community participation in conservation
+
+Chapter 3: Water Resources
+  • Water scarcity and need for conservation
+  • Multipurpose river projects and dams
+  • Rainwater harvesting
+  • Sustainable water management
+
+Chapter 4: Agriculture
+  • Types of farming and cropping seasons
+  • Major food and cash crops
+  • Technological and institutional reforms
+  • Agricultural challenges and sustainability
+
+Chapter 5: Minerals and Energy Resources
+  • Mode of occurrence of minerals
+  • Distribution and conservation of minerals
+  • Conventional and non-conventional energy
+  • Energy conservation
+
+Chapter 6: Manufacturing Industries
+  • Importance and classification of industries
+  • Industrial location factors
+  • Major industries and industrial regions
+  • Industrial pollution and environmental degradation
+  • Measures to control industrial pollution
+
+Chapter 7: Lifelines of National Economy
+  • Roadways, railways, pipelines and waterways
+  • Communication networks
+  • International trade and tourism
+  • Transport and economic development
+
+POLITICAL SCIENCE / CIVICS
+
+Official Class 10 Political Science page: https://bepclots.bihar.gov.in/class-x-political-science/
+
+Chapter 1: Power Sharing
+  • Power sharing in Belgium and Sri Lanka
+  • Majoritarianism and accommodation
+  • Forms and importance of power sharing
+
+Chapter 2: Federalism
+  • Features of federal government
+  • Union, State and local government
+  • Linguistic states and language policy
+  • Centre–State relations and decentralisation
+
+Chapter 3: Democracy and Diversity
+  • Social differences and social divisions
+  • Overlapping and cross-cutting differences
+  • Politics of social divisions
+
+Chapter 4: Gender, Religion and Caste
+  • Gender division and political representation
+  • Religion, communalism and secularism
+  • Caste inequalities and caste in politics
+
+Chapter 5: Popular Struggles and Movements
+  • Pressure groups and movements
+  • Nepal’s movement for democracy
+  • Bolivia’s water struggle
+  • Influence of organised citizens on politics
+
+Chapter 6: Political Parties
+  • Meaning and functions of political parties
+  • Party systems and national/regional parties
+  • Challenges to political parties
+  • Reforms and strengthening parties
+
+Chapter 7: Outcomes of Democracy
+  • Accountable, responsive and legitimate government
+  • Economic growth and inequality
+  • Social diversity and dignity
+  • Democratic outcomes and citizens’ expectations
+
+Chapter 8: Challenges to Democracy
+  • Foundational, expansion and deepening challenges
+  • Political reforms
+  • Citizen participation and democratic improvement
+
+ECONOMICS
+
+Official Class 10 Economics page: https://bepclots.bihar.gov.in/class-x-economics/
+
+Chapter 1: Development
+  • Development goals and aspirations
+  • Income and other development indicators
+  • National development and comparison of countries
+  • Public facilities and sustainability
+
+Chapter 2: Sectors of the Indian Economy
+  • Primary, secondary and tertiary sectors
+  • GDP and employment
+  • Organised and unorganised sectors
+  • Public and private sectors
+  • Underemployment and job creation
+
+Chapter 3: Money and Credit
+  • Barter and the need for money
+  • Modern forms of money and banks
+  • Credit terms and sources of credit
+  • Formal and informal credit
+  • Self-help groups and access to credit
+
+Chapter 4: Globalisation and the Indian Economy
+  • Production across countries and multinational corporations
+  • Foreign trade and integration of markets
+  • Factors enabling globalisation
+  • Impact of globalisation in India
+  • Fair globalisation and workers’ interests
+
+Chapter 5: Consumer Rights
+  • Consumer exploitation and awareness
+  • Consumer rights and responsibilities
+  • Standardisation marks and product information
+  • Consumer courts and grievance redressal
+
+
+
+
+
+
+
+
+OFFICIAL PORTAL LINKS
+
+Home: https://bepclots.bihar.gov.in/
+Class 9 Mathematics: https://bepclots.bihar.gov.in/class-ix-maths/
+Class 9 Science: https://bepclots.bihar.gov.in/class-ix-science/
+Class 9 Social Science categories: https://bepclots.bihar.gov.in/category/class-ix/social-science-class-ix/
+Class 9 History: https://bepclots.bihar.gov.in/class-ix-history/
+Class 9 Geography: https://bepclots.bihar.gov.in/class-ix-geography/
+Class 9 Economics: https://bepclots.bihar.gov.in/class-ix-economics-2/
+Class 9 Political Science: https://bepclots.bihar.gov.in/class-ix-political-science/
+Class 10 Mathematics: https://bepclots.bihar.gov.in/class-x-math/
+Class 10 Science: https://bepclots.bihar.gov.in/class-x-science/
+Class 10 Social Science categories: https://bepclots.bihar.gov.in/category/class-x/social-science-class-x/
+Class 10 History: https://bepclots.bihar.gov.in/class-x-history/
+Class 10 Geography: https://bepclots.bihar.gov.in/class-x-geography/
+Class 10 Economics: https://bepclots.bihar.gov.in/class-x-economics/
+Class 10 Political Science: https://bepclots.bihar.gov.in/class-x-political-science/
+
+END OF FILE
