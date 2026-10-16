@@ -1,24 +1,11 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
 
 import { RoleGate } from "@/components/auth/role-gate";
-import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
 import { StudentSidebar } from "@/components/student/student-sidebar";
 import { SchoolProvider } from "@/lib/school-context";
 import { StudentDataProvider } from "@/lib/student-context";
-
-/** Early-access rollout: Ask Medha (/learn, also the student landing page) is
- * live at launch, plus /my-work-updates -- Work Update's loop (teacher
- * creates -> principal feedback -> student approves/disapproves) is only
- * complete if students can reach the approve/disapprove screen too. See the
- * matching note in the teacher (app) layout. */
-const STUDENT_UNLOCKED_PREFIXES = ["/learn", "/my-work-updates"];
-
-function isStudentRouteLocked(pathname: string): boolean {
-  return !STUDENT_UNLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
 
 /**
  * Shell for the student screens (Ask Medha, Practice, Notes, Library, …). The
@@ -30,8 +17,6 @@ function isStudentRouteLocked(pathname: string): boolean {
  * well because Base UI popups (Select, Dialog) portal outside this subtree.
  */
 export default function StudentLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-
   useEffect(() => {
     document.body.classList.add("app-shell");
     return () => document.body.classList.remove("app-shell");
@@ -58,13 +43,7 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
               />
               <div className="absolute inset-0 bg-gradient-to-b from-ivory/90 via-ivory/78 to-ivory/90" />
             </div>
-            <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-              {isStudentRouteLocked(pathname) ? (
-                <FeatureLockOverlay>{children}</FeatureLockOverlay>
-              ) : (
-                children
-              )}
-            </div>
+            <div className="relative z-10 flex min-h-0 flex-1 flex-col">{children}</div>
           </div>
         </div>
       </StudentDataProvider>
