@@ -26,6 +26,7 @@ import { Select } from "@/components/ui/select";
 import { AnnounceForm } from "@/components/notifications/announce-form";
 import { FeesList } from "@/components/fees/fees-list";
 import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytics";
+import { PrincipalSyllabusCoverage } from "@/components/principal/principal-syllabus-coverage";
 import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
 import { PrincipalShell } from "@/components/principal/principal-shell";
 import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
@@ -288,11 +289,16 @@ function PrincipalDashboard() {
             </div>
           )}
 
-          {/* Feature 1: School Attendance & Syllabus Analytics (Smart graphs & percentages) -- locked at launch */}
+          {/* Feature 1: School Attendance Analytics (Smart graphs & percentages) -- locked at launch */}
           <section id="principal-analytics" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
             <FeatureLockOverlay compact>
               <PrincipalAnalyticsHub />
             </FeatureLockOverlay>
+          </section>
+
+          {/* Subject-wise syllabus completion -- live at launch, unlike the rest of Analytics above */}
+          <section id="principal-syllabus-coverage" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <PrincipalSyllabusCoverage />
           </section>
 
           {/* Feature 2: Official School Notice Board (Quick Notice / Circular) -- locked at launch */}
