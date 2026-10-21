@@ -244,6 +244,7 @@ async def stream_message(
     grade = db.get(Grade, session.grade_id)
     subject = db.get(Subject, session.subject_id)
     topic = db.get(CurriculumTopic, session.topic_id) if session.topic_id else None
+    chapter = db.get(CurriculumChapter, session.chapter_id) if session.chapter_id else None
 
     teacher_msg = ChatMessage(session_id=session.id, role="teacher", content=content)
     db.add(teacher_msg)
@@ -266,7 +267,7 @@ async def stream_message(
     system, messages = explanation.build(
         grade_label=grade.label,
         subject_name=subject.name,
-        topic_title=topic.title if topic else "this topic",
+        topic_title=topic.title if topic else (chapter.title if chapter else "this topic"),
         topic_description=topic.description if topic else None,
         language=teacher.preferred_language,
         chunks=chunks,
