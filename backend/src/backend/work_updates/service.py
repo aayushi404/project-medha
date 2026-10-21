@@ -7,14 +7,17 @@ import uuid
 from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.core.section_access import current_enrollment
 from backend.db.models import (
+    AcademicYear,
     ClassSection,
     CurriculumChapter,
     Homework,
     Student,
+    Subject,
     Teacher,
     WorkUpdate,
     WorkUpdateReaction,
@@ -24,6 +27,7 @@ from backend.work_updates.schemas import (
     HomeworkRef,
     PrincipalFeedbackIn,
     ReactionOut,
+    SyllabusCoverageOut,
     WorkUpdateCreateIn,
     WorkUpdateOut,
     WorkUpdateStudentOut,
@@ -243,6 +247,69 @@ def list_for_student(db: Session, student: Student) -> list[WorkUpdateStudentOut
         )
         for r in rows
     ]
+
+
+def syllabus_coverage(db: Session, principal: Teacher) -> list[SyllabusCoverageOut]:
+    """Per-subject syllabus progress for the principal's school: how many of
+    the chapters that actually apply to this school's current grades have
+    been reported taught in a work update, out of how many exist.
+
+    "Applies to this school" means the grades it currently runs sections for
+    (`ClassSection`, current academic year) -- a school with only Class 9
+    shouldn't be marked behind on Class 10 chapters it never teaches.
+    """
+    school_id = _school_id(principal)
+
+    grade_ids = [
+        row[0]
+        for row in db.query(ClassSection.grade_id)
+        .join(AcademicYear, AcademicYear.id == ClassSection.academic_year_id)
+        .filter(ClassSection.school_id == school_id, AcademicYear.is_current.is_(True))
+        .distinct()
+        .all()
+    ]
+    if not grade_ids:
+        return []
+
+    totals = dict(
+        db.query(CurriculumChapter.subject_id, func.count(CurriculumChapter.id))
+        .filter(CurriculumChapter.grade_id.in_(grade_ids))
+        .group_by(CurriculumChapter.subject_id)
+        .all()
+    )
+    if not totals:
+        return []
+
+    covered = dict(
+        db.query(WorkUpdate.subject_id, func.count(func.distinct(WorkUpdate.chapter_id)))
+        .filter(
+            WorkUpdate.school_id == school_id,
+            WorkUpdate.grade_id.in_(grade_ids),
+            WorkUpdate.chapter_id.isnot(None),
+            WorkUpdate.activities.contains(["taught_chapter"]),
+        )
+        .group_by(WorkUpdate.subject_id)
+        .all()
+    )
+
+    names = {
+        s.id: s.name for s in db.query(Subject.id, Subject.name).filter(Subject.id.in_(totals.keys())).all()
+    }
+
+    rows = []
+    for subject_id, total in totals.items():
+        done = min(covered.get(subject_id, 0), total)
+        rows.append(
+            SyllabusCoverageOut(
+                subject_id=subject_id,
+                subject_name=names.get(subject_id, ""),
+                total_chapters=total,
+                chapters_covered=done,
+                progress_percent=round(done / total * 100) if total else 0,
+            )
+        )
+    rows.sort(key=lambda r: r.subject_name)
+    return rows
 
 
 def react(db: Session, student: Student, update_id: uuid.UUID, value: str | None) -> WorkUpdateStudentOut:

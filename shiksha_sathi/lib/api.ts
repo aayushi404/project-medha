@@ -1555,6 +1555,17 @@ export const sendWorkUpdateFeedback = (
   body: { note?: string | null; flagged: boolean; badge?: string | null },
 ) => json<WorkUpdateApi>(apiFetch(`/work-updates/${id}/feedback`, { method: "POST", token, body }));
 
+export type SyllabusCoverageApi = {
+  subject_id: string;
+  subject_name: string;
+  total_chapters: number;
+  chapters_covered: number;
+  progress_percent: number;
+};
+
+export const getSyllabusCoverage = (token: string | null) =>
+  json<SyllabusCoverageApi[]>(apiFetch("/work-updates/syllabus-coverage", { token }));
+
 // ---------------------------------------------------------------------------
 // Timetable: one weekly grid per grade (Mon-Sat x periods), read by anyone at
 // the school, edited by a teacher or principal.

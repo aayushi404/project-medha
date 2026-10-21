@@ -11,6 +11,7 @@ from backend.work_updates.schemas import (
     HomeworkRef,
     PrincipalFeedbackIn,
     ReactIn,
+    SyllabusCoverageOut,
     WorkUpdateCreateIn,
     WorkUpdateOut,
     WorkUpdateStudentOut,
@@ -31,6 +32,13 @@ def list_work_updates(user: Teacher = Depends(get_current_teacher), db: Session 
     if user.role not in ("teacher", "principal"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't have permission to do that.")
     return service.list_for_staff(db, user)
+
+
+@router.get("/syllabus-coverage", response_model=list[SyllabusCoverageOut])
+def syllabus_coverage(
+    principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
+) -> list[SyllabusCoverageOut]:
+    return service.syllabus_coverage(db, principal)
 
 
 @router.get("/homework-today", response_model=list[HomeworkRef])

@@ -12,14 +12,17 @@ import {
   Users,
 } from "lucide-react";
 
-import { getPrincipalAttendanceSummary, type SchoolAttendanceSummary } from "@/lib/api";
+import { getPrincipalAttendanceSummary, getSyllabusCoverage, type SchoolAttendanceSummary, type SyllabusCoverageApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useWorkUpdates } from "@/lib/work-update-store";
+
+const SYLLABUS_BAR_COLORS = ["bg-emerald-500", "bg-blue-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
 
 export function PrincipalAnalyticsHub() {
   const { accessToken } = useAuth();
   const { updates } = useWorkUpdates();
   const [summary, setSummary] = useState<SchoolAttendanceSummary | null>(null);
+  const [coverage, setCoverage] = useState<SyllabusCoverageApi[] | null>(null);
 
   // Today's real numbers -- see /principal/attendance for any-day, full detail.
   useEffect(() => {
@@ -32,6 +35,24 @@ export function PrincipalAnalyticsHub() {
       .catch(() => {
         // quiet -- this is a glance card, the dedicated Attendance page is
         // where a real failure should be surfaced
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
+
+  // How much of the syllabus has actually been taught, per subject -- derived
+  // server-side from teachers' work updates against the real chapter count
+  // for this school's current grades.
+  useEffect(() => {
+    if (!accessToken) return;
+    let active = true;
+    getSyllabusCoverage(accessToken)
+      .then((result) => {
+        if (active) setCoverage(result);
+      })
+      .catch(() => {
+        // quiet -- same reasoning as the attendance fetch above
       });
     return () => {
       active = false;
@@ -55,15 +76,21 @@ export function PrincipalAnalyticsHub() {
     };
   }, [summary]);
 
-  // Compute Syllabus Coverage & AI Adoption Metrics
   const syllabusData = useMemo(() => {
-    return [
-      { subject: "Science (विज्ञान)", progress: 68, chaptersCovered: 11, totalChapters: 16, color: "bg-emerald-500" },
-      { subject: "Mathematics (गणित)", progress: 62, chaptersCovered: 9, totalChapters: 15, color: "bg-blue-500" },
-      { subject: "Social Science (सामाजिक विज्ञान)", progress: 55, chaptersCovered: 12, totalChapters: 22, color: "bg-amber-500" },
-      { subject: "Hindi & English", progress: 75, chaptersCovered: 15, totalChapters: 20, color: "bg-purple-500" },
-    ];
-  }, []);
+    if (!coverage) return null;
+    return coverage.map((s, i) => ({
+      subject: s.subject_name,
+      progress: s.progress_percent,
+      chaptersCovered: s.chapters_covered,
+      totalChapters: s.total_chapters,
+      color: SYLLABUS_BAR_COLORS[i % SYLLABUS_BAR_COLORS.length],
+    }));
+  }, [coverage]);
+
+  const avgSyllabusProgress = useMemo(() => {
+    if (!coverage || coverage.length === 0) return null;
+    return Math.round(coverage.reduce((sum, s) => sum + s.progress_percent, 0) / coverage.length);
+  }, [coverage]);
 
   // Compute AI adoption percentage
   const aiStats = useMemo(() => {
@@ -115,9 +142,11 @@ export function PrincipalAnalyticsHub() {
               Avg. Syllabus Coverage
             </div>
             <div className="mt-0.5 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-foreground">65%</span>
+              <span className="text-2xl font-bold text-foreground">
+                {avgSyllabusProgress !== null ? `${avgSyllabusProgress}%` : "…"}
+              </span>
               <span className="text-xs text-blue-600 font-medium dark:text-blue-400">
-                Term 1 Target Met
+                Across all subjects
               </span>
             </div>
           </div>
@@ -197,22 +226,30 @@ export function PrincipalAnalyticsHub() {
           </div>
 
           <div className="mt-4 space-y-3">
-            {syllabusData.map((s) => (
-              <div key={s.subject} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="font-medium text-foreground">{s.subject}</span>
-                  <span className="text-muted-foreground">
-                    {s.chaptersCovered} of {s.totalChapters} Chapters ({s.progress}%)
-                  </span>
+            {!syllabusData ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">Loading…</p>
+            ) : syllabusData.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">
+                No classes set up yet for this academic year.
+              </p>
+            ) : (
+              syllabusData.map((s) => (
+                <div key={s.subject} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium text-foreground">{s.subject}</span>
+                    <span className="text-muted-foreground">
+                      {s.chaptersCovered} of {s.totalChapters} Chapters ({s.progress}%)
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full ${s.color} transition-all duration-500`}
+                      style={{ width: `${s.progress}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full ${s.color} transition-all duration-500`}
-                    style={{ width: `${s.progress}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

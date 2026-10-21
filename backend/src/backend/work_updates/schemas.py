@@ -95,3 +95,14 @@ class PrincipalFeedbackIn(BaseModel):
     note: str | None = Field(default=None, max_length=500)
     flagged: bool = False
     badge: Badge | None = None
+
+
+class SyllabusCoverageOut(BaseModel):
+    """One subject's syllabus progress for the principal's school, derived
+    from which chapters teachers have reported as taught."""
+
+    subject_id: uuid.UUID
+    subject_name: str
+    total_chapters: int
+    chapters_covered: int
+    progress_percent: int
