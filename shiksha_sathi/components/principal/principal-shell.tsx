@@ -37,11 +37,11 @@ import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
 /**
  * Early-access rollout: only the Work Update feed on /principal itself (see
  * principal/page.tsx, which locks its other sections individually) stays
- * live. Every standalone principal route -- Teachers, Timetable, Cover,
- * Admission, the full Attendance screen, student/teacher profile drill-ins --
- * renders for real but inert under a lock overlay. /principal and
- * /principal/profile (account settings) are exempt since they're handled
- * elsewhere or aren't a "feature" to gate.
+ * live. Every standalone principal route -- Timetable, Cover, the full
+ * Attendance screen, student/teacher profile drill-ins -- renders for real
+ * but inert under a lock overlay. /principal and /principal/profile (account
+ * settings) are exempt since they're handled elsewhere or aren't a
+ * "feature" to gate.
  *
  * /principal/classes is ALSO exempt: Work Update requires a teacher to have
  * a `teaching_assignments` row (which `/profile`'s assigned-subjects list --
@@ -59,6 +59,8 @@ import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
  * teacher a login reset code (auth/service.py's issue_reset_code), which is
  * the feature that lets a principal get a teacher a new, easy-to-remember
  * password without needing database access.
+ *
+ * /principal/admission is ALSO exempt: unlocked to demo to schools.
  */
 function isPrincipalRouteLocked(pathname: string): boolean {
   if (
@@ -67,7 +69,9 @@ function isPrincipalRouteLocked(pathname: string): boolean {
     pathname === "/principal/classes" ||
     pathname.startsWith("/principal/classes/") ||
     pathname === "/principal/teachers" ||
-    pathname.startsWith("/principal/teachers/")
+    pathname.startsWith("/principal/teachers/") ||
+    pathname === "/principal/admission" ||
+    pathname.startsWith("/principal/admission/")
   ) {
     return false;
   }
@@ -96,7 +100,7 @@ const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true },
   { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true, locked: true },
   { id: "principal-cover", href: "/principal/cover", labelEn: "Daily Cover", labelHi: "आज का कवर", icon: UserX, ownRoute: true, locked: true },
-  { id: "principal-admission", href: "/principal/admission", labelEn: "Admission", labelHi: "प्रवेश", icon: GraduationCap, ownRoute: true, locked: true },
+  { id: "principal-admission", href: "/principal/admission", labelEn: "Admission", labelHi: "प्रवेश", icon: GraduationCap, ownRoute: true },
   { id: "principal-fees", href: "/principal#principal-fees", labelEn: "Fee Records", labelHi: "शुल्क विवरण", icon: IndianRupee, locked: true },
 ];
 

@@ -185,9 +185,10 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
   );
 }
 
-/** Early-access rollout: everything but Home and Ask Medha previews locked.
- * Work Update is its own sidebar row (not a route), so it's unaffected. */
-const UNLOCKED_HREFS = new Set(["/dashboard", "/ask", "/history"]);
+/** Early-access rollout: only these previews unlocked, everything else still
+ * shows a lock badge. Work Update is its own sidebar row (not a route), so
+ * it's unaffected. */
+const UNLOCKED_HREFS = new Set(["/dashboard", "/ask", "/history", "/simulations"]);
 
 /** One nav link, plus the Work Update row that follows Homework. */
 function NavRows({
