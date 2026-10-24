@@ -41,9 +41,9 @@ const HREF: Partial<Record<GenerationType, string>> = {
   question_paper: "/question-paper",
 };
 
-// Early-access rollout: Lesson Plan is live; the other quick-action tiles
-// still lead to a feature that previews locked for now.
-const LOCKED_TYPES = new Set<GenerationType>(["presentation", "question_paper", "quiz", "notes"]);
+// Early-access rollout: Lesson Plan, Question Paper and Quiz are live;
+// the other quick-action tiles still lead to a feature that previews locked for now.
+const LOCKED_TYPES = new Set<GenerationType>(["presentation", "notes"]);
 
 /** A single illustrated Quick Action tile on the dashboard. `wide` lays it out
  *  as a row (used for the full-width Notes card); the default stacks the art

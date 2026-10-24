@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { redirect, useParams } from "next/navigation";
 import type { ComponentType } from "react";
 
 import { ClassTimer } from "@/components/tools/class-timer";
@@ -41,6 +41,10 @@ export default function ToolPage() {
         </Link>
       </main>
     );
+  }
+
+  if (tool.href) {
+    redirect(tool.href);
   }
 
   const Body = tool.status === "ready" ? READY[tool.slug] : undefined;

@@ -145,6 +145,17 @@ export const TOOLS: Tool[] = [
     status: "ready",
   },
   {
+    slug: "question-paper",
+    name: "Question Paper Generator",
+    tagline: "Custom blueprint question paper with marks",
+    blurb:
+      "Select chapters, customize question types (MCQ, short, long, case study) and generate a complete exam paper with marking scheme.",
+    icon: FileQuestion,
+    category: "assess",
+    status: "ready",
+    href: "/question-paper",
+  },
+  {
     slug: "quiz",
     name: "Quiz Maker",
     tagline: "Short quizzes for a quick check",
@@ -152,7 +163,8 @@ export const TOOLS: Tool[] = [
       "Generate a 5-10 question quiz for a topic -- MCQ, true/false or one-word -- with instant answer key.",
     icon: BookOpenCheck,
     category: "assess",
-    status: "soon",
+    status: "ready",
+    href: "/quiz",
   },
   {
     slug: "rubric",

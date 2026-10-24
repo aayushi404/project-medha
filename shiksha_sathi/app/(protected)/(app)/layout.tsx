@@ -18,7 +18,20 @@ import { SchoolProvider } from "@/lib/school-context";
  * rather than disappears. Profile stays open since it's account settings,
  * not a content feature.
  */
-const TEACHER_UNLOCKED_PREFIXES = ["/dashboard", "/ask", "/profile", "/lesson-plan", "/history", "/simulations"];
+const TEACHER_UNLOCKED_PREFIXES = [
+  "/dashboard",
+  "/ask",
+  "/profile",
+  "/lesson-plan",
+  "/history",
+  "/simulations",
+  "/question-paper",
+  "/quiz",
+  "/tools",
+  "/create",
+  "/report-card",
+  "/timetable",
+];
 
 function isTeacherRouteLocked(pathname: string): boolean {
   return !TEACHER_UNLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

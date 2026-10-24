@@ -71,7 +71,9 @@ function isPrincipalRouteLocked(pathname: string): boolean {
     pathname === "/principal/teachers" ||
     pathname.startsWith("/principal/teachers/") ||
     pathname === "/principal/admission" ||
-    pathname.startsWith("/principal/admission/")
+    pathname.startsWith("/principal/admission/") ||
+    pathname === "/principal/timetable" ||
+    pathname.startsWith("/principal/timetable/")
   ) {
     return false;
   }
@@ -98,7 +100,7 @@ const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-work-updates", href: "/principal#principal-work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
   { id: "principal-teachers", href: "/principal/teachers", labelEn: "Teachers", labelHi: "शिक्षक", icon: Users, ownRoute: true },
   { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true },
-  { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true, locked: true },
+  { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true },
   { id: "principal-cover", href: "/principal/cover", labelEn: "Daily Cover", labelHi: "आज का कवर", icon: UserX, ownRoute: true, locked: true },
   { id: "principal-admission", href: "/principal/admission", labelEn: "Admission", labelHi: "प्रवेश", icon: GraduationCap, ownRoute: true },
   { id: "principal-fees", href: "/principal#principal-fees", labelEn: "Fee Records", labelHi: "शुल्क विवरण", icon: IndianRupee, locked: true },

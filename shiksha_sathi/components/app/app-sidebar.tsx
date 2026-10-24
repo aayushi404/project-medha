@@ -185,10 +185,20 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
   );
 }
 
-/** Early-access rollout: only these previews unlocked, everything else still
+/** Early-access rollout: unlocked previews. Everything else still
  * shows a lock badge. Work Update is its own sidebar row (not a route), so
  * it's unaffected. */
-const UNLOCKED_HREFS = new Set(["/dashboard", "/ask", "/history", "/simulations"]);
+const UNLOCKED_HREFS = new Set([
+  "/dashboard",
+  "/ask",
+  "/history",
+  "/simulations",
+  "/tools",
+  "/question-paper",
+  "/quiz",
+  "/report-card",
+  "/timetable",
+]);
 
 /** One nav link, plus the Work Update row that follows Homework. */
 function NavRows({
