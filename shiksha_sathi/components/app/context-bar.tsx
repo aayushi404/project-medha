@@ -4,13 +4,17 @@ import { Select, type SelectOption } from "@/components/ui/select";
 import { useCopy, useCurriculumT } from "@/lib/copy";
 import { useLessonContext } from "@/lib/lesson-context";
 
-/** Grade/subject/chapter option-building shared between ContextBar and the
+/** Sentinel for "whole chapter" in topic selects — Base UI rejects "". */
+const WHOLE_CHAPTER = "__whole__";
+
+/** Grade/subject/chapter/topic option-building shared between ContextBar and the
  * /ask empty-state hero cards (components/app/context-hero-cards.tsx). */
 export function useContextOptions() {
   const t = useCurriculumT();
-  const { gradeId, subjectId, chapterId, options, setGradeSubject, setChapter } =
+  const copy = useCopy();
+  const { gradeId, subjectId, chapterId, topicId, options, setGradeSubject, setChapter, setTopic } =
     useLessonContext();
-  const { pairs, chapters } = options;
+  const { pairs, chapters, topics } = options;
 
   const gradeOptions: SelectOption[] = [];
   const gradeSeen = new Map<string, number>();
@@ -36,6 +40,14 @@ export function useContextOptions() {
     label: t.chapter(c.title),
   }));
 
+  const topicOptions: SelectOption[] = [
+    { value: WHOLE_CHAPTER, label: copy.wholeChapter },
+    ...topics.map((tp) => ({
+      value: tp.id,
+      label: t.topic(tp.title),
+    })),
+  ];
+
   function pickGrade(nextGrade: string) {
     const keep = pairs.find((p) => p.grade_id === nextGrade && p.subject_id === subjectId);
     const next = keep ?? pairs.find((p) => p.grade_id === nextGrade);
@@ -46,16 +58,26 @@ export function useContextOptions() {
     if (gradeId) setGradeSubject(gradeId, nextSubject);
   }
 
+  function pickTopic(next: string) {
+    setTopic(next === WHOLE_CHAPTER ? null : next);
+  }
+
   return {
     gradeId,
     subjectId,
     chapterId,
+    topicId,
+    topicSelectValue: topicId ?? WHOLE_CHAPTER,
     gradeOptions,
     subjectOptions,
     chapterOptions,
+    topicOptions,
+    topics,
     pickGrade,
     pickSubject,
+    pickTopic,
     setChapter,
+    setTopic,
     pairs,
     chapters,
   };
@@ -67,11 +89,15 @@ export function ContextBar() {
     gradeId,
     subjectId,
     chapterId,
+    topicSelectValue,
     gradeOptions,
     subjectOptions,
     chapterOptions,
+    topicOptions,
+    topics,
     pickGrade,
     pickSubject,
+    pickTopic,
     setChapter,
   } = useContextOptions();
 
@@ -100,6 +126,16 @@ export function ContextBar() {
           onValueChange={(c) => setChapter(c)}
           className="max-w-[16rem]"
         />
+        {chapterId && topics.length > 0 ? (
+          <Select
+            ariaLabel={copy.selectTopic}
+            placeholder={copy.selectTopic}
+            value={topicSelectValue}
+            options={topicOptions}
+            onValueChange={pickTopic}
+            className="max-w-[16rem]"
+          />
+        ) : null}
       </div>
 
     </div>

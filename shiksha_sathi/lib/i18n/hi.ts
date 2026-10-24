@@ -157,6 +157,8 @@ export const hi: Copy = {
   selectClass: "कक्षा",
   selectSubject: "विषय",
   selectChapter: "अध्याय",
+  selectTopic: "विषयवस्तु",
+  wholeChapter: "पूरा अध्याय",
   quickActions: {
     explanation: { label: "पढ़ाने का तरीका", sub: "2-3 रणनीतियाँ" },
     quiz: { label: "प्रश्नोत्तरी", sub: "पूछने के लिए प्रश्न" },
@@ -185,7 +187,7 @@ export const hi: Copy = {
     subtitle: "मुझसे कुछ भी पूछें, या शुरू करने के लिए नीचे अपनी कक्षा चुनें।",
     classSubjectTitle: "कक्षा और विषय",
     classSubjectPlaceholder: "आप जो पढ़ाते हैं वह चुनें",
-    chapterTitle: "अध्याय",
+    chapterTitle: "अध्याय और विषयवस्तु",
     chapterPlaceholder: "वैकल्पिक — बेहतर जवाब के लिए",
   },
 

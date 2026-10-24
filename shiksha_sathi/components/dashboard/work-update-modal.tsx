@@ -9,8 +9,6 @@ import {
   Flag,
   Loader2,
   Sparkles,
-  ThumbsDown,
-  ThumbsUp,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,8 +17,10 @@ import { Button } from "@/components/ui/button";
 import {
   getChapters,
   getHomeworkToday,
+  getMySections,
   getTopics,
   type Chapter,
+  type TeacherSection,
   type Topic,
   type WorkUpdateHomeworkRef,
 } from "@/lib/api";
@@ -57,9 +57,11 @@ export function WorkUpdateModal({
 
   const [tab, setTab] = useState<"new" | "mine">("new");
 
-  // Teacher picks class, subject and chapter from lists (defaults to the
-  // current lesson context so the common case stays quick).
-  const [pickGrade, setPickGrade] = useState<string>(gradeId ?? "");
+  // Class picker uses principal-created class sections (same as homework /
+  // attendance), not a flat curriculum-grade list.
+  const [sections, setSections] = useState<TeacherSection[]>([]);
+  const [sectionsLoading, setSectionsLoading] = useState(false);
+  const [pickSection, setPickSection] = useState<string>("");
   const [pickSubject, setPickSubject] = useState<string>(subjectId ?? "");
   const [pickChapter, setPickChapter] = useState<string>(chapterId ?? "");
   const [chapterList, setChapterList] = useState<Chapter[]>(options.chapters);
@@ -74,18 +76,47 @@ export function WorkUpdateModal({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const grades = useMemo(() => {
-    const seen = new Map<string, { id: string; label: string; level: number }>();
-    for (const p of options.pairs) {
-      if (!seen.has(p.grade_id))
-        seen.set(p.grade_id, { id: p.grade_id, label: p.grade_label, level: p.numeric_level });
-    }
-    return [...seen.values()].sort((a, b) => a.level - b.level);
-  }, [options.pairs]);
-  const subjects = useMemo(
-    () => options.pairs.filter((p) => p.grade_id === pickGrade),
-    [options.pairs, pickGrade],
+  const selectedSection = useMemo(
+    () => sections.find((s) => s.id === pickSection) ?? null,
+    [sections, pickSection],
   );
+  const pickGrade = selectedSection?.grade_id ?? "";
+  const subjects = selectedSection?.subjects ?? [];
+
+  useEffect(() => {
+    if (!open || !accessToken) return;
+    let cancelled = false;
+    setSectionsLoading(true);
+    getMySections(accessToken)
+      .then((list) => {
+        if (cancelled) return;
+        setSections(list);
+        setPickSection((cur) => {
+          if (cur && list.some((s) => s.id === cur)) return cur;
+          const matchGrade = gradeId
+            ? list.find((s) => s.grade_id === gradeId)
+            : undefined;
+          return matchGrade?.id ?? list[0]?.id ?? "";
+        });
+      })
+      .catch(() => !cancelled && setSections([]))
+      .finally(() => !cancelled && setSectionsLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [open, accessToken, gradeId]);
+
+  // When the section list settles, keep subject in sync with that section
+  // (prefer current lesson-context subject if it is taught there).
+  useEffect(() => {
+    if (!open || !pickSection || !selectedSection) return;
+    setPickSubject((cur) => {
+      if (cur && selectedSection.subjects.some((s) => s.id === cur)) return cur;
+      if (subjectId && selectedSection.subjects.some((s) => s.id === subjectId))
+        return subjectId;
+      return selectedSection.subjects[0]?.id ?? "";
+    });
+  }, [open, pickSection, selectedSection, subjectId]);
 
   useEffect(() => {
     if (!open || !pickGrade || !pickSubject) return;
@@ -140,10 +171,16 @@ export function WorkUpdateModal({
   const homeworkLocked = todayHomework.length > 0;
   const topicsShown = pickChapter && taughtChapter ? topicList : [];
 
-  function onGradeChange(id: string) {
-    setPickGrade(id);
-    const first = options.pairs.find((p) => p.grade_id === id);
-    onSubjectChange(first?.subject_id ?? "");
+  function onSectionChange(id: string) {
+    setPickSection(id);
+    const sec = sections.find((s) => s.id === id);
+    setPickSubject(sec?.subjects[0]?.id ?? "");
+    setPickChapter("");
+    setChapterList([]);
+    setTopicList([]);
+    setPickedTopics([]);
+    setTodayHomework([]);
+    setSelectedActivities((prev) => prev.filter((a) => a !== "homework_given"));
   }
   function onSubjectChange(id: string) {
     setPickSubject(id);
@@ -173,7 +210,7 @@ export function WorkUpdateModal({
   }
 
   function validate(): string | null {
-    if (!pickGrade || !pickSubject || !pickChapter)
+    if (!pickSection || !pickGrade || !pickSubject || !pickChapter)
       return isHi ? "कक्षा, विषय और अध्याय चुनें।" : "Please choose class, subject and chapter.";
     if (selectedActivities.length === 0)
       return isHi ? "कम से कम 1 गतिविधि चुनें।" : "Please select at least 1 activity done today.";
@@ -287,9 +324,13 @@ export function WorkUpdateModal({
 
         {tab === "mine" ? (
           <MyUpdates items={mine} isHi={isHi} />
-        ) : grades.length === 0 ? (
-          // No `teaching_assignments` row yet -- the class/subject pickers
-          // below would otherwise just sit empty with nothing to pick.
+        ) : sectionsLoading ? (
+          <div className="mt-6 flex justify-center py-8">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : sections.length === 0 ? (
+          // No principal class section assigned yet -- the class/subject
+          // pickers below would otherwise just sit empty with nothing to pick.
           <div className="mt-3.5 flex items-start gap-2.5 rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs text-foreground">
             <Flag className="mt-0.5 size-4 shrink-0 text-terracotta" />
             <p>
@@ -304,11 +345,15 @@ export function WorkUpdateModal({
             <div className="mt-3.5 grid grid-cols-2 gap-2 rounded-xl bg-muted/60 p-2.5 text-xs">
               <label className="space-y-1">
                 <span className="text-muted-foreground">{isHi ? "कक्षा" : "Class"}</span>
-                <select value={pickGrade} onChange={(e) => onGradeChange(e.target.value)} className={selectCls}>
+                <select
+                  value={pickSection}
+                  onChange={(e) => onSectionChange(e.target.value)}
+                  className={selectCls}
+                >
                   <option value="">{isHi ? "चुनें" : "Select"}</option>
-                  {grades.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.label}
+                  {sections.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.grade_label} · {s.section}
                     </option>
                   ))}
                 </select>
@@ -318,13 +363,13 @@ export function WorkUpdateModal({
                 <select
                   value={pickSubject}
                   onChange={(e) => onSubjectChange(e.target.value)}
-                  disabled={!pickGrade}
+                  disabled={!pickSection}
                   className={selectCls}
                 >
                   <option value="">{isHi ? "चुनें" : "Select"}</option>
-                  {subjects.map((p) => (
-                    <option key={p.subject_id} value={p.subject_id}>
-                      {p.subject_name}
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>
@@ -562,8 +607,6 @@ function MyUpdates({ items, isHi }: { items: TeacherWorkUpdate[]; isHi: boolean 
   return (
     <div className="mt-4 space-y-3">
       {items.map((u) => {
-        const approvals = u.reactions.filter((r) => r.value === "approve");
-        const disapprovals = u.reactions.filter((r) => r.value === "disapprove");
         const fb = u.principal_feedback;
         const badge = fb?.badge ? PRINCIPAL_BADGES[fb.badge] : null;
         return (
@@ -607,18 +650,6 @@ function MyUpdates({ items, isHi }: { items: TeacherWorkUpdate[]; isHi: boolean 
                 {fb.note && <p className="mt-1 text-foreground/85">{fb.note}</p>}
               </div>
             )}
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <ReactionNames
-                icon={<ThumbsUp className="size-3 text-emerald-600" />}
-                label={isHi ? "सहमत" : "Approved"}
-                names={approvals.map((r) => r.student_name)}
-              />
-              <ReactionNames
-                icon={<ThumbsDown className="size-3 text-rose-600" />}
-                label={isHi ? "असहमत" : "Disapproved"}
-                names={disapprovals.map((r) => r.student_name)}
-              />
-            </div>
           </div>
         );
       })}

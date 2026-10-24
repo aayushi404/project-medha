@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowRight, Layers } from "lucide-react";
+import { ArrowRight, BookOpen, Layers } from "lucide-react";
 
 import { useContextOptions } from "@/components/app/context-bar";
 import { Select } from "@/components/ui/select";
-import { useCurriculumT } from "@/lib/copy";
+import { useCopy, useCurriculumT } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 function Chip({
@@ -32,7 +32,7 @@ function Chip({
   );
 }
 
-/** Page 1 -- class / subject / chapter, lifted straight from the existing
+/** Page 1 -- class / subject / chapter / topic, lifted straight from the existing
  *  quiz wizard's step 1 (app/(protected)/(app)/quiz/page.tsx) so the two
  *  flows feel identical up to this point. Reads/writes the same global
  *  lesson context (useContextOptions), so the orchestrator and the Students
@@ -40,16 +40,20 @@ function Chip({
  *  -- the shared header/back-link/step-indicator chrome lives in index.tsx. */
 export function TopicsStep({ onContinue }: { onContinue: () => void }) {
   const t = useCurriculumT();
+  const copy = useCopy();
   const {
     gradeId,
     subjectId,
     chapterId,
+    topicId,
     gradeOptions,
     subjectOptions,
     pickGrade,
     pickSubject,
     setChapter,
+    setTopic,
     chapters,
+    topics,
   } = useContextOptions();
 
   const orderedChapters = [...chapters].sort((a, b) => a.chapter_number - b.chapter_number);
@@ -112,6 +116,37 @@ export function TopicsStep({ onContinue }: { onContinue: () => void }) {
           </div>
         )}
       </div>
+
+      {chapterId && topics.length > 0 ? (
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-violet-muted/60 text-violet">
+              <BookOpen className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-medium">{copy.selectTopic}</p>
+              <p className="text-xs text-muted-foreground">
+                Optional — pick a subtopic, or keep the whole chapter.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Chip active={topicId === null} onClick={() => setTopic(null)}>
+              {copy.wholeChapter}
+            </Chip>
+            {topics.map((tp) => (
+              <Chip
+                key={tp.id}
+                active={topicId === tp.id}
+                onClick={() => setTopic(topicId === tp.id ? null : tp.id)}
+              >
+                {t.topic(tp.title)}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">Select one chapter.</span>

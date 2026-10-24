@@ -9,7 +9,7 @@ import { useCopy, useCurriculumT } from "@/lib/copy";
 /**
  * SAVRA-style hero cards for /ask's empty state -- stands in for SAVRA's own
  * task-shortcut cards (Rubric / Short report), which don't apply here. Hosts
- * this app's grade/subject/chapter selection instead, sharing option-building
+ * this app's grade/subject/chapter/topic selection instead, sharing option-building
  * with the compact ContextBar via useContextOptions().
  */
 export function ContextHeroCards() {
@@ -19,11 +19,16 @@ export function ContextHeroCards() {
     gradeId,
     subjectId,
     chapterId,
+    topicId,
+    topicSelectValue,
     gradeOptions,
     subjectOptions,
     chapterOptions,
+    topicOptions,
+    topics,
     pickGrade,
     pickSubject,
+    pickTopic,
     setChapter,
     pairs,
     chapters,
@@ -35,8 +40,11 @@ export function ContextHeroCards() {
     : copy.askHero.classSubjectPlaceholder;
 
   const pickedChapter = chapters.find((c) => c.id === chapterId);
+  const pickedTopic = topics.find((tp) => tp.id === topicId);
   const chapterDesc = pickedChapter
-    ? t.chapter(pickedChapter.title)
+    ? pickedTopic
+      ? `${t.chapter(pickedChapter.title)} • ${t.topic(pickedTopic.title)}`
+      : t.chapter(pickedChapter.title)
     : copy.askHero.chapterPlaceholder;
 
   return (
@@ -75,7 +83,7 @@ export function ContextHeroCards() {
           <p className="text-sm font-medium">{copy.askHero.chapterTitle}</p>
           <p className="truncate text-xs text-muted-foreground">{chapterDesc}</p>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-col gap-2">
           <Select
             ariaLabel={copy.selectChapter}
             placeholder={copy.selectChapter}
@@ -84,6 +92,16 @@ export function ContextHeroCards() {
             onValueChange={(c) => setChapter(c)}
             className="max-w-full"
           />
+          {chapterId && topics.length > 0 ? (
+            <Select
+              ariaLabel={copy.selectTopic}
+              placeholder={copy.selectTopic}
+              value={topicSelectValue}
+              options={topicOptions}
+              onValueChange={pickTopic}
+              className="max-w-full"
+            />
+          ) : null}
         </div>
       </div>
     </div>

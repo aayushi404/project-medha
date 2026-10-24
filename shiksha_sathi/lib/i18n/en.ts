@@ -160,6 +160,8 @@ export const en = {
   selectClass: "Class",
   selectSubject: "Subject",
   selectChapter: "Chapter",
+  selectTopic: "Topic",
+  wholeChapter: "Whole chapter",
   quickActions: {
     explanation: { label: "Teaching approach", sub: "2-3 strategies" },
     quiz: { label: "Quiz", sub: "Questions to ask" },
@@ -189,7 +191,7 @@ export const en = {
     subtitle: "Ask me anything, or set up your class below to get started.",
     classSubjectTitle: "Class & subject",
     classSubjectPlaceholder: "Pick what you teach",
-    chapterTitle: "Chapter",
+    chapterTitle: "Chapter & topic",
     chapterPlaceholder: "Optional — for tailored answers",
   },
 
