@@ -1,17 +1,20 @@
 "use client";
 
-import { Bell, ChevronRight, Lightbulb, Loader2 } from "lucide-react";
+import { ChevronRight, ClipboardPenLine, Lightbulb, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AskMedhaBar } from "@/components/app/ask-medha-bar";
 import { SchoolNoticeBanner } from "@/components/app/school-notice-banner";
+import { WorkUpdateModal } from "@/components/dashboard/work-update-modal";
 import { GenerationRow } from "@/components/generation/generation-row";
 import { QuickActionCard } from "@/components/generation/quick-action-card";
 import { listGenerations, type GenerationListItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { useCopy } from "@/lib/copy";
+import { useCopy, useLocale } from "@/lib/copy";
 import { useProfile } from "@/lib/profile-context";
+import { cn } from "@/lib/utils";
+import { PRINCIPAL_BADGES, useWorkUpdates } from "@/lib/work-update-store";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -36,12 +39,21 @@ function TricolourRule({ className }: { className?: string }) {
 
 export default function DashboardHomePage() {
   const copy = useCopy();
-  const { accessToken } = useAuth();
+  const { locale } = useLocale();
+  const isHi = locale === "hi";
+  const { accessToken, teacher } = useAuth();
   const { profile } = useProfile();
+  const { getTodayUpdateForTeacher } = useWorkUpdates();
   const name = profile?.full_name?.trim() ?? "";
   const firstName = name.split(/\s+/)[0] ?? "";
 
   const [recent, setRecent] = useState<GenerationListItem[] | null>(null);
+  const [workUpdateOpen, setWorkUpdateOpen] = useState(false);
+
+  const todayUpdate = getTodayUpdateForTeacher(teacher?.id);
+  const badgeInfo = todayUpdate?.principal_feedback?.badge
+    ? PRINCIPAL_BADGES[todayUpdate.principal_feedback.badge]
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -76,12 +88,42 @@ export default function DashboardHomePage() {
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
-                aria-label={copy.dashboard.notifications}
-                className="flex size-9 items-center justify-center rounded-full bg-card/70 text-foreground/70 backdrop-blur transition-colors hover:bg-card"
+                onClick={() => setWorkUpdateOpen(true)}
+                aria-label={copy.nav.workUpdate}
+                title={copy.nav.workUpdate}
+                className="group flex h-9 items-center gap-2 rounded-full border border-border/60 bg-card/75 px-3 text-xs font-medium text-foreground/80 shadow-2xs backdrop-blur-md transition-all hover:border-terracotta/40 hover:bg-card hover:text-foreground hover:shadow-xs active:scale-[0.98]"
               >
-                <Bell className="size-4" />
+                <span className="relative flex size-4 items-center justify-center">
+                  <ClipboardPenLine
+                    className={cn(
+                      "size-4 transition-transform group-hover:scale-110",
+                      todayUpdate ? "text-emerald-600 dark:text-emerald-400" : "text-terracotta",
+                    )}
+                  />
+                  {todayUpdate && (
+                    <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-emerald-500 ring-1 ring-background" />
+                  )}
+                </span>
+                <span className="font-medium">{copy.nav.workUpdate}</span>
+                {badgeInfo ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300"
+                    title={badgeInfo.label}
+                  >
+                    <span>{badgeInfo.emoji}</span>
+                    <span className="hidden sm:inline">{badgeInfo.label}</span>
+                  </span>
+                ) : todayUpdate ? (
+                  <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    {isHi ? "✓ पूर्ण" : "✓ Done"}
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-terracotta/15 px-1.5 py-0.5 text-[10px] font-semibold text-terracotta">
+                    {isHi ? "+ नया" : "+ New"}
+                  </span>
+                )}
               </button>
-              <span className="flex size-9 items-center justify-center rounded-full bg-terracotta/15 text-sm font-medium text-terracotta">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-terracotta/15 text-sm font-medium text-terracotta">
                 {initials(name)}
               </span>
             </div>
@@ -152,6 +194,8 @@ export default function DashboardHomePage() {
           </div>
         </div>
       </div>
+
+      <WorkUpdateModal open={workUpdateOpen} onClose={() => setWorkUpdateOpen(false)} />
     </main>
   );
 }
