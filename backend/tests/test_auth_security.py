@@ -191,6 +191,23 @@ class TestRefreshSessions(unittest.TestCase):
     def test_rotation_reuse_detection_and_inactive_account(self):
         c, tok = self._login()
         c.cookies.set("refresh_token", tok, path="/auth")
+
+        # a young token is reused, not rotated: a reload that dies before the
+        # cookie is stored must not strand the browser on a revoked token
+        r0 = c.post("/auth/refresh", headers=self.H)
+        self.assertEqual(r0.status_code, 200)
+        self.assertEqual(r0.cookies.get("refresh_token"), tok)
+
+        # age the session past the rotation threshold so the next refresh rotates
+        db = SessionLocal()
+        try:
+            db.query(AuthSession).filter(AuthSession.revoked_at.is_(None)).update(
+                {AuthSession.issued_at: AuthSession.issued_at - __import__("datetime").timedelta(days=2)},
+                synchronize_session=False,
+            )
+            db.commit()
+        finally:
+            db.close()
         r1 = c.post("/auth/refresh", headers=self.H)
         self.assertEqual(r1.status_code, 200)
         tok2 = r1.cookies.get("refresh_token")

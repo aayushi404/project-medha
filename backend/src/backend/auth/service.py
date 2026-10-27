@@ -33,6 +33,8 @@ MAX_SESSIONS_PER_ACTOR = 5
 # A rotated token replayed within this many seconds is almost certainly two tabs
 # refreshing at once, not theft -- reject it without burning the whole family.
 _REUSE_GRACE_SECONDS = 10
+# A refresh token younger than this is not rotated on refresh (see refresh_session).
+_ROTATE_AFTER = timedelta(hours=24)
 _DEVICE_INFO_MAX = 300
 
 # Login limits (see core/throttle.py for why there's no identifier-only lockout).
@@ -538,6 +540,28 @@ def refresh_session(db: Session, raw_refresh_token: str, device_info: str | None
     descendant of that login) is revoked."""
     token_hash = hash_refresh_token(raw_refresh_token)
     now = _now()
+
+    # A token issued recently is reused as-is rather than rotated. The access
+    # token lives only in memory, so every page load calls this endpoint; on a
+    # phone a reload can kill the page before the rotated cookie is stored,
+    # leaving the browser holding a revoked token -- and the reuse check below
+    # then signs the user out for good. Rotation still happens once a day.
+    young = (
+        db.query(AuthSession)
+        .filter(
+            AuthSession.refresh_token_hash == token_hash,
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > now,
+            AuthSession.issued_at > now - _ROTATE_AFTER,
+        )
+        .first()
+    )
+    if young is not None:
+        young_actor = _load_actor(db, young)
+        if young_actor is not None and young_actor.is_active and young_actor.approval_status == "approved":
+            access_token = create_access_token(young_actor.id, _actor_type(young_actor))
+            return access_token, raw_refresh_token, ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
     won = db.execute(
         update(AuthSession)
         .where(AuthSession.refresh_token_hash == token_hash, AuthSession.revoked_at.is_(None), AuthSession.expires_at > now)
