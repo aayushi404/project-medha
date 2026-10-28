@@ -1,0 +1,2522 @@
+BSEB CLASS 11 & 12 — CHAPTERS AND SUBTOPICS (SCIENCE, COMMERCE & ARTS)
+Prepared from the BSEB Class 11 & 12 Chapters and Subtopics PDF (NCERT-aligned chapters, with BSEB-retained "Pre-Rationalised" content folded in).
+
+CLASS 11
+
+SUBJECT: PHYSICS
+
+Chapter 1: Physical World
+  • 1.1 What is physics?
+  • 1.2 Scope and excitement of physics
+  • 1.3 Physics, technology and society
+  • 1.4 Fundamental forces in nature
+  • 1.5 Nature of physical laws
+
+Chapter 2: Units and Measurements
+  • 1.1 Introduction
+  • 1.2 The international system of units
+  • 1.3 Significant figures
+  • 1.4 Dimensions of physical quantities
+  • 1.5 Dimensional formulae and dimensional equations
+  • 1.6 Dimensional analysis and its applications
+  • [Retained] Measurement of length, measurement of mass, measurement of time, accuracy and precision of instruments and errors in measurement
+
+Chapter 3: Motion in a Straight Line
+  • 2.1 Introduction
+  • 2.2 Instantaneous velocity and speed
+  • 2.3 Acceleration
+  • 2.4 Kinematic equations for uniformly accelerated motion
+  • [Retained] Position, path length and displacement; relative velocity
+
+Chapter 4: Motion in a Plane
+  • 3.1 Introduction
+  • 3.2 Scalars and vectors
+  • 3.3 Multiplication of vectors by real numbers
+  • 3.4 Addition and subtraction of vectors — graphical method
+  • 3.5 Resolution of vectors
+  • 3.6 Vector addition — analytical method
+  • 3.7 Motion in a plane
+  • 3.8 Motion in a plane with constant acceleration
+  • 3.9 Projectile motion
+  • 3.10 Uniform circular motion
+  • [Retained] Relative velocity in two dimensions
+
+Chapter 5: Laws of Motion
+  • 4.1 Introduction
+  • 4.2 Aristotle's fallacy
+  • 4.3 The law of inertia
+  • 4.4 Newton's first law of motion
+  • 4.5 Newton's second law of motion
+  • 4.6 Newton's third law of motion
+  • 4.7 Conservation of momentum
+  • 4.8 Equilibrium of a particle
+  • 4.9 Common forces in mechanics
+  • 4.10 Circular motion
+  • 4.11 Solving problems in mechanics
+
+Chapter 6: Work, Energy and Power
+  • 5.1 Introduction
+  • 5.2 Notions of work and kinetic energy: the work-energy theorem
+  • 5.3 Work
+  • 5.4 Kinetic energy
+  • 5.5 Work done by a variable force
+  • 5.6 The work-energy theorem for a variable force
+  • 5.7 The concept of potential energy
+  • 5.8 The conservation of mechanical energy
+  • 5.9 The potential energy of a spring
+  • 5.10 Power
+  • 5.11 Collisions
+  • [Retained] Various forms of energy — the law of conservation of energy
+
+Chapter 7: System of Particles and Rotational Motion
+  • 6.1 Introduction
+  • 6.2 Centre of mass
+  • 6.3 Motion of centre of mass
+  • 6.4 Linear momentum of a system of particles
+  • 6.5 Vector product of two vectors
+  • 6.6 Angular velocity and its relation with linear velocity
+  • 6.7 Torque and angular momentum
+  • 6.8 Equilibrium of a rigid body
+  • 6.9 Moment of inertia
+  • 6.10 Kinematics of rotational motion about a fixed axis
+  • 6.11 Dynamics of rotational motion about a fixed axis
+  • 6.12 Angular momentum in case of rotations about a fixed axis
+  • [Retained] Theorems of perpendicular and parallel axes; rolling motion
+
+Chapter 8: Gravitation
+  • 7.1 Introduction
+  • 7.2 Kepler's laws
+  • 7.3 Universal law of gravitation
+  • 7.4 The gravitational constant
+  • 7.5 Acceleration due to gravity of the earth
+  • 7.6 Acceleration due to gravity below and above the surface of earth
+  • 7.7 Gravitational potential energy
+  • 7.8 Escape speed
+  • 7.9 Earth satellites
+  • 7.10 Energy of an orbiting satellite
+  • [Retained] Geostationary and polar satellites; weightlessness
+
+Chapter 9: Mechanical Properties of Solids
+  • 8.1 Introduction
+  • 8.2 Stress and strain
+  • 8.3 Hooke's law
+  • 8.4 Stress-strain curve
+  • 8.5 Elastic moduli
+  • 8.6 Applications of elastic behaviour of materials
+
+Chapter 10: Mechanical Properties of Fluids
+  • 9.1 Introduction
+  • 9.2 Pressure
+  • 9.3 Streamline flow
+  • 9.4 Bernoulli's principle
+  • 9.5 Viscosity
+  • 9.6 Surface tension
+  • [Retained] Reynolds number & Venturi-meter
+
+Chapter 11: Thermal Properties of Matter
+  • 10.1 Introduction
+  • 10.2 Temperature and heat
+  • 10.3 Measurement of temperature
+  • 10.4 Ideal-gas equation and absolute temperature
+  • 10.5 Thermal expansion
+  • 10.6 Specific heat capacity
+  • 10.7 Calorimetry
+  • 10.8 Change of state
+  • 10.9 Heat transfer
+  • 10.10 Newton's law of cooling
+
+Chapter 12: Thermodynamics
+  • 11.1 Introduction
+  • 11.2 Thermal equilibrium
+  • 11.3 Zeroth law of thermodynamics
+  • 11.4 Heat, internal energy and work
+  • 11.5 First law of thermodynamics
+  • 11.6 Specific heat capacity
+  • 11.7 Thermodynamic state variables and equation of state
+  • 11.8 Thermodynamic processes
+  • 11.9 Second law of thermodynamics
+  • 11.10 Reversible and irreversible processes
+  • 11.11 Carnot engine
+  • [Retained] Heat engines & refrigerators/heat pumps
+
+Chapter 13: Kinetic Theory
+  • 12.1 Introduction
+  • 12.2 Molecular nature of matter
+  • 12.3 Behaviour of gases
+  • 12.4 Kinetic theory of an ideal gas
+  • 12.5 Law of equipartition of energy
+  • 12.6 Specific heat capacity
+  • 12.7 Mean free path
+
+Chapter 14: Oscillations
+  • 13.1 Introduction
+  • 13.2 Periodic and oscillatory motions
+  • 13.3 Simple harmonic motion
+  • 13.4 Simple harmonic motion and uniform circular motion
+  • 13.5 Velocity and acceleration in simple harmonic motion
+  • 13.6 Force law for simple harmonic motion
+  • 13.7 Energy in simple harmonic motion
+  • 13.8 The simple pendulum
+  • [Retained] Damped simple harmonic motion; forced oscillations and resonance
+
+Chapter 15: Waves
+  • 14.1 Introduction
+  • 14.2 Transverse and longitudinal waves
+  • 14.3 Displacement relation in a progressive wave
+  • 14.4 The speed of a travelling wave
+  • 14.5 The principle of superposition of waves
+  • 14.6 Reflection of waves
+  • 14.7 Beats
+  • [Retained] Doppler effect
+
+SUBJECT: CHEMISTRY
+
+Chapter 1: Some Basic Concepts of Chemistry
+  • 1.1 Importance of chemistry
+  • 1.2 Nature of matter
+  • 1.3 Properties of matter and their measurement
+  • 1.4 Uncertainty in measurement
+  • 1.5 Laws of chemical combinations
+  • 1.6 Dalton's atomic theory
+  • 1.7 Atomic and molecular masses
+  • 1.8 Mole concept and molar masses
+  • 1.9 Percentage composition
+  • 1.10 Stoichiometry and stoichiometric calculations
+
+Chapter 2: Structure of Atom
+  • 2.1 Discovery of sub-atomic particles
+  • 2.2 Atomic models
+  • 2.3 Developments leading to the Bohr's model of atom
+  • 2.4 Bohr's model for hydrogen atom
+  • 2.5 Towards quantum mechanical model of the atom
+  • 2.6 Quantum mechanical model of atom
+
+Chapter 3: Classification of Elements and Periodicity in Properties
+  • 3.1 Why do we need to classify elements?
+  • 3.2 Genesis of periodic classification
+  • 3.3 Modern periodic law and the present form of the periodic table
+  • 3.4 Nomenclature of elements with atomic numbers > 100
+  • 3.5 Electronic configurations of elements and the periodic table
+  • 3.6 Electronic configurations and types of elements: s-, p-, d-, f-blocks
+  • 3.7 Periodic trends in properties of elements
+
+Chapter 4: Chemical Bonding and Molecular Structure
+  • 4.1 Kössel-Lewis approach to chemical bonding
+  • 4.2 Ionic or electrovalent bond
+  • 4.3 Bond parameters
+  • 4.4 The valence shell electron pair repulsion (VSEPR) theory
+  • 4.5 Valence bond theory
+  • 4.6 Hybridisation
+  • 4.7 The molecular orbital theory
+  • 4.8 Bonding in some homonuclear diatomic molecules
+  • 4.9 Hydrogen bonding
+
+Chapter 5: Thermodynamics
+  • 5.1 Thermodynamic terms
+  • 5.2 Applications
+  • 5.3 Measurement of ΔU and ΔH: calorimetry
+  • 5.4 Enthalpy change, ΔrH of a reaction – reaction enthalpy
+  • 5.5 Enthalpies for different types of reactions
+  • 5.6 Spontaneity
+  • 5.7 Gibbs energy change and equilibrium
+
+Chapter 6: Equilibrium
+  • 6.1 Equilibrium in physical processes
+  • 6.2 Equilibrium in chemical processes – dynamic equilibrium
+  • 6.3 Law of chemical equilibrium and equilibrium constant
+  • 6.4 Homogeneous equilibria
+  • 6.5 Heterogeneous equilibria
+  • 6.6 Applications of equilibrium constants
+  • 6.7 Relationship between equilibrium constant K, reaction quotient Q and Gibbs energy G
+  • 6.8 Factors affecting equilibria
+  • 6.9 Ionic equilibrium in solution
+  • 6.10 Acids, bases and salts
+  • 6.11 Ionization of acids and bases
+  • 6.12 Buffer solutions
+  • 6.13 Solubility equilibria of sparingly soluble salts
+
+Chapter 7: Redox Reactions
+  • 7.1 Classical idea of redox reactions — oxidation and reduction reactions
+  • 7.2 Redox reactions in terms of electron transfer reactions
+  • 7.3 Oxidation number
+  • 7.4 Redox reactions and electrode processes
+
+Chapter 8: Organic Chemistry – Some Basic Principles and Techniques
+  • 8.1 General introduction
+  • 8.2 Tetravalence of carbon: shapes of organic compounds
+  • 8.3 Structural representations of organic compounds
+  • 8.4 Classification of organic compounds
+  • 8.5 Nomenclature of organic compounds
+  • 8.6 Isomerism
+  • 8.7 Fundamental concepts in organic reaction mechanism
+  • 8.8 Methods of purification of organic compounds
+  • 8.9 Qualitative analysis of organic compounds
+  • 8.10 Quantitative analysis
+
+Chapter 9: Hydrocarbons
+  • 9.1 Classification
+  • 9.2 Alkanes
+  • 9.3 Alkenes
+  • 9.4 Alkynes
+  • 9.5 Aromatic hydrocarbon
+  • 9.6 Carcinogenicity and toxicity
+  • [Retained: Unit V — States of Matter] Intermolecular forces, thermal energy, the gas laws, ideal gas equation, kinetic molecular theory of gases, behaviour of real gases, liquefaction of gases, liquid state
+  • [Retained: Unit IX — Hydrogen] Position of hydrogen in the periodic table, dihydrogen (H2), preparation and properties, hydrides, water, hydrogen peroxide (H2O2), heavy water, dihydrogen as a fuel
+  • [Retained: Unit X — The s-Block Elements] Group 1 (alkali metals — general characteristics, anomalous properties of lithium, important compounds of sodium) and Group 2 (alkaline earth metals — anomalous behaviour of beryllium, important compounds of calcium, biological importance of sodium, potassium, magnesium and calcium)
+  • [Retained: Unit XI — The p-Block Elements] Group 13 (the boron family — trends, anomalous properties of boron, important compounds of boron: borax, orthoboric acid, diborane) and Group 14 (the carbon family — allotropes of carbon, important compounds of carbon and silicon)
+  • [Retained: Unit XIV — Environmental Chemistry] Environmental pollution, atmospheric pollution (tropospheric and stratospheric), water pollution, soil pollution, industrial waste, strategies to control environmental pollution, green chemistry
+
+SUBJECT: BIOLOGY
+
+Chapter 1: The Living World
+  • 1.1 Diversity in the living world
+  • 1.2 Taxonomic categories
+  • [Retained] What is living?; taxonomical aids
+
+Chapter 2: Biological Classification
+  • 2.1 Kingdom Monera
+  • 2.2 Kingdom Protista
+  • 2.3 Kingdom Fungi (Phycomycetes, Ascomycetes, Basidiomycetes, Deuteromycetes)
+  • 2.4 Kingdom Plantae
+  • 2.5 Kingdom Animalia
+  • 2.6 Viruses, viroids, prions and lichens
+
+Chapter 3: Plant Kingdom
+  • 3.1 Algae
+  • 3.2 Bryophytes
+  • 3.3 Pteridophytes
+  • 3.4 Gymnosperms
+  • 3.5 Angiosperms
+  • [Retained] Plant life cycles and alternation of generations
+
+Chapter 4: Animal Kingdom
+  • 4.1 Basis of classification
+  • 4.2 Classification of animals (Phylum Porifera through Phylum Chordata)
+
+Chapter 5: Morphology of Flowering Plants
+  • 5.1 The root
+  • 5.2 The stem
+  • 5.3 The leaf (venation, types of leaves, phyllotaxy)
+  • 5.4 The inflorescence
+  • 5.5 The flower
+  • 5.6 The fruit
+  • 5.7 The seed
+  • 5.8 Semi-technical description of a typical flowering plant
+  • 5.9 Solanaceae
+  • [Retained] Fabaceae & Liliaceae
+
+Chapter 6: Anatomy of Flowering Plants
+  • 6.1 The tissue system
+  • 6.2 Anatomy of dicotyledonous and monocotyledonous plants
+  • [Retained] Meristematic/permanent tissues & secondary growth
+
+Chapter 7: Structural Organisation in Animals
+  • 7.1 Organ and organ system
+  • 7.2 Frogs
+  • [Retained] Animal tissues, earthworm & cockroach
+
+Chapter 8: Cell: The Unit of Life
+  • 8.1 What is a cell?
+  • 8.2 Cell theory
+  • 8.3 An overview of cell
+  • 8.4 Prokaryotic cells
+  • 8.5 Eukaryotic cells (cell membrane, cell wall, endomembrane system, mitochondria, plastids, ribosomes, cytoskeleton, cilia and flagella, centrosome and centrioles, nucleus, microbodies)
+
+Chapter 9: Biomolecules
+  • 9.1 How to analyse chemical composition?
+  • 9.2 Primary and secondary metabolites
+  • 9.3 Biomacromolecules
+  • 9.4 Proteins
+  • 9.5 Polysaccharides
+  • 9.6 Nucleic acids
+  • 9.7 Structure of proteins
+  • 9.8 Enzymes
+
+Chapter 10: Cell Cycle and Cell Division
+  • 10.1 Cell cycle
+  • 10.2 M phase
+  • 10.3 Significance of mitosis
+  • 10.4 Meiosis
+  • 10.5 Significance of meiosis
+
+Chapter 11: Photosynthesis in Higher Plants
+  • 11.1 What do we know?
+  • 11.2 Early experiments
+  • 11.3 Where does photosynthesis take place?
+  • 11.4 How many pigments are involved in photosynthesis?
+  • 11.5 What is light reaction?
+  • 11.6 The electron transport
+  • 11.7 Where are the ATP and NADPH used?
+  • 11.8 The C4 pathway
+  • 11.9 Photorespiration
+  • 11.10 Factors affecting photosynthesis
+
+Chapter 12: Respiration in Plants
+  • 12.1 Do plants breathe?
+  • 12.2 Glycolysis
+  • 12.3 Fermentation
+  • 12.4 Aerobic respiration
+  • 12.5 The respiratory balance sheet
+  • 12.6 Amphibolic pathway
+  • 12.7 Respiratory quotient
+
+Chapter 13: Plant Growth and Development
+  • 13.1 Growth
+  • 13.2 Differentiation, dedifferentiation and redifferentiation
+  • 13.3 Development
+  • 13.4 Plant growth regulators
+  • [Retained] Photoperiodism & vernalisation
+
+Chapter 14: Breathing and Exchange of Gases
+  • 14.1 Respiratory organs
+  • 14.2 Mechanism of breathing
+  • 14.3 Exchange of gases
+  • 14.4 Transport of gases
+  • 14.5 Regulation of respiration
+  • 14.6 Disorders of respiratory system
+
+Chapter 15: Body Fluids and Circulation
+  • 15.1 Blood
+  • 15.2 Lymph (tissue fluid)
+  • 15.3 Circulatory pathways
+  • 15.4 Double circulation
+  • 15.5 Regulation of cardiac activity
+  • 15.6 Disorders of circulatory system
+
+Chapter 16: Excretory Products and Their Elimination
+  • 16.1 Human excretory system
+  • 16.2 Urine formation
+  • 16.3 Function of the tubules
+  • 16.4 Mechanism of concentration of the filtrate
+  • 16.5 Regulation of kidney function
+  • 16.6 Micturition
+  • 16.7 Role of other organs in excretion
+  • 16.8 Disorders of the excretory system
+
+Chapter 17: Locomotion and Movement
+  • 17.1 Types of movement
+  • 17.2 Muscle
+  • 17.3 Skeletal system
+  • 17.4 Joints
+  • 17.5 Disorders of muscular and skeletal system
+
+Chapter 18: Neural Control and Coordination
+  • 18.1 Neural system
+  • 18.2 Human neural system
+  • 18.3 Neuron as structural and functional unit of neural system
+  • 18.4 Central neural system
+  • [Retained] Reflex action & sensory reception/eye/ear
+
+Chapter 19: Chemical Coordination and Integration
+  • 19.1 Endocrine glands and hormones
+  • 19.2 Human endocrine system
+  • 19.3 Hormones of heart, kidney and gastrointestinal tract
+  • 19.4 Mechanism of hormone action
+  • [Retained: Transport in Plants] Means of transport, plant-water relations, long distance transport of water, transpiration, uptake and transport of mineral nutrients, phloem transport: flow from source to sink
+  • [Retained: Mineral Nutrition] Methods to study the mineral requirements of plants, essential mineral elements, mechanism of absorption of elements, translocation of solutes, soil as reservoir of essential elements, metabolism of nitrogen
+  • [Retained: Digestion and Absorption] Digestive system, digestion of food, absorption of digested products, disorders of digestive system
+
+SUBJECT: COMPUTER SCIENCE
+
+Chapter 1: Computer System
+  • 1.1 Introduction to computer system
+  • 1.2 Evolution of computer
+  • 1.3 Computer memory
+  • 1.4 Data transfer between memory and CPU
+  • 1.5 Microprocessors
+  • 1.6 Data and information
+  • 1.7 Software
+  • 1.8 Operating system
+
+Chapter 2: Encoding Schemes and Number System
+  • 2.1 Introduction
+  • 2.2 Number system
+  • 2.3 Conversion between number systems
+
+Chapter 3: Emerging Trends
+  • 3.1 Introduction
+  • 3.2 Artificial Intelligence (AI)
+  • 3.3 Big Data
+  • 3.4 Internet of Things (IoT)
+  • 3.5 Cloud computing
+  • 3.6 Grid computing
+  • 3.7 Blockchains
+
+Chapter 4: Introduction to Problem Solving
+  • 4.1 Introduction
+  • 4.2 Steps for problem solving
+  • 4.3 Representation of algorithms
+  • 4.4 Flow of control
+  • 4.5 Verifying algorithms
+  • 4.6 Comparison of algorithm
+  • 4.7 Coding
+  • 4.8 Decomposition
+
+Chapter 5: Getting Started with Python
+  • 5.1 Introduction to Python
+  • 5.2 Python keywords
+  • 5.3 Identifiers
+  • 5.4 Variables
+  • 5.5 Comments
+  • 5.6 Everything is an object
+  • 5.7 Data types
+  • 5.8 Operators
+  • 5.9 Expressions
+  • 5.10 Statement
+  • 5.11 Input and output
+  • 5.12 Type conversion
+  • 5.13 Debugging
+
+Chapter 6: Flow of Control
+  • 6.1 Introduction
+  • 6.2 Selection
+  • 6.3 Indentation
+  • 6.4 Repetition
+  • 6.5 Break and continue statement
+  • 6.6 Nested loops
+
+Chapter 7: Functions
+  • 7.1 Introduction
+  • 7.2 Functions
+  • 7.3 User defined functions
+  • 7.4 Scope of a variable
+  • 7.5 Python standard library
+
+Chapter 8: Strings
+  • 8.1 Introduction
+  • 8.2 Strings
+  • 8.3 String operations
+  • 8.4 Traversing a string
+  • 8.5 String methods and built-in functions
+  • 8.6 String handling
+
+Chapter 9: Lists
+  • 9.1 Introduction to list
+  • 9.2 List operations
+  • 9.3 Traversing a list
+  • 9.4 List methods and built-in functions
+  • 9.5 Nested lists
+  • 9.6 Copying lists
+  • 9.7 List as arguments to function
+  • 9.8 List manipulation (BSEB C++ equivalent: one- and two-dimensional arrays & structures)
+
+Chapter 10: Tuples and Dictionaries
+  • 10.1 Introduction to tuples
+  • 10.2 Tuple operations
+  • 10.3 Tuple methods and built-in functions
+  • 10.4 Tuple assignment
+  • 10.5 Nested tuples
+  • 10.6 Tuple handling
+  • 10.7 Introduction to dictionaries
+  • 10.8 Dictionaries are mutable
+  • 10.9 Dictionary operations
+  • 10.10 Traversing a dictionary
+  • 10.11 Dictionary methods and built-in functions
+  • 10.12 Manipulating dictionaries
+
+Chapter 11: Societal Impact
+  • 11.1 Introduction
+  • 11.2 Digital footprints
+  • 11.3 Digital society and netizen
+  • 11.4 Data protection
+  • 11.5 Cyber crime
+  • 11.6 Indian Information Technology Act (IT Act)
+  • 11.7 Impact on health
+
+SUBJECT: ACCOUNTANCY
+
+Chapter 1: Introduction to Accounting
+  • 1.1 Meaning of accounting
+  • 1.2 Accounting as a source of information
+  • 1.3 Objectives of accounting
+  • 1.4 Role of accounting
+  • 1.5 Basic terms in accounting
+
+Chapter 2: Theory Base of Accounting
+  • 2.1 Generally accepted accounting principles
+  • 2.2 Basic accounting concepts
+  • 2.3 Systems of accounting
+  • 2.4 Basis of accounting
+  • 2.5 Accounting standards
+
+Chapter 3: Recording of Transactions - I
+  • 3.1 Business transactions and source document
+  • 3.2 Accounting equation
+  • 3.3 Using debit and credit
+  • 3.4 Books of original entry
+  • 3.5 The ledger
+  • 3.6 Posting from journal
+
+Chapter 4: Recording of Transactions - II
+  • 4.1 Cash book
+  • 4.2 Purchases (journal) book
+  • 4.3 Purchases return (journal) book
+  • 4.4 Sales (journal) book
+  • 4.5 Sales return (journal) book
+  • 4.6 Journal proper
+  • 4.7 Balancing the accounts
+
+Chapter 5: Bank Reconciliation Statement
+  • 5.1 Need for reconciliation
+  • 5.2 Preparation of bank reconciliation statement
+
+Chapter 6: Trial Balance and Rectification of Errors
+  • 6.1 Meaning of trial balance
+  • 6.2 Objectives of preparing the trial balance
+  • 6.3 Preparation of trial balance
+  • 6.4 Significance of agreement of trial balance
+  • 6.5 Searching of errors
+  • 6.6 Rectification of errors
+
+Chapter 7: Depreciation, Provisions and Reserves
+  • 7.1 Depreciation
+  • 7.2 Depreciation and other similar terms
+  • 7.3 Causes of depreciation
+  • 7.4 Need for depreciation
+  • 7.5 Factors affecting the amount of depreciation
+  • 7.6 Methods of calculating depreciation amount
+  • 7.7 Straight line method and written down method: a comparative analysis
+  • 7.8 Methods of recording depreciation
+  • 7.9 Disposal of asset
+  • 7.10 Effect of any addition or extension to the existing asset
+  • 7.11 Provisions
+  • 7.12 Reserves
+  • 7.13 Secret reserve
+
+Chapter 8: Financial Statements - I
+  • 8.1 Stakeholders and their information requirements
+  • 8.2 Distinction between capital and revenue
+  • 8.3 Financial statements
+  • 8.4 Trading and profit and loss account
+  • 8.5 Operating profit (EBIT)
+  • 8.6 Balance sheet
+  • 8.7 Opening entry
+
+Chapter 9: Financial Statements - II
+  • 9.1 Need for adjustments
+  • 9.2 Closing stock
+  • 9.3 Outstanding expenses
+  • 9.4 Prepaid expenses
+  • 9.5 Accrued income
+  • 9.6 Income received in advance
+  • 9.7 Depreciation
+  • 9.8 Bad debts
+  • 9.9 Provision for bad and doubtful debts
+  • 9.10 Provision for discount on debtors
+  • 9.11 Manager's commission
+  • 9.12 Interest on capital
+  • [Retained: Bill of Exchange] Meaning of bill of exchange, promissory note, advantages of bill of exchange, maturity of bill, discounting/endorsement of bill, accounting treatment, dishonour of a bill, renewal and retiring of a bill; accommodation bills
+  • [Retained: Accounts from Incomplete Records] Meaning and features of incomplete records, reasons of incompleteness and its limitations, ascertainment of profit or loss by statement of affairs method, preparing trading and profit and loss account and balance sheet
+  • [Retained: Computers in Accounting & Database Management] Introduction to computer and accounting information system (AIS), applications of computers in accounting, designing of accounting reports, data exchange with other information systems
+
+SUBJECT: BUSINESS STUDIES
+
+Chapter 1: Business, Trade and Commerce
+  • 1.1 Introduction & history of trade and commerce in India
+  • 1.2 Concept and characteristics of business
+  • 1.3 Comparison of business, profession and employment
+  • 1.4 Classification of business activities (industry and commerce)
+  • 1.5 Objectives of business
+  • 1.6 Business risks — nature and causes
+  • 1.7 Basic factors to be considered before starting a business
+
+Chapter 2: Forms of Business Organisation
+  • 2.1 Introduction
+  • 2.2 Sole proprietorship
+  • 2.3 Joint Hindu family business
+  • 2.4 Partnership
+  • 2.5 Cooperative society
+  • 2.6 Joint stock company
+  • 2.7 Choice of form of business organisation
+
+Chapter 3: Private, Public and Global Enterprises
+  • 3.1 Introduction
+  • 3.2 Private sector and public sector
+  • 3.3 Forms of organising public sector enterprises (departmental undertakings, statutory corporations, government company)
+  • 3.4 Changing role of public sector
+  • 3.5 Global enterprises (multinational companies)
+  • 3.6 Joint ventures & public private partnership (PPP)
+
+Chapter 4: Business Services
+  • 4.1 Introduction
+  • 4.2 Nature and types of services
+  • 4.3 Banking
+  • 4.4 Insurance
+  • 4.5 Communication services (postal and telecom)
+  • 4.6 Transportation & warehousing
+
+Chapter 5: Emerging Modes of Business
+  • 5.1 Introduction
+  • 5.2 e-Business (scope, benefits, limitations, online transactions, security and safety)
+  • 5.3 Outsourcing / business process outsourcing (BPO) & knowledge process outsourcing (KPO)
+
+Chapter 6: Social Responsibilities of Business and Business Ethics
+  • 6.1 Introduction
+  • 6.2 Concept of social responsibility
+  • 6.3 Need for social responsibility
+  • 6.4 Kinds of social responsibility
+  • 6.5 Social responsibility towards different interest groups
+  • 6.6 Business and environmental protection
+  • 6.7 Business ethics — concept and elements
+
+Chapter 7: Formation of a Company
+  • 7.1 Introduction
+  • 7.2 Promotion of a company (functions of a promoter, documents required)
+  • 7.3 Incorporation
+  • 7.4 Capital subscription
+
+Chapter 8: Sources of Business Finance
+  • 8.1 Introduction
+  • 8.2 Meaning, nature and significance of business finance
+  • 8.3 Classification of sources of funds
+  • 8.4 Sources of finance (retained earnings, trade credit, factoring, lease financing, public deposits, commercial paper, issue of shares, debentures, commercial banks, financial institutions, international financing)
+
+Chapter 9: MSME and Business Entrepreneurship
+  • 9.1 Micro, Small and Medium Enterprises (MSME) — meaning and role in rural India
+  • 9.2 Problems associated with MSME
+  • 9.3 MSME and entrepreneurship development
+  • 9.4 Intellectual Property Rights (IPR)
+
+Chapter 10: Internal Trade
+  • 10.1 Introduction
+  • 10.2 Wholesale trade
+  • 10.3 Retail trade (itinerant retailers and fixed shop retailers — departmental stores, chain stores, mail order houses)
+  • 10.4 Goods and Services Tax (GST) & role of chambers of commerce and industry
+
+Chapter 11: International Business
+  • 11.1 Introduction — meaning, reason and scope of international business
+  • 11.2 Benefits of international business
+  • 11.3 Modes of entry into international business
+  • 11.4 Export-import procedures and documentation
+  • 11.5 Foreign trade promotion incentives and international trade institutions (WTO, World Bank, IMF, UNCTAD)
+
+SUBJECT: ECONOMICS
+
+Chapter 1: Indian Economy on the Eve of Independence
+  • 1.1 Introduction
+  • 1.2 Low level of economic development under the colonial rule
+  • 1.3 Agricultural sector
+  • 1.4 Industrial sector
+  • 1.5 Foreign trade
+  • 1.6 Demographic condition
+  • 1.7 Occupational structure
+  • 1.8 Infrastructure
+  • 1.9 Conclusion
+
+Chapter 2: Indian Economy 1950–1990
+  • 2.1 Introduction
+  • 2.2 The goals of five year plans
+  • 2.3 Agriculture
+  • 2.4 Industry and trade
+  • 2.5 Trade policy: import substitution
+  • 2.6 Conclusion
+
+Chapter 3: Liberalisation, Privatisation and Globalisation: An Appraisal
+  • 3.1 Introduction
+  • 3.2 Background
+  • 3.3 Liberalisation
+  • 3.4 Privatisation
+  • 3.5 Globalisation
+  • 3.6 Indian economy during reforms: an assessment
+  • 3.7 Conclusion
+
+Chapter 4: Human Capital Formation in India
+  • 4.1 Introduction
+  • 4.2 What is human capital?
+  • 4.3 Sources of human capital
+  • 4.4 Human capital and human development
+  • 4.5 State of human capital formation in India
+  • 4.6 Education sector in India
+  • 4.7 Future prospects
+  • 4.8 Conclusion
+
+Chapter 5: Rural Development
+  • 5.1 Introduction
+  • 5.2 What is rural development?
+  • 5.3 Credit and marketing in rural areas
+  • 5.4 Agricultural market system
+  • 5.5 Diversification into productive activities
+  • 5.6 Sustainable development and organic farming
+  • 5.7 Conclusion
+
+Chapter 6: Employment: Growth, Informalisation and Other Issues
+  • 6.1 Introduction
+  • 6.2 Workers and employment
+  • 6.3 Participation of people in employment
+  • 6.4 Self-employed and hired workers
+  • 6.5 Employment in firms, factories and offices
+  • 6.6 Growth and changing structure of employment
+  • 6.7 Informalisation of Indian workforce
+  • 6.8 Unemployment
+  • 6.9 Government and employment generation
+  • 6.10 Conclusion
+
+Chapter 7: Environment and Sustainable Development
+  • 7.1 Introduction
+  • 7.2 Environment — definition and functions
+  • 7.3 State of India's environment
+  • 7.4 Sustainable development
+  • 7.5 Strategies for sustainable development
+  • 7.6 Conclusion
+
+Chapter 8: Comparative Development Experiences of India and its Neighbours
+  • 8.1 Introduction
+  • 8.2 Developmental path — a snapshot view
+  • 8.3 Demographic indicators
+  • 8.4 Gross domestic product and sectors
+  • 8.5 Indicators of human development
+  • 8.6 Development strategies — an appraisal
+  • 8.7 Conclusion
+  • [Retained: Poverty] Who are the poor?, how are poor people identified?, the number of poor in India, what causes poverty?, policies and programmes towards poverty alleviation, poverty alleviation programmes — a critical assessment
+  • [Retained: Infrastructure] What is infrastructure?, relevance of infrastructure, the state of infrastructure in India, energy, health
+
+Chapter 9: Statistics for Economics — Introduction
+  • Why economics?
+  • Statistics in economics
+
+Chapter 10: Collection of Data
+  • Sources of data
+  • How basic data is collected
+  • Census and sample surveys
+  • NSSO
+
+Chapter 11: Organisation of Data
+  • Raw data
+  • Classification of data
+  • Variables: continuous and discrete
+  • Frequency distribution
+
+Chapter 12: Presentation of Data
+  • Textual, tabular, diagrammatic and graphic presentation of data
+
+Chapter 13: Measures of Central Tendency
+  • Arithmetic mean
+  • Median
+  • Mode
+
+Chapter 14: Measures of Dispersion
+  • [Retained] Range, quartile deviation, mean deviation, standard deviation, Lorenz curve
+
+Chapter 15: Correlation
+  • Scatter diagram
+  • Karl Pearson's coefficient of correlation
+  • Spearman's rank correlation
+
+Chapter 16: Index Numbers
+  • Construction of an index number
+  • Consumer Price Index (CPI), Wholesale Price Index (WPI), Index of Industrial Production (IIP)
+  • Developing a project in economics
+
+SUBJECT: HISTORY
+
+Chapter 1: Writing and City Life
+  • Mesopotamia and its geography
+  • The significance of urbanism
+  • Movement of goods into cities
+  • The development of writing
+  • Urbanisation in southern Mesopotamia: temples and kings
+  • Life in the city
+  • A trading town in a pastoral zone
+  • Cities in Mesopotamian culture
+  • The legacy of writing
+
+Chapter 2: An Empire Across Three Continents
+  • The early empire
+  • The third-century crisis
+  • Gender, literacy, culture
+  • Economic expansion
+  • Controlling workers
+  • Social hierarchies
+  • Late antiquity
+
+Chapter 3: Nomadic Empires
+  • Social and political background
+  • The career of Genghis Khan
+  • The Mongols after Genghis Khan
+  • Social, political and military organisation
+  • Conclusion: situating Genghis Khan and the Mongols in world history
+
+Chapter 4: The Three Orders
+  • An introduction to feudalism
+  • France and England
+  • The three orders: the second order — the nobility, the manorial estate, the knights
+  • The first order: the clergy, monks, the Church and society
+  • The third order: peasants, free and unfree
+  • Factors affecting social and economic relations
+  • A fourth order? New towns and townsfolk
+  • Cathedral-towns
+  • The crisis of the fourteenth century
+  • Social unrest & political changes
+
+Chapter 5: Changing Cultural Traditions
+  • The revival of Italian cities
+  • Universities and humanism
+  • The humanist view of history
+  • Science and philosophy: the Arabs' contribution
+  • Artists and realism
+  • Architecture
+  • The first printed books
+  • A new concept of human beings
+  • The aspirations of women
+  • Debates within Christianity
+  • The Copernican revolution
+  • Reading the universe
+  • Was there a European 'Renaissance' in the fourteenth century?
+
+Chapter 6: Displacing Indigenous Peoples
+  • European imperialism
+  • North America: the native peoples, encounters with Europeans, mutual perceptions
+  • The native peoples lose their land
+  • The gold rush, and the growth of industries
+  • Constitutional rights & the winds of change
+  • Australia: winds of change
+
+Chapter 7: Paths to Modernisation
+  • Introduction: China and Japan
+  • Japan: the political system, the Meiji Restoration, modernising the economy, industrial workers, aggressive nationalism, 'Westernisation' and 'tradition', daily life, 'overcoming modernity', re-emergence of Japan as a global economic power
+  • China: establishing the republic, the rise of the Communist Party of China, establishing the new democracy 1949–65, conflicting visions: 1965–78, reforms from 1978, the story of Taiwan
+  • The story of Korea: beginnings of modernisation, a post-war nation, rapid industrialisation under strong leadership, demands for democracy
+  • [Retained: Old Theme 1 — From the Beginning of Time] Story of human evolution, modern human beings, ways of obtaining food, early humans: from trees to caves and open-air sites, making tools, modes of communication: language and art
+  • [Retained: Old Theme 4 — The Central Islamic Lands] The rise of Islam in Arabia, the Caliphate: expansion, civil wars and sect formation, the Umayyads and the centralisation of polity, the Abbasid revolution, break-up of the Caliphate and the rise of Sultanates, the Crusades, economy: agriculture, urbanisation and commerce, learning and culture
+  • [Retained: Old Theme 8 — Confrontation of Cultures] Communities of the Caribbean and Brazil, the state systems of Central and South America (Aztecs, Mayas, Incas), voyages of exploration by Europeans, Cortes and the Aztecs, Pizarro and the Incas, Cabral and Brazil, conquest, colonies and the slave-trade
+  • [Retained: Old Theme 9 — The Industrial Revolution] Why Britain?, coal and iron, cotton spinning and weaving, steam power, canals and railways, changed lives, workers, women, children and industrialisation, debate on the 'Industrial Revolution'
+
+SUBJECT: POLITICAL SCIENCE
+
+Chapter 1: Political Theory: An Introduction
+  • 1.1 What is politics?
+  • 1.2 What do we study in political theory?
+  • 1.3 Putting political theory to practice
+  • 1.4 Why should we study political theory?
+
+Chapter 2: Freedom
+  • 2.1 The ideal of freedom
+  • 2.2 What is freedom?
+  • 2.3 Why do we need constraints?
+  • 2.4 Harm principle
+  • 2.5 Negative and positive liberty
+
+Chapter 3: Equality
+  • 3.1 Why does equality matter?
+  • 3.2 What is equality?
+  • 3.3 Three dimensions of equality (political, social, economic)
+  • 3.4 How can we promote equality?
+
+Chapter 4: Social Justice
+  • 4.1 What is justice? (equal treatment for equals, proportionate justice, recognition of special needs)
+  • 4.2 Just distribution (John Rawls' theory of justice)
+  • 4.3 Pursuing social justice
+  • 4.4 Free markets versus state intervention
+
+Chapter 5: Rights
+  • 5.1 What are rights?
+  • 5.2 Where do rights come from?
+  • 5.3 Legal rights and the state
+  • 5.4 Kinds of rights
+  • 5.5 Rights and responsibilities
+
+Chapter 6: Citizenship
+  • 6.1 Introduction
+  • 6.2 Full and equal membership
+  • 6.3 Equal rights
+  • 6.4 Citizen and nation
+  • 6.5 Universal citizenship
+  • 6.6 Global citizenship
+
+Chapter 7: Nationalism
+  • 7.1 Introducing nationalism
+  • 7.2 Nations and nationalism
+  • 7.3 National self-determination
+  • 7.4 Nationalism and pluralism
+
+Chapter 8: Secularism
+  • 8.1 What is secularism? (inter-religious and intra-religious domination)
+  • 8.2 Secular state
+  • 8.3 The Western model of secularism
+  • 8.4 The Indian model of secularism
+  • 8.5 Criticisms of Indian secularism
+  • [Retained: Peace] The meaning of peace, can violence ever promote peace?, peace and the state, different approaches to the pursuit of peace, contemporary challenges
+  • [Retained: Development] The challenge of development, criticisms of development models, alternative conceptions of development
+
+Chapter 9: Constitution: Why and How?
+  • Why do we need a Constitution?
+  • The authority of a Constitution
+  • How was the Indian Constitution made?
+  • Composition of the Constituent Assembly
+
+Chapter 10: Rights in the Indian Constitution
+  • The importance of rights
+  • Fundamental rights in the Indian Constitution
+  • Directive principles of state policy
+  • Relationship between fundamental rights and directive principles
+
+Chapter 11: Election and Representation
+  • Elections and democracy
+  • Election system in India (FPTP vs PR)
+  • Reservation of constituencies
+  • Free and fair elections
+  • Independent Election Commission
+  • Electoral reforms
+
+Chapter 12: Executive
+  • What is an executive?
+  • Different types of executive
+  • Parliamentary executive in India (President, Prime Minister and Council of Ministers)
+  • Permanent executive: bureaucracy
+
+Chapter 13: Legislature
+  • Why do we need a Parliament?
+  • Why do we need two Houses of Parliament?
+  • What does the Parliament do?
+  • How does the Parliament make laws?
+  • How does the Parliament control the executive?
+
+Chapter 14: Judiciary
+  • Why do we need an independent judiciary?
+  • Structure of the judiciary
+  • Judicial activism
+  • Judiciary and rights
+  • Judiciary and Parliament
+
+Chapter 15: Federalism
+  • What is federalism?
+  • Federalism in the Indian Constitution
+  • Federalism with a strong central government
+  • Conflicts in India's federal system
+  • Special provisions
+
+Chapter 16: Local Governments
+  • Why local governments?
+  • Growth of local government in India
+  • 73rd and 74th Amendments
+  • Implementation of 73rd and 74th Amendments
+
+Chapter 17: Constitution as a Living Document
+  • Are Constitutions static?
+  • How to amend the Constitution?
+  • Why have there been so many amendments?
+  • Basic structure and evolution of the Constitution
+
+Chapter 18: The Philosophy of the Constitution
+  • What is meant by philosophy of the Constitution?
+  • Constitution as means of democratic transformation
+  • Procedural achievements
+  • Criticisms, limitations
+
+SUBJECT: GEOGRAPHY
+
+Chapter 1: Geography as a Discipline
+  • Geography as an integrating discipline
+  • Physical geography and natural sciences
+  • Geography and social sciences
+  • Branches of geography (based on systematic approach & regional approach)
+  • Physical geography and its importance
+
+Chapter 2: The Origin and Evolution of the Earth
+  • Early theories
+  • Modern theories (Big Bang Theory)
+  • Star formation
+  • Formation of planets
+  • Evolution of the earth
+  • Lithosphere, atmosphere and hydrosphere
+  • Origin of life
+
+Chapter 3: Interior of the Earth
+  • Sources of information about the interior (direct & indirect)
+  • Earthquake
+  • Earthquake waves
+  • Shadow zone
+  • Types of earthquakes
+  • Structure of the earth (crust, mantle, core)
+  • Volcanoes and volcanic landforms
+
+Chapter 4: Distribution of Oceans and Continents
+  • Continental drift (Wegener)
+  • Evidence in support of the continental drift
+  • Post-drift studies
+  • Ocean floor configuration
+  • Distribution of earthquakes and volcanoes
+  • Concept of sea floor spreading
+  • Plate tectonics
+  • Movement of the Indian plate
+
+Chapter 5: Geomorphic Processes
+  • Endogenic processes (diastrophism, volcanism)
+  • Exogenic processes
+  • Weathering
+  • Mass movements
+  • Erosion and deposition
+  • Soil formation
+
+Chapter 6: Landforms and Their Evolution
+  • Running water (erosional & depositional landforms)
+  • Groundwater (karst topography)
+  • Glaciers
+  • Waves and currents
+  • Winds
+  • [Retained: Minerals and Rocks] Igneous, sedimentary and metamorphic rocks, rock cycle
+
+Chapter 7: Composition and Structure of Atmosphere
+  • Composition of the atmosphere
+  • Structure of the atmosphere (troposphere, stratosphere, mesosphere, thermosphere, exosphere)
+
+Chapter 8: Solar Radiation, Heat Balance and Temperature
+  • Solar radiation (insolation)
+  • Heating and cooling of atmosphere
+  • Heat budget of the planet earth
+  • Temperature
+  • Inversion of temperature
+
+Chapter 9: Atmospheric Circulation and Weather Systems
+  • Atmospheric pressure
+  • Forces affecting the velocity and direction of wind
+  • General circulation of the atmosphere
+  • Air masses
+  • Fronts
+  • Extra tropical and tropical cyclones
+
+Chapter 10: Water in the Atmosphere
+  • Evaporation and condensation
+  • Dew, frost, fog and mist
+  • Clouds
+  • Precipitation
+  • Types of rainfall
+
+Chapter 11: World Climate and Climate Change
+  • Koeppen's scheme of classification of climate
+  • Climate change
+  • Global warming and greenhouse gases
+
+Chapter 12: Water (Oceans)
+  • Hydrological cycle
+  • Relief of the ocean floor
+  • Temperature and salinity of ocean waters
+
+Chapter 13: Movements of Ocean Water
+  • Waves
+  • Tides
+  • Ocean currents
+
+Chapter 14: Biodiversity and Conservation
+  • Biodiversity, levels of biodiversity, importance of biodiversity, loss of biodiversity
+  • Conservation of biodiversity (mega diversity centres & hotspots)
+  • [Retained: Life on the Earth] Ecology, ecosystems, biogeochemical cycles
+
+Chapter 15: India — Location
+  • Size, latitudinal/longitudinal extent
+  • India and its neighbours
+
+Chapter 16: Structure and Physiography
+  • Peninsular block
+  • Himalayas
+  • Indo-Ganga-Brahmaputra plain
+  • Physiographic divisions (northern mountains, northern plains, peninsular plateau, Indian desert, coastal plains, islands)
+
+Chapter 17: Drainage System
+  • Drainage systems in India
+  • Himalayan drainage (Indus, Ganga, Brahmaputra) vs peninsular drainage
+
+Chapter 18: Climate
+  • Factors determining the climate of India
+  • Rhythm of seasons
+  • Traditional Indian seasons
+  • Distribution of rainfall
+
+Chapter 19: Natural Vegetation
+  • Types of forests
+  • Forest conservation
+  • Biosphere reserves
+  • [Retained: Soils] Classification of soils (alluvial, black, red/yellow, laterite, arid, saline, peaty, forest), soil degradation and conservation
+
+Chapter 20: Natural Hazards and Disasters
+  • Classification of natural disasters
+  • Earthquakes
+  • Tsunami
+  • Tropical cyclone
+  • Floods
+  • Droughts
+  • Landslides
+  • Disaster management
+
+SUBJECT: SOCIOLOGY
+
+Chapter 1: Sociology and Society
+  • The sociological imagination: personal problem and public issue
+  • Pluralities and inequalities among societies
+  • Introducing sociology
+  • Sociology and common sense knowledge
+  • The intellectual ideas that went into the making of sociology
+  • The material issues that went into the making of sociology
+  • Why should we study the beginning and growth of sociology in Europe?
+  • The growth of sociology in India
+  • The scope of sociology and its relationship to other social science disciplines
+
+Chapter 2: Terms, Concepts and Their Use in Sociology
+  • Social groups and society
+  • Types of groups (primary and secondary, community and society/association, in-groups and out-groups, reference group, peer groups)
+  • Social stratification (caste and class)
+  • Status and role
+  • Society and social control
+
+Chapter 3: Understanding Social Institutions
+  • Family, marriage and kinship
+  • Work and economic life
+  • Politics
+  • Religion
+  • Education
+
+Chapter 4: Culture and Socialisation
+  • Diverse settings, different cultures
+  • Defining culture
+  • Dimensions of culture (cognitive, normative, material)
+  • Culture and identity
+  • Ethnocentrism and cosmopolitanism
+  • Cultural change
+  • Socialisation and agencies of socialisation
+
+Chapter 5: Doing Sociology: Research Methods
+  • Some methodological issues (objectivity and subjectivity)
+  • Multiple methods and choice of methods
+  • Participant observation / field work in social anthropology and sociology
+  • Surveys and interviews
+
+Chapter 6: Social Structure, Stratification and Social Processes in Society
+  • Social structure and stratification
+  • Two ways of understanding social processes in sociology (cooperation, competition, conflict)
+
+Chapter 7: Social Change and Social Order in Rural and Urban Society
+  • Social change (evolutionary, revolutionary, structural, cultural)
+  • Social order (domination, authority, law, contestation, crime, violence)
+  • Social order and change in village, town and city
+
+Chapter 8: Environment and Society
+  • Ecology and society
+  • Environmental problems and social inequality
+
+Chapter 9: Introducing Western Sociologists
+  • Context of sociology (Enlightenment, French Revolution, Industrial Revolution)
+  • Karl Marx (class struggle)
+  • Emile Durkheim (division of labour)
+  • Max Weber (interpretive sociology & bureaucracy)
+
+Chapter 10: Indian Sociologists
+  • L.K. Ananthakrishna Iyer
+  • Sarat Chandra Roy
+  • G.S. Ghurye
+  • D.P. Mukerji
+  • A.R. Desai
+  • M.N. Srinivas
+
+SUBJECT: PSYCHOLOGY
+
+Chapter 1: What is Psychology?
+  • Understanding mind and behaviour
+  • Popular notions about the discipline of psychology
+  • Evolution of psychology
+  • Development of psychology in India
+  • Branches of psychology
+  • Themes of research and applications
+  • Psychology and other disciplines
+  • Psychologists at work
+  • Psychology in everyday life
+
+Chapter 2: Methods of Enquiry in Psychology
+  • Goals of psychological enquiry
+  • Nature of psychological data
+  • Some important methods in psychology (observational, experimental, correlational, survey, psychological testing, case study)
+  • Analysis of data (quantitative and qualitative)
+  • Limitations of psychological enquiry
+  • Ethical issues
+
+Chapter 3: The Bases of Human Behaviour
+  • Evolutionary perspective
+  • Biological and cultural roots
+  • Biological basis of behaviour: neurons, structure and functions of nervous system and endocrine system
+  • Heredity: genes and behaviour
+  • Cultural basis: socio-cultural shaping of behaviour (socialisation, enculturation, acculturation)
+
+Chapter 4: Human Development
+  • Meaning of development
+  • Life-span perspective on development
+  • Factors influencing development
+  • Context of development
+  • Overview of developmental stages (prenatal stage, infancy, childhood, challenges of adolescence, adulthood and old age)
+
+Chapter 5: Sensory, Attentional and Perceptual Processes
+  • Knowing the world
+  • Nature and varieties of stimulus
+  • Sense modalities
+  • Attentional processes (selective and sustained attention)
+  • Perceptual processes
+  • The perceiver
+  • Principles of perceptual organisation
+  • Perception of space, depth and distance
+  • Perceptual constancies
+  • Illusions
+  • Socio-cultural influences on perception
+
+Chapter 6: Learning
+  • Nature of learning
+  • Paradigms of learning
+  • Classical conditioning
+  • Operant/instrumental conditioning
+  • Observational learning
+  • Cognitive learning
+  • Verbal learning
+  • Skill learning
+  • Factors facilitating learning
+  • Learning disabilities
+
+Chapter 7: Human Memory
+  • Nature of memory
+  • Information processing approach: the stage model (sensory, short-term and long-term memory)
+  • Memory systems
+  • Levels of processing
+  • Types of long-term memory
+  • Nature and causes of forgetting
+  • Enhancing memory
+
+Chapter 8: Thinking
+  • Nature of thinking
+  • Building blocks of thought
+  • The processes of thinking: problem solving, reasoning, decision-making
+  • Nature and process of creative thinking
+  • Developing creative thinking
+  • Thought and language
+  • Development of language and language use
+
+Chapter 9: Motivation and Emotion
+  • Nature of motivation
+  • Types of motives (biological and psychosocial motives)
+  • Maslow's hierarchy of needs
+  • Nature of emotions
+  • Expression of emotions
+  • Managing negative emotions
+  • Enhancing positive emotions
+
+CLASS 12
+
+SUBJECT: PHYSICS
+
+Chapter 1: Electric Charges and Fields
+  • 1.1 Introduction
+  • 1.2 Electric charge
+  • 1.3 Conductors and insulators
+  • 1.4 Basic properties of electric charge
+  • 1.5 Coulomb's law
+  • 1.6 Forces between multiple charges
+  • 1.7 Electric field
+  • 1.8 Electric field lines
+  • 1.9 Electric flux
+  • 1.10 Electric dipole
+  • 1.11 Dipole in a uniform external field
+  • 1.12 Continuous charge distribution
+  • 1.13 Gauss's law
+  • 1.14 Applications of Gauss's law
+
+Chapter 2: Electrostatic Potential and Capacitance
+  • 2.1 Introduction
+  • 2.2 Electrostatic potential
+  • 2.3 Potential due to a point charge
+  • 2.4 Potential due to an electric dipole
+  • 2.5 Potential due to a system of charges
+  • 2.6 Equipotential surfaces
+  • 2.7 Potential energy of a system of charges
+  • 2.8 Potential energy in an external field
+  • 2.9 Electrostatics of conductors
+  • 2.10 Dielectrics and polarisation
+  • 2.11 Capacitors and capacitance
+  • 2.12 The parallel plate capacitor
+  • 2.13 Effect of dielectric on capacitance
+  • 2.14 Combination of capacitors
+  • 2.15 Energy stored in a capacitor
+  • [Retained] Van de Graaff generator
+
+Chapter 3: Current Electricity
+  • 3.1 Introduction
+  • 3.2 Electric current
+  • 3.3 Electric currents in conductors
+  • 3.4 Ohm's law
+  • 3.5 Drift of electrons and the origin of resistivity
+  • 3.6 Limitations of Ohm's law
+  • 3.7 Resistivity of various materials
+  • 3.8 Temperature dependence of resistivity
+  • 3.9 Electrical energy, power
+  • 3.10 Cells, emf, internal resistance
+  • 3.11 Cells in series and in parallel
+  • 3.12 Kirchhoff's rules
+  • 3.13 Wheatstone bridge
+  • [Retained] Combination of resistors, meter bridge & potentiometer (included in BSEB exam)
+
+Chapter 4: Moving Charges and Magnetism
+  • 4.1 Introduction
+  • 4.2 Magnetic force
+  • 4.3 Motion in a magnetic field
+  • 4.4 Magnetic field due to a current element, Biot-Savart law
+  • 4.5 Magnetic field on the axis of a circular current loop
+  • 4.6 Ampere's circuital law
+  • 4.7 The solenoid
+  • 4.8 Force between two parallel currents, the ampere
+  • 4.9 Torque on current loop, magnetic dipole
+  • 4.10 The moving coil galvanometer
+  • [Retained] Cyclotron & toroid
+
+Chapter 5: Magnetism and Matter
+  • 5.1 Introduction
+  • 5.2 The bar magnet
+  • 5.3 Magnetism and Gauss's law
+  • 5.4 Magnetisation and magnetic intensity
+  • 5.5 Magnetic properties of materials
+  • [Retained] The earth's magnetism (magnetic declination and dip) & permanent magnets and electromagnets
+
+Chapter 6: Electromagnetic Induction
+  • 6.1 Introduction
+  • 6.2 The experiments of Faraday and Henry
+  • 6.3 Magnetic flux
+  • 6.4 Faraday's law of induction
+  • 6.5 Lenz's law and conservation of energy
+  • 6.6 Motional electromotive force
+  • 6.7 Inductance
+  • 6.8 AC generator
+  • [Retained] Eddy currents
+
+Chapter 7: Alternating Current
+  • 7.1 Introduction
+  • 7.2 AC voltage applied to a resistor
+  • 7.3 Representation of AC current and voltage by rotating vectors — phasors
+  • 7.4 AC voltage applied to an inductor
+  • 7.5 AC voltage applied to a capacitor
+  • 7.6 AC voltage applied to a series LCR circuit
+  • 7.7 Power in AC circuit: the power factor
+  • 7.8 Transformers
+  • [Retained] LC oscillations
+
+Chapter 8: Electromagnetic Waves
+  • 8.1 Introduction
+  • 8.2 Displacement current
+  • 8.3 Electromagnetic waves
+  • 8.4 Electromagnetic spectrum
+
+Chapter 9: Ray Optics and Optical Instruments
+  • 9.1 Introduction
+  • 9.2 Reflection of light by spherical mirrors
+  • 9.3 Refraction
+  • 9.4 Total internal reflection
+  • 9.5 Refraction at spherical surfaces and by lenses
+  • 9.6 Refraction through a prism
+  • 9.7 Optical instruments
+  • [Retained] Dispersion by a prism, rainbow & scattering of light
+
+Chapter 10: Wave Optics
+  • 10.1 Introduction
+  • 10.2 Huygens principle
+  • 10.3 Refraction and reflection of plane waves using Huygens principle
+  • 10.4 Coherent and incoherent addition of waves
+  • 10.5 Interference of light waves and Young's experiment
+  • 10.6 Diffraction
+  • 10.7 Polarisation
+  • [Retained] Resolving power of optical instruments & Brewster's law
+
+Chapter 11: Dual Nature of Radiation and Matter
+  • 11.1 Introduction
+  • 11.2 Electron emission
+  • 11.3 Photoelectric effect
+  • 11.4 Experimental study of photoelectric effect
+  • 11.5 Photoelectric effect and wave theory of light
+  • 11.6 Einstein's photoelectric equation: energy quantum of radiation
+  • 11.7 Particle nature of light: the photon
+  • 11.8 Wave nature of matter
+  • [Retained] Davisson and Germer experiment
+
+Chapter 12: Atoms
+  • 12.1 Introduction
+  • 12.2 Alpha-particle scattering and Rutherford's nuclear model of atom
+  • 12.3 Atomic spectra
+  • 12.4 Bohr model of the hydrogen atom
+  • 12.5 The line spectra of the hydrogen atom
+  • 12.6 De Broglie's explanation of Bohr's second postulate of quantisation
+
+Chapter 13: Nuclei
+  • 13.1 Introduction
+  • 13.2 Atomic masses and composition of nucleus
+  • 13.3 Size of the nucleus
+  • 13.4 Mass-energy and nuclear binding energy
+  • 13.5 Nuclear force
+  • 13.6 Radioactivity
+  • 13.7 Nuclear energy
+  • [Retained] Law of radioactive decay, half-life and mean-life, alpha/beta/gamma decay
+
+Chapter 14: Semiconductor Electronics: Materials, Devices and Simple Circuits
+  • 14.1 Introduction
+  • 14.2 Classification of metals, conductors and semiconductors
+  • 14.3 Intrinsic semiconductor
+  • 14.4 Extrinsic semiconductor
+  • 14.5 p-n junction
+  • 14.6 Semiconductor diode
+  • 14.7 Application of junction diode as a rectifier
+  • [Retained] Special purpose p-n junction diodes (Zener, photodiode, LED, solar cell), junction transistor & digital electronics and logic gates (OR, AND, NOT, NAND, NOR)
+
+Chapter 15: Communication Systems
+  • 15.1 Introduction
+  • 15.2 Elements of a communication system
+  • 15.3 Basic terminology used in electronic communication systems
+  • 15.4 Bandwidth of signals
+  • 15.5 Bandwidth of transmission medium
+  • 15.6 Propagation of electromagnetic waves (ground, sky and space waves)
+  • 15.7 Modulation and its necessity
+  • 15.8 Amplitude modulation
+  • 15.9 Production and detection of amplitude modulated wave
+
+SUBJECT: CHEMISTRY
+
+Chapter 1: Solutions
+  • 1.1 Types of solutions
+  • 1.2 Expressing concentration of solutions
+  • 1.3 Solubility
+  • 1.4 Vapour pressure of liquid solutions
+  • 1.5 Ideal and non-ideal solutions
+  • 1.6 Colligative properties and determination of molar mass
+  • 1.7 Abnormal molar masses
+
+Chapter 2: Electrochemistry
+  • 2.1 Electrochemical cells
+  • 2.2 Galvanic cells
+  • 2.3 Nernst equation
+  • 2.4 Conductance of electrolytic solutions
+  • 2.5 Electrolytic cells and electrolysis
+  • 2.6 Batteries
+  • 2.7 Fuel cells
+  • 2.8 Corrosion
+
+Chapter 3: Chemical Kinetics
+  • 3.1 Rate of a chemical reaction
+  • 3.2 Factors influencing rate of a reaction
+  • 3.3 Integrated rate equations
+  • 3.4 Temperature dependence of the rate of a reaction
+  • 3.5 Collision theory of chemical reactions
+
+Chapter 4: The d- and f-Block Elements
+  • 4.1 Position in the periodic table
+  • 4.2 Electronic configurations of the d-block elements
+  • 4.3 General properties of the transition elements (d-block)
+  • 4.4 Some important compounds of transition elements
+  • 4.5 The lanthanoids
+  • 4.6 The actinoids
+  • 4.7 Some applications of d- and f-block elements
+
+Chapter 5: Coordination Compounds
+  • 5.1 Werner's theory of coordination compounds
+  • 5.2 Definitions of some important terms pertaining to coordination compounds
+  • 5.3 Nomenclature of coordination compounds
+  • 5.4 Isomerism in coordination compounds
+  • 5.5 Bonding in coordination compounds
+  • 5.6 Bonding in metal carbonyls
+  • 5.7 Importance and applications of coordination compounds
+
+Chapter 6: Haloalkanes and Haloarenes
+  • 6.1 Classification
+  • 6.2 Nomenclature
+  • 6.3 Nature of C-X bond
+  • 6.4 Methods of preparation of haloalkanes
+  • 6.5 Preparation of haloarenes
+  • 6.6 Physical properties
+  • 6.7 Chemical reactions
+  • 6.8 Polyhalogen compounds
+
+Chapter 7: Alcohols, Phenols and Ethers
+  • 7.1 Classification
+  • 7.2 Nomenclature
+  • 7.3 Structures of functional groups
+  • 7.4 Alcohols and phenols
+  • 7.5 Some commercially important alcohols
+  • 7.6 Ethers
+
+Chapter 8: Aldehydes, Ketones and Carboxylic Acids
+  • 8.1 Nomenclature and structure of carbonyl group
+  • 8.2 Preparation of aldehydes and ketones
+  • 8.3 Physical properties
+  • 8.4 Chemical reactions
+  • 8.5 Uses of aldehydes and ketones
+  • 8.6 Nomenclature and structure of carboxyl group
+  • 8.7 Methods of preparation of carboxylic acids
+  • 8.8 Physical properties
+  • 8.9 Chemical reactions
+  • 8.10 Uses of carboxylic acids
+
+Chapter 9: Amines
+  • 9.1 Structure of amines
+  • 9.2 Classification
+  • 9.3 Nomenclature
+  • 9.4 Preparation of amines
+  • 9.5 Physical properties
+  • 9.6 Chemical reactions
+  • 9.7 Method of preparation of diazonium salts
+  • 9.8 Physical properties
+  • 9.9 Chemical reactions
+  • 9.10 Importance of diazonium salts in synthesis of aromatic compounds
+
+Chapter 10: Biomolecules
+  • 10.1 Carbohydrates
+  • 10.2 Proteins
+  • 10.3 Enzymes
+  • 10.4 Vitamins
+  • 10.5 Nucleic acids
+  • 10.6 Hormones
+  • [Retained: Old Unit 1 — The Solid State] Classification of solids, crystal lattices and unit cells, number of atoms in a unit cell, close packed structures, packing efficiency, imperfections in solids (Schottky & Frenkel defects), electrical and magnetic properties
+  • [Retained: Old Unit 5 — Surface Chemistry] Adsorption (physisorption and chemisorption), catalysis, colloids, classification of colloids, emulsions, colloids around us
+  • [Retained: Old Unit 6 — General Principles and Processes of Isolation of Elements] Occurrence of metals, concentration of ores (leaching, froth floatation), extraction of crude metal from concentrated ore (calcination, roasting, smelting), thermodynamic and electrochemical principles of metallurgy, refining
+  • [Retained: Old Unit 7 — The p-Block Elements] Group 15 elements (dinitrogen, ammonia, nitric acid, phosphorus allotropes, phosphine, oxoacids of phosphorus), Group 16 elements (dioxygen, ozone, sulphur, sulphuric acid), Group 17 elements (halogens, chlorine, HCl, interhalogen compounds), Group 18 elements (noble gases, xenon compounds)
+  • [Retained: Old Unit 15 — Polymers] Classification of polymers, types of polymerisation reactions (addition & condensation), copolymerisation, natural and synthetic rubber, biodegradable polymers
+  • [Retained: Old Unit 16 — Chemistry in Everyday Life] Drugs and their classification, therapeutic action of different classes of drugs (analgesics, tranquilizers, antiseptics, disinfectants, antibiotics, antacids), chemicals in food, cleansing agents (soaps and synthetic detergents)
+
+SUBJECT: BIOLOGY
+
+Chapter 1: Sexual Reproduction in Flowering Plants
+  • 1.1 Flower — a fascinating organ of angiosperms
+  • 1.2 Pre-fertilisation: structures and events (stamen, microsporangium and pollen grain; the pistil, megasporangium (ovule) and embryo sac; pollination)
+  • 1.3 Double fertilisation
+  • 1.4 Post-fertilisation: structures and events (endosperm, embryo, seed)
+  • 1.5 Apomixis and polyembryony
+
+Chapter 2: Human Reproduction
+  • 2.1 The male reproductive system
+  • 2.2 The female reproductive system
+  • 2.3 Gametogenesis (spermatogenesis and oogenesis)
+  • 2.4 Menstrual cycle
+  • 2.5 Fertilisation and implantation
+  • 2.6 Pregnancy and embryonic development
+  • 2.7 Parturition and lactation
+
+Chapter 3: Reproductive Health
+  • 3.1 Reproductive health — problems and strategies
+  • 3.2 Population stabilisation and birth control
+  • 3.3 Medical Termination of Pregnancy (MTP)
+  • 3.4 Sexually Transmitted Infections (STIs)
+  • 3.5 Infertility (assisted reproductive technologies: IVF, ZIFT, GIFT, ICSI, AI)
+
+Chapter 4: Principles of Inheritance and Variation
+  • 4.1 Mendel's laws of inheritance
+  • 4.2 Inheritance of one gene (law of dominance, law of segregation, incomplete dominance, co-dominance)
+  • 4.3 Inheritance of two genes (law of independent assortment, chromosomal theory of inheritance, linkage and recombination)
+  • 4.4 Polygenic inheritance
+  • 4.5 Pleiotropy
+  • 4.6 Sex determination
+  • 4.7 Mutation
+  • 4.8 Genetic disorders (pedigree analysis, Mendelian disorders, chromosomal disorders)
+
+Chapter 5: Molecular Basis of Inheritance
+  • 5.1 The DNA (structure of polynucleotide chain, packaging of DNA helix)
+  • 5.2 The search for genetic material (transforming principle, Hershey-Chase experiment)
+  • 5.3 RNA world
+  • 5.4 Replication (Meselson and Stahl's experiment, machinery and enzymes)
+  • 5.5 Transcription
+  • 5.6 Genetic code
+  • 5.7 Translation
+  • 5.8 Regulation of gene expression (the lac operon)
+  • 5.9 Human Genome Project (HGP)
+  • 5.10 DNA fingerprinting
+
+Chapter 6: Evolution
+  • 6.1 Origin of life
+  • 6.2 Evolution of life forms — a theory
+  • 6.3 What are the evidences for evolution?
+  • 6.4 What is adaptive radiation?
+  • 6.5 Biological evolution
+  • 6.6 Mechanism of evolution
+  • 6.7 Hardy-Weinberg principle
+  • 6.8 A brief account of evolution
+  • 6.9 Origin and evolution of man
+
+Chapter 7: Human Health and Disease
+  • 7.1 Common diseases in humans (bacterial, viral, protozoan, helminthic, fungal)
+  • 7.2 Immunity (innate and acquired immunity, active and passive immunity, vaccination and immunisation, allergies, auto immunity, immune system in the body)
+  • 7.3 AIDS
+  • 7.4 Cancer
+  • 7.5 Drugs and alcohol abuse
+
+Chapter 8: Microbes in Human Welfare
+  • 8.1 Microbes in household products
+  • 8.2 Microbes in industrial products (fermented beverages, antibiotics, chemicals, enzymes and other bioactive molecules)
+  • 8.3 Microbes in sewage treatment
+  • 8.4 Microbes in production of biogas
+  • 8.5 Microbes as biocontrol agents
+  • 8.6 Microbes as biofertilisers
+
+Chapter 9: Biotechnology: Principles and Processes
+  • 9.1 Principles of biotechnology
+  • 9.2 Tools of recombinant DNA technology (restriction enzymes, cloning vectors, competent host)
+  • 9.3 Processes of recombinant DNA technology (isolation of DNA, gel electrophoresis, PCR, obtaining the foreign gene product, downstream processing)
+
+Chapter 10: Biotechnology and its Applications
+  • 10.1 Biotechnological applications in agriculture (Bt cotton, pest resistant plants / RNAi)
+  • 10.2 Biotechnological applications in medicine (genetically engineered insulin, gene therapy, molecular diagnosis)
+  • 10.3 Transgenic animals
+  • 10.4 Ethical issues (GEAC, biopiracy)
+
+Chapter 11: Organisms and Populations
+  • 11.1 Populations (population attributes: birth/death rates, sex ratio, age pyramids, population growth models — exponential and logistic, life history variation, population interactions: predation, competition, parasitism, commensalism, mutualism)
+  • [Retained] Organism and its environment (major abiotic factors, responses to abiotic factors, adaptations)
+
+Chapter 12: Ecosystem
+  • 12.1 Ecosystem — structure and function
+  • 12.2 Productivity
+  • 12.3 Decomposition
+  • 12.4 Energy flow
+  • 12.5 Ecological pyramids
+  • [Retained] Ecological succession & nutrient cycling
+
+Chapter 13: Biodiversity and Conservation
+  • 13.1 Biodiversity (genetic, species, ecological diversity; patterns of biodiversity — latitudinal gradients, species-area relationships; importance of species diversity to the ecosystem; loss of biodiversity)
+  • 13.2 Biodiversity conservation (why should we conserve biodiversity?; how do we conserve biodiversity? — in situ and ex situ conservation)
+  • [Retained: Old Ch 1 — Reproduction in Organisms] Life span, asexual reproduction (binary fission, budding, vegetative propagules), sexual reproduction (pre-fertilisation, fertilisation, post-fertilisation events, oviparous vs viviparous)
+  • [Retained: Old Ch 9 — Strategies for Enhancement in Food Production] Animal husbandry (dairy/poultry farm management, animal breeding, inbreeding/out-crossing, MOET, apiculture, fisheries), plant breeding (green revolution, biofortification, single cell protein, tissue culture, somatic hybridisation)
+  • [Retained: Old Ch 16 — Environmental Issues] Air pollution and its control, water pollution and its control (BOD, eutrophication, biomagnification), solid wastes, agro-chemicals, radioactive wastes, greenhouse effect and global warming, ozone depletion in the stratosphere, deforestation
+
+SUBJECT: COMPUTER SCIENCE
+
+Chapter 1: Exception Handling in Python
+  • 1.1 Introduction
+  • 1.2 Syntax errors
+  • 1.3 Exceptions
+  • 1.4 Built-in exceptions
+  • 1.5 Raising exceptions
+  • 1.6 Handling exceptions
+  • 1.7 Finally clause
+
+Chapter 2: File Handling in Python
+  • 2.1 Introduction to files
+  • 2.2 Types of files
+  • 2.3 Opening and closing a text file
+  • 2.4 Writing to a text file
+  • 2.5 Reading from a text file
+  • 2.6 Setting offsets in a file
+  • 2.7 Creating and traversing a text file
+  • 2.8 The pickle module (BSEB C++ equivalent: data file handling in C++ — ifstream, ofstream, fstream)
+
+Chapter 3: Stack
+  • 3.1 Introduction
+  • 3.2 Stack
+  • 3.3 Operations on stack
+  • 3.4 Implementation of stack in Python
+  • 3.5 Notations for arithmetic expressions
+  • 3.6 Conversion from infix to postfix notation
+  • 3.7 Evaluation of postfix expression
+
+Chapter 4: Queue
+  • 4.1 Introduction to queue
+  • 4.2 Operations on queue
+  • 4.3 Implementation of queue using Python
+  • 4.4 Introduction to deque
+  • 4.5 Implementation of deque using Python
+
+Chapter 5: Sorting
+  • 5.1 Introduction
+  • 5.2 Bubble sort
+  • 5.3 Selection sort
+  • 5.4 Insertion sort
+  • 5.5 Time complexity of algorithms
+
+Chapter 6: Searching
+  • 6.1 Introduction
+  • 6.2 Linear search
+  • 6.3 Binary search
+  • 6.4 Search by hashing
+
+Chapter 7: Understanding Data
+  • 7.1 Introduction to data
+  • 7.2 Data collection
+  • 7.3 Data storage
+  • 7.4 Data processing
+  • 7.5 Statistical techniques for data processing
+
+Chapter 8: Database Concepts
+  • 8.1 Introduction
+  • 8.2 File system
+  • 8.3 Database management system
+  • 8.4 Relational data model
+  • 8.5 Keys in a relational database (candidate, primary, composite, foreign keys)
+
+Chapter 9: Structured Query Language (SQL)
+  • 9.1 Introduction
+  • 9.2 Structured Query Language (SQL)
+  • 9.3 Data types and constraints in MySQL
+  • 9.4 SQL for data definition
+  • 9.5 SQL for data manipulation
+  • 9.6 SQL for data query
+  • 9.7 Data updation and deletion
+  • 9.8 Functions in SQL
+  • 9.9 GROUP BY clause in SQL
+  • 9.10 Operations on relations
+  • 9.11 Using two relations in a query
+
+Chapter 10: Computer Networks
+  • 10.1 Introduction to computer networks
+  • 10.2 Evolution of networking
+  • 10.3 Types of networks (PAN, LAN, MAN, WAN)
+  • 10.4 Network devices (modem, Ethernet card, RJ45, repeater, hub, switch, router, gateway)
+  • 10.5 Networking topologies (mesh, ring, bus, star, tree)
+  • 10.6 Identifying nodes in a networked communication (MAC & IP address)
+  • 10.7 Internet, web and the Internet of Things
+  • 10.8 Domain Name System
+
+Chapter 11: Data Communication
+  • 11.1 Concept of communication
+  • 11.2 Components of data communication
+  • 11.3 Measuring capacity of communication media (bandwidth, data transfer rate)
+  • 11.4 Types of data communication (simplex, half-duplex, full-duplex)
+  • 11.5 Switching techniques (circuit & packet switching)
+  • 11.6 Transmission media (twisted pair, coaxial, optical fibre, radio, microwave, infrared, satellite)
+  • 11.7 Mobile telecommunication technologies (1G to 5G)
+  • 11.8 Protocol (HTTP, FTP, PPP, SMTP, TCP/IP, POP3, TELNET, VoIP)
+
+Chapter 12: Security Aspects
+  • 12.1 Threats and prevention
+  • 12.2 Malware (virus, worms, ransomware, trojan, spyware, adware)
+  • 12.3 Antivirus
+  • 12.4 Spam
+  • 12.5 HTTP vs HTTPS
+  • 12.6 Firewall
+  • 12.7 Cookies
+  • 12.8 Hackers and crackers
+  • 12.9 Network security threats (DoS, intrusion, snooping, eavesdropping)
+
+Chapter 13: Project Based Learning & BSEB Legacy Units
+  • 13.1 Introduction
+  • 13.2 Approaches for solving projects
+  • 13.3 Teamwork
+  • 13.4 Project descriptions
+  • [Retained] BSEB legacy units tested in board papers: Object Oriented Programming in C++ (classes & objects, constructors/destructors, inheritance, pointers); Boolean Algebra & Logic Gates (De Morgan's laws, SOP/POS, K-Maps)
+
+SUBJECT: ACCOUNTANCY
+
+Chapter 1: Accounting for Not-for-Profit Organisation
+  • Meaning and characteristics of not-for-profit organisation
+  • Accounting records of not-for-profit organisations
+  • Receipt and Payment Account
+  • Income and Expenditure Account
+  • Balance Sheet
+  • Some peculiar items (subscriptions, donations, legacies, entrance fees, sale of old assets, consumable items)
+
+Chapter 2: Accounting for Partnership: Basic Concepts
+  • 1.1 Nature of partnership
+  • 1.2 Partnership deed
+  • 1.3 Special aspects of partnership accounts
+  • 1.4 Maintenance of capital accounts of partners
+  • 1.5 Distribution of profit among partners
+  • 1.6 Guarantee of profit to a partner
+  • 1.7 Past adjustments
+
+Chapter 3: Reconstitution of a Partnership Firm – Admission of a Partner
+  • 2.1 Modes of reconstitution of a partnership firm
+  • 2.2 Admission of a new partner
+  • 2.3 New profit sharing ratio
+  • 2.4 Sacrificing ratio
+  • 2.5 Goodwill
+  • 2.6 Adjustment for accumulated profits and losses
+  • 2.7 Revaluation of assets and reassessment of liabilities
+  • 2.8 Adjustment of capitals
+  • 2.9 Change in profit sharing ratio among the existing partners
+
+Chapter 4: Reconstitution of a Partnership Firm – Retirement/Death of a Partner
+  • 3.1 Ascertaining the amount due to retiring/deceased partner
+  • 3.2 New profit sharing ratio
+  • 3.3 Gaining ratio
+  • 3.4 Treatment of goodwill
+  • 3.5 Adjustment for revaluation of assets and liabilities
+  • 3.6 Adjustment of accumulated profits and losses
+  • 3.7 Disposal of amount due to retiring partner
+  • 3.8 Adjustment of partners' capitals
+  • 3.9 Death of a partner
+
+Chapter 5: Dissolution of Partnership Firm
+  • 4.1 Dissolution of partnership
+  • 4.2 Dissolution of a firm
+  • 4.3 Settlement of accounts
+  • 4.4 Accounting treatment
+
+Chapter 6: Accounting for Share Capital
+  • 1.1 Features of a company
+  • 1.2 Kinds of companies
+  • 1.3 Share capital of a company
+  • 1.4 Nature and classes of shares
+  • 1.5 Issue of shares
+  • 1.6 Accounting treatment
+  • 1.7 Forfeiture of shares
+
+Chapter 7: Issue and Redemption of Debentures
+  • 2.1 Meaning of debentures
+  • 2.2 Distinction between shares and debentures
+  • 2.3 Types of debentures
+  • 2.4 Issue of debentures
+  • 2.5 Over subscription
+  • 2.6 Issue of debentures for consideration other than cash
+  • 2.7 Issue of debentures as a collateral security
+  • 2.8 Terms of issue of debentures
+  • 2.9 Interest on debentures
+  • 2.10 Writing off discount/loss on issue of debentures
+  • 2.11 Redemption of debentures
+  • 2.12 Redemption by payment in lump sum
+  • 2.13 Redemption by purchase in open market
+  • 2.14 Redemption by conversion
+
+Chapter 8: Financial Statements of a Company
+  • 3.1 Meaning of financial statements
+  • 3.2 Nature of financial statements
+  • 3.3 Objectives of financial statements
+  • 3.4 Types of financial statements
+  • 3.5 Uses and importance of financial statements
+  • 3.6 Limitations of financial statements
+
+Chapter 9: Analysis of Financial Statements
+  • 4.1 Meaning of analysis of financial statements
+  • 4.2 Significance of analysis of financial statements
+  • 4.3 Objectives of analysis of financial statements
+  • 4.4 Tools of analysis of financial statements
+  • 4.5 Comparative statements
+  • 4.6 Common size statement
+  • 4.7 Limitations of financial analysis
+
+Chapter 10: Accounting Ratios
+  • 5.1 Meaning of accounting ratios
+  • 5.2 Objectives of ratio analysis
+  • 5.3 Advantages of ratio analysis
+  • 5.4 Limitations of ratio analysis
+  • 5.5 Types of ratios
+  • 5.6 Liquidity ratios
+  • 5.7 Solvency ratios
+  • 5.8 Activity (or turnover) ratio
+  • 5.9 Profitability ratios
+
+Chapter 11: Cash Flow Statement
+  • 6.1 Objectives of Cash Flow Statement
+  • 6.2 Benefits of Cash Flow Statement
+  • 6.3 Cash and cash equivalents
+  • 6.4 Cash flows
+  • 6.5 Classification of activities for the preparation of Cash Flow Statement
+  • 6.6 Ascertaining cash flow from operating activities
+  • 6.7 Ascertainment of cash flow from investing and financing activities
+  • 6.8 Preparation of Cash Flow Statement
+
+SUBJECT: BUSINESS STUDIES
+
+Chapter 1: Nature and Significance of Management
+  • Management — concept, objectives, and importance
+  • Nature of management (management as an art, a science, and a profession)
+  • Levels of management (top, middle, operational)
+  • Functions of management (planning, organising, staffing, directing, controlling)
+  • Coordination — the essence of management
+
+Chapter 2: Principles of Management
+  • Principles of management — the concept, nature and significance
+  • Taylor's scientific management (principles and techniques)
+  • Fayol's principles of management (14 principles)
+  • Fayol versus Taylor — a comparison
+
+Chapter 3: Business Environment
+  • Meaning, importance and dimensions of business environment (economic, social, technological, political, legal)
+  • Economic environment in India (liberalisation, privatisation and globalisation)
+  • Demonetisation
+  • [Retained] Impact of government policy changes on business and industry
+
+Chapter 4: Planning
+  • Concept, importance, features and limitations of planning
+  • Planning process
+  • Types of plans (single-use and standing plans: objectives, strategy, policy, procedure, method, rule, programme, budget)
+
+Chapter 5: Organising
+  • Concept and importance of organising
+  • Steps in the process of organising
+  • Organisation structure (functional and divisional structure)
+  • Formal and informal organisation
+  • Delegation and decentralisation
+
+Chapter 6: Staffing
+  • Meaning and importance of staffing
+  • Staffing as part of human resource management
+  • Staffing process
+  • Aspects of staffing: recruitment (internal and external sources), selection process, training and development (on-the-job and off-the-job methods)
+
+Chapter 7: Directing
+  • Concept, importance and principles of directing
+  • Elements of directing: supervision; motivation (Maslow's need hierarchy theory, financial and non-financial incentives); leadership (autocratic, democratic, laissez-faire)
+  • Communication (formal and informal, barriers to effective communication)
+
+Chapter 8: Controlling
+  • Meaning, importance and limitations of controlling
+  • Relationship between planning and controlling
+  • Controlling process
+  • [Retained] Techniques of managerial control
+
+Chapter 9: Financial Management
+  • Concept, role and objectives of financial management
+  • Financial decisions: investment (capital budgeting), financing, and dividend decisions
+  • Financial planning
+  • Capital structure
+  • Fixed and working capital — concept and factors affecting their requirements
+
+Chapter 10: Financial Markets
+  • Concept and functions of financial market
+  • Money market and its instruments (treasury bill, commercial paper, call money, certificate of deposit, commercial bill)
+  • Capital market (primary and secondary market)
+  • Stock exchange — functions and trading procedure
+  • Securities and Exchange Board of India (SEBI) — objectives and functions
+
+Chapter 11: Marketing
+  • What is a market? & what is marketing?
+  • Marketing management philosophies
+  • Functions of marketing
+  • Marketing mix — elements: product (branding, packaging, labelling); price (factors determining price); physical distribution (channels of distribution); promotion (advertising, personal selling, sales promotion, public relations)
+
+Chapter 12: Consumer Protection
+  • Importance of consumer protection, consumer rights and responsibilities
+  • Ways and means of consumer protection
+  • Redressal agencies under Consumer Protection Act
+  • Role of consumer organisations and NGOs
+  • [Retained] Entrepreneurship development: concept, characteristics, need, process, competencies and values
+
+SUBJECT: ECONOMICS
+
+Chapter 1: Introduction (Microeconomics)
+  • 1.1 A simple economy
+  • 1.2 Central problems of an economy
+  • 1.3 Organisation of economic activities (the centrally planned economy; the market economy)
+  • 1.4 Positive and normative economics
+  • 1.5 Microeconomics and macroeconomics
+  • 1.6 Plan of the book
+
+Chapter 2: Theory of Consumer Behaviour
+  • 2.1 Utility (cardinal utility analysis, ordinal utility analysis)
+  • 2.2 The consumer's budget (budget set and budget line, changes in the budget set)
+  • 2.3 Optimal choice of the consumer
+  • 2.4 Demand (demand curve and the law of demand, deriving a demand curve from indifference curves and budget constraints, normal and inferior goods, substitutes and complements, shifts in the demand curve, movements along the demand curve and shifts in the demand curve)
+  • 2.5 Market demand
+  • 2.6 Elasticity of demand (elasticity along a linear demand curve, factors determining price elasticity of demand for a good, elasticity and expenditure)
+
+Chapter 3: Production and Costs
+  • 3.1 Production function
+  • 3.2 The short run and the long run
+  • 3.3 Total product, average product and marginal product
+  • 3.4 The law of diminishing marginal product and the law of variable proportions
+  • 3.5 Shapes of total product, marginal product and average product curves
+  • 3.6 Returns to scale
+  • 3.7 Costs (short run costs, long run costs)
+
+Chapter 4: The Theory of the Firm under Perfect Competition
+  • 4.1 Perfect competition: defining features
+  • 4.2 Revenue
+  • 4.3 Profit maximisation (conditions and graphical representation)
+  • 4.4 Supply curve of a firm (short run supply curve, long run supply curve, the shut down point, the normal profit and break-even point)
+  • 4.5 Determinants of a firm's supply curve (technological progress, input prices)
+  • 4.6 Market supply curve
+  • 4.7 Price elasticity of supply
+
+Chapter 5: Market Equilibrium
+  • 5.1 Equilibrium, excess demand, excess supply (market equilibrium: fixed number of firms; free entry and exit)
+  • 5.2 Applications (price ceiling, price floor)
+  • [Retained: Non-Competitive Markets] Simple monopoly in the commodity market; other non-perfectly competitive markets — monopolistic competition, how do firms behave in oligopoly?
+
+Chapter 6: Introduction (Macroeconomics)
+  • 6.1 Emergence of macroeconomics
+  • 6.2 Context of the present book of macroeconomics
+
+Chapter 7: National Income Accounting
+  • 7.1 Some basic concepts of macroeconomics
+  • 7.2 Circular flow of income and methods of calculating national income (the product or value added method, expenditure method, income method, factor cost, basic prices and market prices)
+  • 7.3 Some macroeconomic identities
+  • 7.4 Nominal and real GDP
+  • 7.5 GDP and welfare
+
+Chapter 8: Money and Banking
+  • 8.1 Functions of money
+  • 8.2 Demand for money and supply of money
+  • 8.3 Money creation by banking system (balance sheet of a fictional bank, limits to credit creation and money multiplier)
+  • 8.4 Policy tools to control money supply
+
+Chapter 9: Determination of Income and Employment
+  • 9.1 Aggregate demand and its components (consumption, investment)
+  • 9.2 Determination of income in two-sector model
+  • 9.3 Determination of equilibrium income in the short run (macroeconomic equilibrium with price level fixed, effect of an autonomous change in aggregate demand on income and output, the multiplier mechanism)
+  • 9.4 Some more concepts (full employment, involuntary unemployment, excess demand and deficient demand)
+
+Chapter 10: Government Budget and the Economy
+  • 10.1 Government budget — meaning and its components (objectives of government budget, classification of receipts, classification of expenditure)
+  • 10.2 Balanced, surplus and deficit budget (measures of government deficit — revenue, fiscal and primary deficit)
+
+Chapter 11: Open Economy Macroeconomics
+  • 11.1 The balance of payments (current account, capital account, balance of payments surplus and deficit)
+  • 11.2 The foreign exchange market (foreign exchange rate, determination of the exchange rate — flexible, fixed and managed floating exchange rates)
+
+SUBJECT: HISTORY
+
+Chapter 1: Bricks, Beads and Bones: The Harappan Civilisation
+  • Beginnings
+  • Subsistence strategies
+  • Mohenjodaro: a planned urban centre
+  • Tracking social differences
+  • Finding out about craft production
+  • Strategies for procuring materials
+  • Seals, script, weights
+  • Ancient authority
+  • The end of the civilisation
+  • Discovering the Harappan civilisation
+  • Problems of piecing together the past
+
+Chapter 2: Kings, Farmers and Towns: Early States and Economies (c. 600 BCE–600 CE)
+  • Prinsep and Piyadassi
+  • The earliest states (the sixteen Mahajanapadas, first amongst the sixteen: Magadha)
+  • An early empire (finding out about the Mauryas, administering the empire)
+  • New notions of kingship
+  • A changing countryside
+  • Towns and trade
+  • Back to basics: how are inscriptions deciphered?
+  • The limitations of inscriptional evidence
+
+Chapter 3: Kinship, Caste and Class: Early Societies (c. 600 BCE–600 CE)
+  • The critical edition of the Mahabharata
+  • Kinship and marriage: many rules and varied practices
+  • Social differences: within and beyond the framework of caste
+  • Beyond birth: resources and status
+  • Explaining social differences: a social contract
+  • Handling texts: historians and the Mahabharata
+  • A dynamic text
+
+Chapter 4: Thinkers, Beliefs and Buildings: Cultural Developments (c. 600 BCE–600 CE)
+  • A glimpse of Sanchi
+  • The background: sacrifices and debates
+  • Beyond worldly pleasures: the message of Mahavira
+  • The Buddha and the quest for enlightenment
+  • The teachings of the Buddha
+  • Followers of the Buddha
+  • Stupas (why were stupas built?, how were stupas built?, the structure of the stupa)
+  • 'Discovering' stupas: the fate of Amaravati and Sanchi
+  • Sculpture
+  • New religious traditions (Mahayana Buddhism, growth of Puranic Hinduism)
+  • Can we see everything?
+
+Chapter 5: Through the Eyes of Travellers: Perceptions of Society (c. tenth to seventeenth centuries)
+  • Al-Biruni and the Kitab-ul-Hind
+  • Ibn Battuta's Rihla
+  • François Bernier: a doctor with a difference
+  • Making sense of an alien world: Al-Biruni and the Sanskritic tradition
+  • Ibn Battuta and the excitement of the unfamiliar
+  • Bernier and the 'degenerate' East
+  • Women: slaves, sati and labourers
+
+Chapter 6: Bhakti–Sufi Traditions: Changes in Religious Beliefs and Devotional Texts (c. eighth to eighteenth centuries)
+  • A mosaic of religious beliefs and practices
+  • Poems of prayer: early traditions of bhakti (the Alvars and Nayanars of Tamil Nadu)
+  • The Virashaiva tradition in Karnataka
+  • Religious ferment in north India
+  • New strands in the fabric: Islamic traditions
+  • The growth of Sufism (khanqahs and silsilas)
+  • The Chishtis in the subcontinent
+  • New devotional paths: dialogue and dissent in northern India (Kabir, Baba Guru Nanak, Mirabai)
+  • Reconstructing histories of religious traditions
+
+Chapter 7: An Imperial Capital: Vijayanagara (c. fourteenth to sixteenth centuries)
+  • The discovery of Hampi
+  • Rayas, Nayakas and Sultans
+  • Vijayanagara: the capital and its environs (water resources, fortifications and roads, the urban core)
+  • The royal centre (the Mahanavami Dibba, other buildings in the royal centre)
+  • The sacred centre (choosing a capital, gopurams and mandapas)
+  • Plotting palaces, temples and bazaars
+  • Questions in search of answers
+
+Chapter 8: Peasants, Zamindars and the State: Agrarian Society and the Mughal Empire (c. sixteenth-seventeenth centuries)
+  • Peasants and agricultural production
+  • The village community (caste and the rural milieu, panchayats and headmen, village artisans)
+  • Women in agrarian society
+  • Forests and tribes
+  • The zamindars
+  • Land revenue system
+  • The flow of silver
+  • The Ain-i Akbari of Abu'l Fazl Allami
+
+Chapter 9: Colonialism and the Countryside: Exploring Official Archives
+  • Bengal and the zamindars (the problem of unpaid revenue, the Fifth Report)
+  • The hoe and the plough (in the hills of Rajmahal: Paharias and Santhals)
+  • A revolt in the countryside: the Bombay Deccan (account books are burnt, the Deccan Riots Commission)
+
+Chapter 10: Rebels and the Raj: 1857 Revolt and Its Representations
+  • Pattern of the rebellion (how the mutinies began, lines of communication, leaders and followers, rumours and prophecies)
+  • Awadh in revolt ('a cherry that will drop into our mouth one day')
+  • What the rebels wanted
+  • Repression
+  • Images of the revolt
+
+Chapter 11: Mahatma Gandhi and the Nationalist Movement: Civil Disobedience and Beyond
+  • A leader announces himself
+  • The making and unmaking of non-cooperation
+  • The Salt Satyagraha: a case study (Dandi)
+  • Quit India
+  • The last heroic days
+  • Knowing Gandhi (public voice and private scripts, framing a picture, through police eyes, from newspapers)
+
+Chapter 12: Framing the Constitution: The Beginning of a New Era
+  • A tumultuous time
+  • The vision of the Constitution (the 'Objectives Resolution')
+  • Defining rights (the problem with separate electorates, depressed castes, the powers of the state)
+  • The language of the nation
+  • Centralisation and federalism
+  • [Retained: Old Theme 9 — Kings and Chronicles: The Mughal Courts] The Mughals and their empire, the production of chronicles (Akbar Nama and Badshah Nama), the painted image, capitals and courts, the imperial household, the imperial officials (mansabdari system)
+  • [Retained: Old Theme 12 — Colonial Cities] Towns and cities in pre-colonial times, finding out about colonial cities (census & maps), trends of change, segregation, town planning and architecture in Madras, Calcutta and Bombay
+  • [Retained: Old Theme 14 — Understanding Partition] Available histories, why and how did Partition happen?, the withdrawal of law and order, gendering Partition, regional variations, help, humanity, harmony, oral testimonies and history
+
+SUBJECT: POLITICAL SCIENCE
+
+Chapter 1: The End of Bipolarity
+  • What was the Soviet system?
+  • Gorbachev and the disintegration
+  • Why did the Soviet Union disintegrate?
+  • Consequences of disintegration
+  • 'Shock therapy' in post-communist regimes
+  • Tensions and conflicts
+  • India and post-communist countries
+
+Chapter 2: Contemporary Centres of Power
+  • European Union (EU)
+  • Association of South East Asian Nations (ASEAN)
+  • The rise of the Chinese economy
+  • India–China relations
+  • Japan and South Korea as emerging powers
+
+Chapter 3: Contemporary South Asia
+  • What is South Asia?
+  • The military and democracy in Pakistan
+  • Democracy in Bangladesh
+  • Monarchy and democracy in Nepal
+  • Ethnic conflict and democracy in Sri Lanka
+  • India-Pakistan conflicts
+  • India and its other neighbours
+  • Peace and cooperation (SAARC & SAFTA)
+
+Chapter 4: International Organisations
+  • Why international organisations?
+  • Evolution of the UN
+  • Reform of the UN after the Cold War
+  • Reform of structures and processes
+  • Jurisdiction of the UN
+  • India and the UN reforms
+  • The UN in a unipolar world (IMF, World Bank, WTO, IAEA, Amnesty International, Human Rights Watch)
+
+Chapter 5: Security in the Contemporary World
+  • What is security?
+  • Traditional notions: external and internal
+  • Traditional security and cooperation
+  • Non-traditional notions (human security and global security)
+  • New sources of threats (terrorism, human rights, global poverty, migration, health epidemics)
+  • Cooperative security
+  • India's security strategy
+
+Chapter 6: Environment and Natural Resources
+  • Environmental concerns in global politics
+  • The protection of global commons
+  • Common but differentiated responsibilities (Earth Summit 1992, Kyoto Protocol)
+  • 'Common property resources'
+  • India's stand on environmental issues
+  • Environmental movements
+  • Resource geopolitics
+  • The indigenous peoples and their rights
+
+Chapter 7: Globalisation
+  • The concept of globalisation
+  • Causes of globalisation
+  • Political, economic and cultural consequences
+  • India and globalisation
+  • Resistance to globalisation
+  • India and resistance to globalisation
+
+Chapter 8: Challenges of Nation Building
+  • Three challenges
+  • Partition: displacement and rehabilitation
+  • Integration of princely states (Hyderabad, Manipur)
+  • Reorganisation of states
+
+Chapter 9: Era of One-Party Dominance
+  • Challenge of building democracy
+  • Congress dominance in the first three general elections
+  • Nature of Congress dominance
+  • Emergence of opposition parties
+
+Chapter 10: Politics of Planned Development
+  • Political contestation, ideas of development
+  • The early initiatives (first and second five year plans)
+  • Key controversies (agriculture vs industry, public vs private sector)
+
+Chapter 11: India's External Relations
+  • International context
+  • The policy of non-alignment
+  • Peace and conflict with China (1962)
+  • Wars and peace with Pakistan (1965 & 1971)
+  • India's nuclear policy
+
+Chapter 12: Challenges to and Restoration of the Congress System
+  • Challenge of political succession
+  • Fourth general elections 1967
+  • Split in the Congress (1969)
+  • The 1971 election and restoration of Congress
+
+Chapter 13: The Crisis of Democratic Order
+  • Background to Emergency (Gujarat and Bihar movements)
+  • Declaration of Emergency (1975) and consequences
+  • Lessons of the Emergency
+  • Politics after Emergency (1977 Lok Sabha elections & Janata government)
+
+Chapter 14: Regional Aspirations
+  • Region and the nation
+  • Jammu and Kashmir
+  • Punjab
+  • The north-east (Assam, Mizoram, Nagaland)
+  • Accommodation and national integration
+
+Chapter 15: Recent Developments in Indian Politics
+  • Context of the 1990s
+  • Era of coalitions
+  • Political rise of Other Backward Classes (Mandal implementation)
+  • Communalism, secularism, democracy
+  • Emergence of a new consensus
+  • [Retained: Old Ch 1 — The Cold War Era] Cuban Missile Crisis, emergence of two power blocs (NATO & Warsaw Pact), arenas of the Cold War, challenge to bipolarity — Non-Aligned Movement (NAM), New International Economic Order (NIEO), India and the Cold War
+  • [Retained: Old Ch 3 — US Hegemony in World Politics] Beginning of the 'new world order' (first Gulf War, 9/11 and the 'global war on terror', Iraq invasion), hegemony as hard power, structural power, and soft power, India's relations with the US
+  • [Retained: Old Ch 7 — Rise of Popular Movements] Chipko movement, Dalit Panthers, Bharatiya Kisan Union (BKU), anti-arrack movement, Narmada Bachao Andolan, movement for Right to Information (RTI)
+
+SUBJECT: GEOGRAPHY
+
+Chapter 1: Human Geography: Nature and Scope
+  • Nature of human geography
+  • Naturalisation of humans and humanisation of nature (environmental determinism, possibilism, neo-determinism / stop and go determinism)
+  • Fields and sub-fields of human geography
+
+Chapter 2: The World Population — Distribution, Density and Growth
+  • Patterns of population distribution
+  • Density of population
+  • Factors influencing distribution
+  • Population growth
+  • Demographic transition theory
+
+Chapter 3: Human Development
+  • Growth and development
+  • Four pillars of human development
+  • Approaches to human development
+  • Measuring human development (HDI)
+
+Chapter 4: Primary Activities
+  • Hunting and gathering
+  • Pastoralism (nomadic herding & commercial livestock rearing)
+  • Agriculture (subsistence, plantation, extensive commercial grain, mixed, dairy, Mediterranean, market gardening/horticulture, co-operative & collective farming)
+  • Mining
+
+Chapter 5: Secondary Activities
+  • Manufacturing
+  • Characteristics of modern large scale manufacturing
+  • Classification of manufacturing industries
+
+Chapter 6: Tertiary and Quaternary Activities
+  • Types of tertiary activities (trade, transport, communication, services)
+  • Quaternary and quinary activities
+  • Medical tourism
+  • Digital divide
+
+Chapter 7: Transport and Communication
+  • Land transport (roads, highways, railways — trans-continental railways)
+  • Water transport (major sea routes, shipping canals — Suez & Panama, inland waterways)
+  • Air transport
+  • Pipelines
+  • Satellite & cyber space communication
+
+Chapter 8: International Trade
+  • History of international trade
+  • Basis of international trade
+  • Balance of trade
+  • Types of international trade
+  • WTO, regional trade blocs
+  • Concerns related to international trade
+  • Gateways of international trade (ports)
+
+Chapter 9: Population: Distribution, Density and Growth (India)
+  • Distribution, density (2011 Census)
+  • Growth of population
+  • Linguistic and religious composition
+  • Working population
+
+Chapter 10: Human Settlements
+  • Types of rural settlement (clustered, semi-clustered, hamleted, dispersed)
+  • Urban settlements in India
+  • Functional classification of towns
+
+Chapter 11: Land Resources and Agriculture
+  • Land use categories
+  • Cropping seasons in India (kharif, rabi, zaid)
+  • Foodgrains (rice, wheat, jowar, bajra, maize, pulses)
+  • Oilseeds
+  • Fibre crops (cotton, jute)
+  • Other crops (sugarcane, tea, coffee)
+  • Agricultural development in India
+
+Chapter 12: Water Resources
+  • Water resources of India
+  • Water demand and utilisation
+  • Watershed management
+  • Rainwater harvesting
+
+Chapter 13: Mineral and Energy Resources
+  • Distribution of minerals in India (ferrous: iron ore, manganese; non-ferrous: bauxite, copper; non-metallic: mica)
+  • Energy resources (coal, petroleum, natural gas, nuclear, solar, wind, tidal, geothermal, bio-energy)
+
+Chapter 14: Planning and Sustainable Development in Indian Context
+  • Target area planning (hill area & drought prone area programmes)
+  • Case study — Integrated Tribal Development Project in Bharmaur region
+  • Case study — Indira Gandhi Canal (Nahar) command area
+
+Chapter 15: Transport and Communication (India)
+  • Land transport (NHAI, Golden Quadrilateral, North-South and East-West corridors, Indian Railways, Konkan Railway)
+  • Water transport (national waterways)
+  • Air transport
+  • Oil and gas pipelines
+
+Chapter 16: International Trade (India)
+  • Changing pattern of the composition and direction of India's exports and imports
+  • Sea ports and airports as gateways of international trade
+
+Chapter 17: Geographical Perspective on Selected Issues and Problems
+  • Environmental pollution (water, air, noise, solid waste)
+  • Rural-urban migration and slums (Dharavi case study)
+  • Land degradation
+  • [Retained: Book 1 Old Ch 3 — Population Composition] Age-sex pyramid, rural-urban composition
+  • [Retained: Book 1 Old Ch 10 — Human Settlements (global patterns)]
+  • [Retained: Book 2 Old Ch 2 — Migration] Types, causes and consequences
+  • [Retained: Book 2 Old Ch 3 — Human Development in India]
+  • [Retained: Book 2 Old Ch 8 — Manufacturing Industries] Iron & steel, cotton textile, sugar, petrochemical, knowledge-based industries
+
+SUBJECT: SOCIOLOGY
+
+Chapter 1: Introducing Indian Society
+
+Chapter 2: The Demographic Structure of Indian Society
+  • Theories and concepts in demography (Malthusian & Demographic Transition Theory)
+  • Size and growth of India's population
+  • Age structure
+  • Declining sex-ratio
+  • Literacy
+  • Rural-urban differences
+  • Population policy in India
+
+Chapter 3: Social Institutions: Continuity and Change
+  • Caste and the caste system (varna & jati, colonialism and caste, Sanskritisation and dominant caste)
+  • Tribal communities
+  • Family and kinship (nuclear & extended, patrilineal & matrilineal)
+
+Chapter 4: The Market as a Social Institution
+  • Sociological perspectives on markets and the economy
+  • Weekly tribal market
+  • Caste-based trade
+  • Commoditisation and consumption
+  • Globalisation
+
+Chapter 5: Patterns of Social Inequality and Exclusion
+  • What is social about social inequality and exclusion?
+  • Caste and tribe — systems justifying and perpetuating inequality
+  • Untouchability
+  • State and non-state initiatives addressing caste and tribe discrimination
+  • Other Backward Classes (OBCs)
+  • Adivasi struggles
+  • Struggle for women's equality and rights
+  • Struggles of the disabled
+
+Chapter 6: The Challenges of Cultural Diversity
+  • Cultural communities and the nation-state
+  • Regionalism in the Indian context
+  • The nation-state and religion-related issues and identities
+  • Communalism, secularism and the nation-state
+  • State and civil society (RTI)
+
+Chapter 7: Structural Change
+  • Colonialism
+  • Industrialisation
+  • Urbanisation
+
+Chapter 8: Cultural Change
+  • Social reform movements
+  • Sanskritisation
+  • Modernisation
+  • Secularisation
+  • Westernisation
+
+Chapter 9: The Story of Indian Democracy
+  • [Retained] Constitution, Panchayati Raj, political parties
+
+Chapter 10: Change and Development in Rural Society
+  • Agrarian structure
+  • Land reforms
+  • Green revolution
+  • Circulation of labour
+
+Chapter 11: Change and Development in Industrial Society
+  • Images of industrial society
+  • Work and working conditions
+
+Chapter 12: Globalisation and Social Change
+  • [Retained content — Globalisation and Social Change]
+
+Chapter 13: Mass Media and Communications
+  • [Retained content — Mass Media and Communications]
+
+Chapter 14: Social Movements
+  • Ecological movements
+  • Class/peasant/workers' movements
+  • Caste/Dalit/Backward Class movements
+  • Tribal movements
+  • Women's movements
+
+SUBJECT: PSYCHOLOGY
+
+Chapter 1: Variations in Psychological Attributes
+  • Individual differences in human functioning
+  • Assessment of psychological attributes
+  • Intelligence and theories of intelligence (psychometric & information processing approaches, triarchic theory, PASS model)
+  • Individual differences in intelligence (nature vs nurture, assessment of intelligence / IQ)
+  • Culture and intelligence
+  • Emotional intelligence
+  • Special abilities: aptitude
+  • Creativity
+
+Chapter 2: Self and Personality
+  • Concept of self
+  • Cognitive and behavioural aspects of self (self-esteem, self-efficacy, self-regulation)
+  • Culture and self
+  • Concept of personality
+  • Major approaches to the study of personality (type, trait, psychodynamic, behavioural, cultural, humanistic approaches)
+  • Assessment of personality (self-report measures, projective techniques, behavioural analysis)
+
+Chapter 3: Meeting Life Challenges
+  • Nature, types and sources of stress
+  • Effects of stress on psychological functioning and health (general adaptation syndrome [GAS], stress and the immune system)
+  • Coping with stress
+  • Promoting positive health and well-being (stress resistant personality, life skills)
+
+Chapter 4: Psychological Disorders
+  • Concepts of abnormality and psychological disorders
+  • Classification of psychological disorders (DSM-5 and ICD)
+  • Factors underlying abnormal behaviour
+  • Major psychological disorders (anxiety, obsessive-compulsive, trauma- and stressor-related, somatic symptom, dissociative, depressive, bipolar, schizophrenia spectrum, neurodevelopmental, disruptive/impulse-control, feeding and eating, substance-related disorders)
+
+Chapter 5: Therapeutic Approaches
+  • Nature and process of psychotherapy
+  • Types of therapies (psychodynamic, behaviour, cognitive [RET & Aaron Beck's cognitive therapy], humanistic-existential, biomedical, alternative therapies — yoga & meditation)
+  • Rehabilitation of the mentally ill
+
+Chapter 6: Attitude and Social Cognition
+  • Explaining social behaviour
+  • Nature and components of attitudes (A-B-C components)
+  • Attitude formation and change (balance theory, cognitive dissonance, two-step concept)
+  • Prejudice and discrimination
+  • Strategies for handling prejudice
+  • Social cognition, schemas and stereotypes, impression formation and attribution, pro-social behaviour
+
+Chapter 7: Social Influence and Group Processes
+  • Nature and formation of groups
+  • Type of groups (primary/secondary, formal/informal, ingroup/outgroup)
+  • Influence of group on individual behaviour (social loafing, group polarisation)
+  • Conformity, compliance, and obedience
+  • Cooperation and competition, social identity, intergroup conflict and conflict resolution
+  • [Retained: Old Ch 8 — Psychology and Life] Human-environment relationship, environmental effects on human behaviour (noise, pollution, crowding, natural disasters), promoting pro-environmental behaviour, psychology and social concerns (poverty, discrimination, aggression, violence and peace, health)
+  • [Retained: Old Ch 9 — Developing Psychological Skills] Developing as an effective psychologist, general skills (observational skills), specific skills (communication skills, psychological testing skills, interviewing skills, counselling skills)
