@@ -275,6 +275,14 @@ function PrincipalDashboard() {
             </div>
           </div>
 
+          {/* Feature 3 & 4: Teacher Work Updates -- our USP feature, so it leads
+              the dashboard right under the welcome banner. Today's status
+              board, live at launch. Full history with a date picker lives at
+              its own route (see sidebar "Teacher Work Updates" -> /principal/work-updates). */}
+          <section id="principal-work-updates" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <PrincipalWorkUpdatesToday />
+          </section>
+
           {/* Quick Metrics Bar */}
           {stats && (
             <div id="principal-stats">
@@ -307,14 +315,6 @@ function PrincipalDashboard() {
               <PrincipalNoticeBoard />
             </FeatureLockOverlay>
           </section>
-
-          {/* Feature 3 & 4: Teacher Work Updates -- today's status board, live at
-              launch. Full history with a date picker lives at its own route
-              (see sidebar "Teacher Work Updates" -> /principal/work-updates). */}
-          <section id="principal-work-updates" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <PrincipalWorkUpdatesToday />
-          </section>
-
 
           {/* Feature 7a: Class Sections -> now their own route (see sidebar "Classes") --
               live at launch: Work Update needs the subject-teacher picker there. */}
