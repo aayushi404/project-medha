@@ -404,6 +404,7 @@ def list_class_sections(
     return [
         ClassSectionSummary(
             id=section.id,
+            grade_id=section.grade_id,
             grade_label=grade_label,
             section=section.section,
             academic_year_label=year.label,
@@ -435,6 +436,7 @@ def _class_section_out(db: Session, section: ClassSection) -> ClassSectionSummar
     teacher = db.get(Teacher, section.class_teacher_id) if section.class_teacher_id else None
     return ClassSectionSummary(
         id=section.id,
+        grade_id=section.grade_id,
         grade_label=grade.label if grade else "",
         section=section.section,
         academic_year_label=year.label if year else "",

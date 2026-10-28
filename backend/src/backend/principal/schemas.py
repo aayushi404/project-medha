@@ -92,6 +92,7 @@ class TeacherProfile(BaseModel):
 
 class ClassSectionSummary(BaseModel):
     id: uuid.UUID
+    grade_id: uuid.UUID
     grade_label: str
     section: str
     academic_year_label: str

@@ -52,7 +52,12 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
   useEffect(() => {
     if (!accessToken) return;
     getClassSection(accessToken, sectionId)
-      .then(setSection)
+      .then((s) => {
+        setSection(s);
+        // scoped to this section's grade so a Class 11/12 section doesn't
+        // offer the 6-10 composite Science/Social Science, and vice versa
+        getSubjects(s.grade_id).then(setSubjects).catch(() => {});
+      })
       .catch((e: unknown) => {
         setSectionError(true);
         toast.error(e instanceof Error ? e.message : "Could not load this class.");
@@ -61,7 +66,6 @@ export function ClassDetail({ sectionId }: { sectionId: string }) {
       .then(setRoster)
       .catch((e: unknown) => toast.error(e instanceof Error ? e.message : "Could not load roster."));
     getPrincipalTeachers(accessToken).then(setTeachers).catch(() => {});
-    getSubjects().then(setSubjects).catch(() => {});
     getReserveTeachers(accessToken, sectionId).then(setReserves).catch(() => {});
     getSectionTeachingAssignments(accessToken, sectionId)
       .then(setAssignments)

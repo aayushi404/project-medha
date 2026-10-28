@@ -17,6 +17,8 @@ class SubjectOut(BaseModel):
     id: uuid.UUID
     name: str
     board: str
+    min_grade_level: int | None = None
+    max_grade_level: int | None = None
 
 
 class SchoolSearchResult(BaseModel):

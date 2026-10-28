@@ -28,6 +28,14 @@ class Subject(Base):
     )
     name: Mapped[str]
     board: Mapped[str] = mapped_column(server_default="BSEB")
+    # Which grades this subject applies to -- NULL on either side means no
+    # limit on that side. Most subjects (Mathematics, English, ...) are left
+    # NULL/NULL ("every grade"); Science/Social Science are capped at 10 (they
+    # split into standalone +2 subjects); Physics/Accountancy/... are scoped
+    # 11-12. Used to filter the per-class "assign a teacher" subject picker so
+    # it only offers subjects that actually apply to that section's grade.
+    min_grade_level: Mapped[int | None]
+    max_grade_level: Mapped[int | None]
 
 
 class TeacherSubject(Base):
