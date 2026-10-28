@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { GovLanding } from "@/components/landing/gov-landing";
+import { LandingGate } from "@/components/landing/landing-gate";
 
 const title = "Medha — AI for better teaching and learning in Bihar";
 const description =
@@ -14,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function LandingPage() {
-  return <GovLanding />;
+  return <LandingGate />;
 }
