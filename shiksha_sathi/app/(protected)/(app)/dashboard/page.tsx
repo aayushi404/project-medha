@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 
 import { AskMedhaBar } from "@/components/app/ask-medha-bar";
 import { SchoolNoticeBanner } from "@/components/app/school-notice-banner";
-import { WorkUpdateModal } from "@/components/dashboard/work-update-modal";
 import { GenerationRow } from "@/components/generation/generation-row";
 import { QuickActionCard } from "@/components/generation/quick-action-card";
 import { listGenerations, type GenerationListItem } from "@/lib/api";
@@ -48,7 +47,6 @@ export default function DashboardHomePage() {
   const firstName = name.split(/\s+/)[0] ?? "";
 
   const [recent, setRecent] = useState<GenerationListItem[] | null>(null);
-  const [workUpdateOpen, setWorkUpdateOpen] = useState(false);
 
   const todayUpdate = getTodayUpdateForTeacher(teacher?.id);
   const badgeInfo = todayUpdate?.principal_feedback?.badge
@@ -86,9 +84,8 @@ export default function DashboardHomePage() {
           {/* Hero header */}
           <section className="flex min-h-[168px] flex-col pb-1">
             <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setWorkUpdateOpen(true)}
+              <Link
+                href="/work-update"
                 aria-label={copy.nav.workUpdate}
                 title={copy.nav.workUpdate}
                 className="group flex h-9 items-center gap-2 rounded-full border border-border/60 bg-card/75 px-3 text-xs font-medium text-foreground/80 shadow-2xs backdrop-blur-md transition-all hover:border-terracotta/40 hover:bg-card hover:text-foreground hover:shadow-xs active:scale-[0.98]"
@@ -122,7 +119,7 @@ export default function DashboardHomePage() {
                     {isHi ? "+ नया" : "+ New"}
                   </span>
                 )}
-              </button>
+              </Link>
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-terracotta/15 text-sm font-medium text-terracotta">
                 {initials(name)}
               </span>
@@ -194,8 +191,6 @@ export default function DashboardHomePage() {
           </div>
         </div>
       </div>
-
-      <WorkUpdateModal open={workUpdateOpen} onClose={() => setWorkUpdateOpen(false)} />
     </main>
   );
 }

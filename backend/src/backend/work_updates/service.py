@@ -118,6 +118,7 @@ def create(db: Session, teacher: Teacher, payload: WorkUpdateCreateIn) -> WorkUp
         homework=[h.model_dump(mode="json") for h in homework],
         ai_usefulness=payload.ai_usefulness,
         note=note,
+        chapter_completed=payload.chapter_completed,
     )
     db.add(row)
     db.commit()
@@ -161,6 +162,7 @@ def _staff_out(db: Session, rows: list[WorkUpdate]) -> list[WorkUpdateOut]:
             homework=[HomeworkRef(**h) for h in r.homework],
             ai_usefulness=r.ai_usefulness,
             note=r.note,
+            chapter_completed=r.chapter_completed,
             principal_note=r.principal_note,
             principal_badge=r.principal_badge,
             flagged=r.flagged,
@@ -241,6 +243,7 @@ def list_for_student(db: Session, student: Student) -> list[WorkUpdateStudentOut
             other_topics=r.other_topics,
             activity_detail=r.activity_detail,
             homework=[HomeworkRef(**h) for h in r.homework],
+            chapter_completed=r.chapter_completed,
             approve_count=counts.get(r.id, {}).get("approve", 0),
             disapprove_count=counts.get(r.id, {}).get("disapprove", 0),
             my_reaction=mine.get(r.id),
@@ -249,10 +252,67 @@ def list_for_student(db: Session, student: Student) -> list[WorkUpdateStudentOut
     ]
 
 
+def _coverage_rows(
+    db: Session,
+    school_id: uuid.UUID,
+    grade_ids: list[uuid.UUID],
+    totals: dict[uuid.UUID, int],
+) -> list[SyllabusCoverageOut]:
+    """Shared tail of syllabus-coverage reporting: given which chapters exist
+    (`totals`, per subject) for the relevant grades, count how many of them
+    are *completed* -- not merely touched -- going by each chapter's most
+    recent work update, so a teacher can un-complete a chapter by filing a
+    later update with the box off."""
+    latest = (
+        db.query(
+            WorkUpdate.subject_id,
+            WorkUpdate.chapter_completed,
+            func.row_number()
+            .over(
+                partition_by=(WorkUpdate.grade_id, WorkUpdate.subject_id, WorkUpdate.chapter_id),
+                order_by=WorkUpdate.created_at.desc(),
+            )
+            .label("rn"),
+        )
+        .filter(
+            WorkUpdate.school_id == school_id,
+            WorkUpdate.grade_id.in_(grade_ids),
+            WorkUpdate.chapter_id.isnot(None),
+        )
+        .subquery()
+    )
+    covered = dict(
+        db.query(latest.c.subject_id, func.count())
+        .filter(latest.c.rn == 1, latest.c.chapter_completed.is_(True))
+        .group_by(latest.c.subject_id)
+        .all()
+    )
+
+    names = {
+        s.id: s.name for s in db.query(Subject.id, Subject.name).filter(Subject.id.in_(totals.keys())).all()
+    }
+
+    rows = []
+    for subject_id, total in totals.items():
+        done = min(covered.get(subject_id, 0), total)
+        rows.append(
+            SyllabusCoverageOut(
+                subject_id=subject_id,
+                subject_name=names.get(subject_id, ""),
+                total_chapters=total,
+                chapters_covered=done,
+                progress_percent=round(done / total * 100) if total else 0,
+            )
+        )
+    rows.sort(key=lambda r: r.subject_name)
+    return rows
+
+
 def syllabus_coverage(db: Session, principal: Teacher) -> list[SyllabusCoverageOut]:
     """Per-subject syllabus progress for the principal's school: how many of
     the chapters that actually apply to this school's current grades have
-    been reported taught in a work update, out of how many exist.
+    been marked *completed* (not just touched) in a work update, out of how
+    many exist.
 
     "Applies to this school" means the grades it currently runs sections for
     (`ClassSection`, current academic year) -- a school with only Class 9
@@ -280,36 +340,31 @@ def syllabus_coverage(db: Session, principal: Teacher) -> list[SyllabusCoverageO
     if not totals:
         return []
 
-    covered = dict(
-        db.query(WorkUpdate.subject_id, func.count(func.distinct(WorkUpdate.chapter_id)))
-        .filter(
-            WorkUpdate.school_id == school_id,
-            WorkUpdate.grade_id.in_(grade_ids),
-            WorkUpdate.chapter_id.isnot(None),
-            WorkUpdate.activities.contains(["taught_chapter"]),
-        )
-        .group_by(WorkUpdate.subject_id)
+    return _coverage_rows(db, school_id, grade_ids, totals)
+
+
+def my_syllabus_coverage(db: Session, teacher: Teacher) -> list[SyllabusCoverageOut]:
+    """Same per-subject progress as `syllabus_coverage`, but scoped to just
+    the (grade, subject) pairs this teacher is assigned to teach -- the
+    "your progress" strip a teacher sees while filing a work update, so
+    marking a chapter complete has a visible, immediate effect."""
+    school_id = _school_id(teacher)
+    pairs = _assigned_subjects(db, teacher)
+    if not pairs:
+        return []
+    grade_ids = list({p.grade_id for p in pairs})
+    subject_ids = list({p.subject_id for p in pairs})
+
+    totals = dict(
+        db.query(CurriculumChapter.subject_id, func.count(CurriculumChapter.id))
+        .filter(CurriculumChapter.grade_id.in_(grade_ids), CurriculumChapter.subject_id.in_(subject_ids))
+        .group_by(CurriculumChapter.subject_id)
         .all()
     )
+    if not totals:
+        return []
 
-    names = {
-        s.id: s.name for s in db.query(Subject.id, Subject.name).filter(Subject.id.in_(totals.keys())).all()
-    }
-
-    rows = []
-    for subject_id, total in totals.items():
-        done = min(covered.get(subject_id, 0), total)
-        rows.append(
-            SyllabusCoverageOut(
-                subject_id=subject_id,
-                subject_name=names.get(subject_id, ""),
-                total_chapters=total,
-                chapters_covered=done,
-                progress_percent=round(done / total * 100) if total else 0,
-            )
-        )
-    rows.sort(key=lambda r: r.subject_name)
-    return rows
+    return _coverage_rows(db, school_id, grade_ids, totals)
 
 
 def react(db: Session, student: Student, update_id: uuid.UUID, value: str | None) -> WorkUpdateStudentOut:

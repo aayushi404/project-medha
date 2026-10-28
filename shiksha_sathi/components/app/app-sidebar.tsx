@@ -25,12 +25,12 @@ import {
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 import { LanguageToggle } from "@/components/app/language-toggle";
 import { ProfileMenu } from "@/components/app/profile-menu";
-import { WorkUpdateModal } from "@/components/dashboard/work-update-modal";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useAuth } from "@/lib/auth-context";
 import { useCopy } from "@/lib/copy";
@@ -44,10 +44,13 @@ type NavItem = { href: string; navKey: keyof Copy["nav"]; icon: LucideIcon };
 type NavGroupKey = "academics" | "resources" | "exams";
 type NavGroup = { key: NavGroupKey; icon: LucideIcon; items: NavItem[] };
 
-/** Always open, at the top of the menu. */
+/** Always open, at the top of the menu. Work Update gets its own row here
+ * (rendered specially, see NavList) rather than sitting inside a group --
+ * it's the flagship feature, not just another resource link. */
 const NAV_TOP: NavItem[] = [
   { href: "/dashboard", navKey: "home", icon: Home },
   { href: "/ask", navKey: "askMedha", icon: MessageCircle },
+  { href: "/work-update", navKey: "workUpdate", icon: ClipboardPenLine },
 ];
 
 /** Collapsible groups, in menu order. Work Update sits after Homework (see NavRows). */
@@ -106,19 +109,23 @@ function readSidebarWidth(): number {
 
 const COLLAPSE_KEY = "medha.sidebarCollapsed";
 
+/** Work Update's own top-level nav row -- a real link (not a modal trigger)
+ * to its dedicated page, with a live "today" status pill generic NavLink
+ * doesn't have room for. */
 function SidebarWorkUpdateItem({
   collapsed,
   onNavigate,
-  onOpenWorkUpdate,
+  pathname,
 }: {
   collapsed?: boolean;
   onNavigate?: () => void;
-  onOpenWorkUpdate: () => void;
+  pathname: string;
 }) {
   const { teacher } = useAuth();
   const { getTodayUpdateForTeacher } = useWorkUpdates();
   const copy = useCopy();
 
+  const active = isActivePath(pathname, "/work-update");
   const todayUpdate = getTodayUpdateForTeacher(teacher?.id);
   const badgeInfo = todayUpdate?.principal_feedback?.badge
     ? PRINCIPAL_BADGES[todayUpdate.principal_feedback.badge]
@@ -126,17 +133,17 @@ function SidebarWorkUpdateItem({
   const label = copy.nav.workUpdate;
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        onOpenWorkUpdate();
-        onNavigate?.();
-      }}
+    <Link
+      href="/work-update"
+      onClick={onNavigate}
       title={collapsed ? label : undefined}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors text-left",
+        "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors",
         collapsed && "justify-center px-0",
-        "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+        active
+          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
       )}
     >
       <div className="relative flex size-4 shrink-0 items-center justify-center">
@@ -146,7 +153,7 @@ function SidebarWorkUpdateItem({
         )}
       </div>
       {collapsed ? null : (
-        <div className="flex flex-1 items-center justify-between">
+        <div className="flex flex-1 items-center justify-between gap-2">
           <span className="truncate">{label}</span>
           {badgeInfo ? (
             <span className="inline-flex items-center gap-0.5 text-xs font-semibold" title={badgeInfo.label}>
@@ -163,7 +170,7 @@ function SidebarWorkUpdateItem({
           )}
         </div>
       )}
-    </button>
+    </Link>
   );
 }
 
@@ -186,8 +193,9 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
 }
 
 /** Early-access rollout: unlocked previews. Everything else still
- * shows a lock badge. Work Update is its own sidebar row (not a route), so
- * it's unaffected. */
+ * shows a lock badge. Work Update is rendered specially (see NavList) and
+ * never goes through this set -- its route-level lock lives in
+ * TEACHER_UNLOCKED_PREFIXES, (app)/layout.tsx. */
 const UNLOCKED_HREFS = new Set([
   "/dashboard",
   "/ask",
@@ -200,19 +208,16 @@ const UNLOCKED_HREFS = new Set([
   "/timetable",
 ]);
 
-/** One nav link, plus the Work Update row that follows Homework. */
 function NavRows({
   item,
   collapsed,
   onNavigate,
   pathname,
-  onOpenWorkUpdate,
 }: {
   item: NavItem;
   collapsed?: boolean;
   onNavigate?: () => void;
   pathname: string;
-  onOpenWorkUpdate: () => void;
 }) {
   const copy = useCopy();
   const { href, navKey, icon } = item;
@@ -225,11 +230,7 @@ function NavRows({
       collapsed={collapsed}
       onNavigate={onNavigate}
       locked={!UNLOCKED_HREFS.has(href)}
-    >
-      {navKey === "homework" && (
-        <SidebarWorkUpdateItem collapsed={collapsed} onNavigate={onNavigate} onOpenWorkUpdate={onOpenWorkUpdate} />
-      )}
-    </NavLink>
+    />
   );
 }
 
@@ -239,7 +240,6 @@ function NavList({
   scroll = true,
   groupOpen,
   onToggleGroup,
-  onOpenWorkUpdate,
 }: {
   onNavigate?: () => void;
   collapsed?: boolean;
@@ -250,10 +250,6 @@ function NavList({
    * only when the current page is one of its links. */
   groupOpen: Partial<Record<NavGroupKey, boolean>>;
   onToggleGroup: (key: NavGroupKey, open: boolean) => void;
-  /** Opens the Work Update modal. Owned by AppSidebar, outside the mobile
-   * drawer's Dialog.Root, so the modal survives the drawer closing (see
-   * SidebarWorkUpdateItem). */
-  onOpenWorkUpdate: () => void;
 }) {
   const copy = useCopy();
   const pathname = usePathname();
@@ -269,9 +265,13 @@ function NavList({
       {collapsed ? null : (
         <span className="eyebrow px-3 pt-1 pb-1 text-muted-foreground">{copy.navMain}</span>
       )}
-      {NAV_TOP.map((item) => (
-        <NavRows key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} onOpenWorkUpdate={onOpenWorkUpdate} />
-      ))}
+      {NAV_TOP.map((item) =>
+        item.href === "/work-update" ? (
+          <SidebarWorkUpdateItem key={item.href} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} />
+        ) : (
+          <NavRows key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} />
+        ),
+      )}
 
       {NAV_GROUPS.map((group) => {
         if (collapsed) {
@@ -279,7 +279,7 @@ function NavList({
           return (
             <div key={group.key} className="mt-1 flex flex-col gap-1 border-t border-sidebar-border pt-1">
               {group.items.map((item) => (
-                <NavRows key={item.href} item={item} collapsed onNavigate={onNavigate} pathname={pathname} onOpenWorkUpdate={onOpenWorkUpdate} />
+                <NavRows key={item.href} item={item} collapsed onNavigate={onNavigate} pathname={pathname} />
               ))}
             </div>
           );
@@ -295,14 +295,14 @@ function NavList({
             onToggle={() => onToggleGroup(group.key, !open)}
           >
             {group.items.map((item) => (
-              <NavRows key={item.href} item={item} onNavigate={onNavigate} pathname={pathname} onOpenWorkUpdate={onOpenWorkUpdate} />
+              <NavRows key={item.href} item={item} onNavigate={onNavigate} pathname={pathname} />
             ))}
           </NavAccordion>
         );
       })}
 
       {NAV_BOTTOM.map((item) => (
-        <NavRows key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} onOpenWorkUpdate={onOpenWorkUpdate} />
+        <NavRows key={item.href} item={item} collapsed={collapsed} onNavigate={onNavigate} pathname={pathname} />
       ))}
     </nav>
   );
@@ -362,10 +362,6 @@ function SidebarFooter({ collapsed }: { collapsed?: boolean }) {
 export function AppSidebar() {
   // drawer closes via onNavigate (link click) and Base UI's own backdrop/esc
   const [open, setOpen] = useState(false);
-  // Owned here, above the mobile drawer's Dialog.Root, so closing the drawer
-  // (which unmounts its whole subtree once its close transition ends) can't
-  // tear down this modal along with it -- see SidebarWorkUpdateItem.
-  const [workUpdateOpen, setWorkUpdateOpen] = useState(false);
   // Lazy-init from localStorage: safe because this component only ever
   // mounts client-side, after auth resolves (see lib/lesson-context.tsx's
   // readInitial() for the same established pattern) -- no SSR mismatch.
@@ -451,7 +447,6 @@ export function AppSidebar() {
             scroll={false}
             groupOpen={groupOpen}
             onToggleGroup={toggleGroup}
-            onOpenWorkUpdate={() => setWorkUpdateOpen(true)}
           />
           {collapsed ? null : (
             <div className="mt-3 flex shrink-0 flex-col gap-0">
@@ -526,7 +521,6 @@ export function AppSidebar() {
                 onNavigate={() => setOpen(false)}
                 groupOpen={groupOpen}
                 onToggleGroup={toggleGroup}
-                onOpenWorkUpdate={() => setWorkUpdateOpen(true)}
               />
               <SidebarFooter />
             </Dialog.Popup>
@@ -537,8 +531,6 @@ export function AppSidebar() {
         <NotificationBell className="ml-auto" />
         <LanguageToggle />
       </div>
-
-      <WorkUpdateModal open={workUpdateOpen} onClose={() => setWorkUpdateOpen(false)} />
     </>
   );
 }

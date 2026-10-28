@@ -39,6 +39,7 @@ class WorkUpdate(Base):
     homework: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     ai_usefulness: Mapped[str]
     note: Mapped[str]
+    chapter_completed: Mapped[bool] = mapped_column(server_default=text("false"))
     principal_note: Mapped[str | None]
     principal_badge: Mapped[str | None]
     flagged: Mapped[bool] = mapped_column(server_default=text("false"))

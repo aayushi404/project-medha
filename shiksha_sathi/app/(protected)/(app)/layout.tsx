@@ -11,12 +11,11 @@ import { ProfileProvider } from "@/lib/profile-context";
 import { SchoolProvider } from "@/lib/school-context";
 
 /**
- * Early-access rollout: only Ask Medha, Work Update (reached from the
- * sidebar inside Homework, not its own route), Lesson Plan, History and
- * Simulations are live for teachers at launch. Everything else still renders
- * for real underneath a lock overlay (see FeatureLockOverlay) so it previews
- * rather than disappears. Profile stays open since it's account settings,
- * not a content feature.
+ * Early-access rollout: these previews are live for teachers at launch.
+ * Everything else still renders for real underneath a lock overlay (see
+ * FeatureLockOverlay) so it previews rather than disappears. Profile stays
+ * open since it's account settings, not a content feature. Work Update has
+ * its own dedicated route/page now (not a modal reached via Homework).
  */
 const TEACHER_UNLOCKED_PREFIXES = [
   "/dashboard",
@@ -31,6 +30,7 @@ const TEACHER_UNLOCKED_PREFIXES = [
   "/create",
   "/report-card",
   "/timetable",
+  "/work-update",
 ];
 
 function isTeacherRouteLocked(pathname: string): boolean {

@@ -28,6 +28,7 @@ class WorkUpdateCreateIn(BaseModel):
     activity_detail: str | None = Field(default=None, max_length=300)
     ai_usefulness: AiRating
     note: str = Field(min_length=1, max_length=300)
+    chapter_completed: bool = False
 
 
 class HomeworkRef(BaseModel):
@@ -59,6 +60,7 @@ class WorkUpdateOut(BaseModel):
     homework: list[HomeworkRef]
     ai_usefulness: str
     note: str
+    chapter_completed: bool
     principal_note: str | None
     principal_badge: str | None
     flagged: bool
@@ -82,6 +84,7 @@ class WorkUpdateStudentOut(BaseModel):
     other_topics: str | None
     activity_detail: str | None
     homework: list[HomeworkRef]
+    chapter_completed: bool
     approve_count: int
     disapprove_count: int
     my_reaction: Literal["approve", "disapprove"] | None

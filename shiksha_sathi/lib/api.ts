@@ -86,6 +86,8 @@ export type Subject = {
   id: string;
   name: string;
   board: string;
+  min_grade_level: number | null;
+  max_grade_level: number | null;
 };
 
 export type SchoolSearchResult = {
@@ -354,7 +356,12 @@ export const deleteProfilePhoto = (token: string | null) =>
   json<Profile>(apiFetch("/profile/photo", { method: "DELETE", token }));
 
 export const getGrades = () => json<Grade[]>(apiFetch("/reference/grades"));
-export const getSubjects = () => json<Subject[]>(apiFetch("/reference/subjects"));
+// Omit gradeId for the full catalog; pass it to scope the list to subjects
+// that actually apply to that grade (see backend/reference/router.py).
+export const getSubjects = (gradeId?: string) =>
+  json<Subject[]>(
+    apiFetch(`/reference/subjects${gradeId ? `?grade_id=${encodeURIComponent(gradeId)}` : ""}`),
+  );
 
 export const getChapters = (gradeId: string, subjectId: string) =>
   json<Chapter[]>(
@@ -860,6 +867,7 @@ export const rejectTeacher = (token: string | null, id: string, reason: string) 
 
 export type ClassSectionSummary = {
   id: string;
+  grade_id: string;
   grade_label: string;
   section: string;
   academic_year_label: string;
@@ -1486,6 +1494,7 @@ export type WorkUpdateApi = {
   homework: WorkUpdateHomeworkRef[];
   ai_usefulness: string;
   note: string;
+  chapter_completed: boolean;
   principal_note: string | null;
   principal_badge: string | null;
   flagged: boolean;
@@ -1506,6 +1515,7 @@ export type WorkUpdateStudentItem = {
   other_topics: string | null;
   activity_detail: string | null;
   homework: WorkUpdateHomeworkRef[];
+  chapter_completed: boolean;
   approve_count: number;
   disapprove_count: number;
   my_reaction: "approve" | "disapprove" | null;
@@ -1521,6 +1531,7 @@ export type WorkUpdateCreateInput = {
   activity_detail?: string | null;
   ai_usefulness: string;
   note: string;
+  chapter_completed: boolean;
 };
 
 export const createWorkUpdate = (token: string | null, body: WorkUpdateCreateInput) =>
@@ -1565,6 +1576,11 @@ export type SyllabusCoverageApi = {
 
 export const getSyllabusCoverage = (token: string | null) =>
   json<SyllabusCoverageApi[]>(apiFetch("/work-updates/syllabus-coverage", { token }));
+
+/** Same shape, scoped to the calling teacher's own assigned classes --
+ * powers the "your progress" strip on the work-update page. */
+export const getMySyllabusCoverage = (token: string | null) =>
+  json<SyllabusCoverageApi[]>(apiFetch("/work-updates/my-syllabus-coverage", { token }));
 
 // ---------------------------------------------------------------------------
 // Timetable: one weekly grid per grade (Mon-Sat x periods), read by anyone at

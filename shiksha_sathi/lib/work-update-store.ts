@@ -49,6 +49,7 @@ export type TeacherWorkUpdate = {
   homework: { id: string; title: string }[];
   ai_usefulness: AiHelpfulnessRating;
   note: string;
+  chapter_completed: boolean;
   principal_feedback?: PrincipalFeedback;
   reactions: WorkUpdateReaction[];
 };
@@ -205,6 +206,7 @@ function fromApi(u: WorkUpdateApi): TeacherWorkUpdate {
     homework: u.homework,
     ai_usefulness: u.ai_usefulness as AiHelpfulnessRating,
     note: u.note,
+    chapter_completed: u.chapter_completed,
     reactions: u.reactions,
     principal_feedback:
       u.feedback_at != null

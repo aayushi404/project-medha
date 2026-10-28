@@ -41,6 +41,13 @@ def syllabus_coverage(
     return service.syllabus_coverage(db, principal)
 
 
+@router.get("/my-syllabus-coverage", response_model=list[SyllabusCoverageOut])
+def my_syllabus_coverage(
+    teacher: Teacher = Depends(require_teacher), db: Session = Depends(get_db)
+) -> list[SyllabusCoverageOut]:
+    return service.my_syllabus_coverage(db, teacher)
+
+
 @router.get("/homework-today", response_model=list[HomeworkRef])
 def homework_today(
     grade_id: uuid.UUID,

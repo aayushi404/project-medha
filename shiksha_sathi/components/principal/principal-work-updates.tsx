@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ReactionNames } from "@/components/dashboard/work-update-modal";
+import { ReactionNames } from "@/components/work-update/reaction-names";
 
 import {
   AI_USEFULNESS_OPTIONS,
@@ -183,6 +183,11 @@ export function PrincipalWorkUpdatesFeed() {
                   <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-muted/40 px-2.5 py-1.5 text-xs text-foreground/90">
                     <BookOpen className="size-3.5 shrink-0 text-terracotta" />
                     <span className="truncate font-medium">{item.chapter_title}</span>
+                    {item.chapter_completed && (
+                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                        ✅ Chapter Completed
+                      </span>
+                    )}
                   </div>
 
                   {/* Activity badges (tick marks summary) */}
