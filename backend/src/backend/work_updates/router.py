@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ from backend.db.models import Student, Teacher
 from backend.db.session import get_db
 from backend.work_updates import service
 from backend.work_updates.schemas import (
+    DailyStatusOut,
     HomeworkRef,
     PrincipalFeedbackIn,
     ReactIn,
@@ -46,6 +48,13 @@ def my_syllabus_coverage(
     teacher: Teacher = Depends(require_teacher), db: Session = Depends(get_db)
 ) -> list[SyllabusCoverageOut]:
     return service.my_syllabus_coverage(db, teacher)
+
+
+@router.get("/daily-status", response_model=DailyStatusOut)
+def daily_status(
+    date: date | None = None, principal: Teacher = Depends(require_principal), db: Session = Depends(get_db)
+) -> DailyStatusOut:
+    return service.daily_status(db, principal, date)
 
 
 @router.get("/homework-today", response_model=list[HomeworkRef])

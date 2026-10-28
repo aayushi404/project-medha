@@ -61,6 +61,10 @@ import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
  * password without needing database access.
  *
  * /principal/admission is ALSO exempt: unlocked to demo to schools.
+ *
+ * /principal/work-updates is ALSO exempt: the full history behind the
+ * dashboard's "today" board (components/principal/principal-work-updates-today.tsx) --
+ * same flagship feature, just its own route now instead of an in-page anchor.
  */
 function isPrincipalRouteLocked(pathname: string): boolean {
   if (
@@ -73,7 +77,9 @@ function isPrincipalRouteLocked(pathname: string): boolean {
     pathname === "/principal/admission" ||
     pathname.startsWith("/principal/admission/") ||
     pathname === "/principal/timetable" ||
-    pathname.startsWith("/principal/timetable/")
+    pathname.startsWith("/principal/timetable/") ||
+    pathname === "/principal/work-updates" ||
+    pathname.startsWith("/principal/work-updates/")
   ) {
     return false;
   }
@@ -97,7 +103,7 @@ const PRINCIPAL_SIDEBAR_NAV: PrincipalNavItem[] = [
   { id: "principal-overview", href: "/principal#principal-overview", labelEn: "Overview", labelHi: "डैशबोर्ड सारांश", icon: LayoutDashboard },
   { id: "principal-attendance-full", href: "/principal/attendance", labelEn: "Attendance", labelHi: "उपस्थिति", icon: CalendarCheck, ownRoute: true, locked: true },
   { id: "principal-notices", href: "/principal#principal-notices", labelEn: "Notice Board", labelHi: "सूचना पट्ट (Notices)", icon: Megaphone, locked: true },
-  { id: "principal-work-updates", href: "/principal#principal-work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine },
+  { id: "principal-work-updates", href: "/principal/work-updates", labelEn: "Teacher Work Updates", labelHi: "शिक्षक कार्य अपडेट", icon: ClipboardPenLine, ownRoute: true },
   { id: "principal-teachers", href: "/principal/teachers", labelEn: "Teachers", labelHi: "शिक्षक", icon: Users, ownRoute: true },
   { id: "principal-classes", href: "/principal/classes", labelEn: "Classes", labelHi: "कक्षाएँ", icon: LayoutGrid, ownRoute: true },
   { id: "principal-timetable", href: "/principal/timetable", labelEn: "Timetable", labelHi: "समय-सारणी", icon: CalendarDays, ownRoute: true },

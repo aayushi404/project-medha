@@ -1582,6 +1582,33 @@ export const getSyllabusCoverage = (token: string | null) =>
 export const getMySyllabusCoverage = (token: string | null) =>
   json<SyllabusCoverageApi[]>(apiFetch("/work-updates/my-syllabus-coverage", { token }));
 
+export type DailyStatusDay = { date: string; submitted: boolean };
+
+export type TeacherDailyStatus = {
+  teacher_id: string;
+  teacher_name: string;
+  photo_url: string | null;
+  submitted_today: boolean;
+  updates: WorkUpdateApi[];
+  recent_days: DailyStatusDay[];
+};
+
+export type DailyStatusApi = {
+  date: string;
+  teachers: TeacherDailyStatus[];
+  submitted_count: number;
+  total_count: number;
+};
+
+/** Every teacher at the school for one date (default today): who filed a
+ * work update, what they filed, and a short trailing streak. Drives both
+ * the principal dashboard's "today" view and the work-updates history
+ * route's date picker. */
+export const getWorkUpdateDailyStatus = (token: string | null, date?: string) =>
+  json<DailyStatusApi>(
+    apiFetch(`/work-updates/daily-status${date ? `?date=${encodeURIComponent(date)}` : ""}`, { token }),
+  );
+
 // ---------------------------------------------------------------------------
 // Timetable: one weekly grid per grade (Mon-Sat x periods), read by anyone at
 // the school, edited by a teacher or principal.

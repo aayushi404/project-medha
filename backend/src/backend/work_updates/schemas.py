@@ -109,3 +109,29 @@ class SyllabusCoverageOut(BaseModel):
     total_chapters: int
     chapters_covered: int
     progress_percent: int
+
+
+class DailyStatusDay(BaseModel):
+    date: date_
+    submitted: bool
+
+
+class TeacherDailyStatus(BaseModel):
+    """One teacher's submission picture for a given date: did they file a
+    work update that day, what did they file, and a short trailing streak so
+    a principal can tell a consistent teacher from a sporadic one at a
+    glance."""
+
+    teacher_id: uuid.UUID
+    teacher_name: str
+    photo_url: str | None
+    submitted_today: bool
+    updates: list[WorkUpdateOut]
+    recent_days: list[DailyStatusDay]
+
+
+class DailyStatusOut(BaseModel):
+    date: date_
+    teachers: list[TeacherDailyStatus]
+    submitted_count: int
+    total_count: int

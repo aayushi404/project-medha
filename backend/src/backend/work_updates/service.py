@@ -24,10 +24,13 @@ from backend.db.models import (
 )
 from backend.profile.service import _assigned_subjects
 from backend.work_updates.schemas import (
+    DailyStatusDay,
+    DailyStatusOut,
     HomeworkRef,
     PrincipalFeedbackIn,
     ReactionOut,
     SyllabusCoverageOut,
+    TeacherDailyStatus,
     WorkUpdateCreateIn,
     WorkUpdateOut,
     WorkUpdateStudentOut,
@@ -179,6 +182,81 @@ def list_for_staff(db: Session, user: Teacher) -> list[WorkUpdateOut]:
     if user.role != "principal":
         q = q.filter(WorkUpdate.teacher_id == user.id)
     return _staff_out(db, q.order_by(WorkUpdate.created_at.desc()).limit(STAFF_LIMIT).all())
+
+
+DAILY_STATUS_WINDOW_DAYS = 5
+
+
+def daily_status(db: Session, principal: Teacher, target_date: date | None) -> DailyStatusOut:
+    """Every teacher at the school, for one date: did they file a work
+    update, what did they file, and a short trailing streak (the last
+    DAILY_STATUS_WINDOW_DAYS days ending on that date) so the principal can
+    tell a consistent teacher from a sporadic one at a glance. Powers both
+    the dashboard's "today" view (no date -> today) and the history route's
+    date-picker (any date) -- same query, same shape."""
+    school_id = _school_id(principal)
+    target = target_date or _today()
+    window_start = target - timedelta(days=DAILY_STATUS_WINDOW_DAYS - 1)
+
+    teachers = (
+        db.query(Teacher)
+        .filter(Teacher.role == "teacher", Teacher.school_id == school_id, Teacher.approval_status == "approved")
+        .order_by(Teacher.full_name)
+        .all()
+    )
+    if not teachers:
+        return DailyStatusOut(date=target, teachers=[], submitted_count=0, total_count=0)
+    teacher_ids = [t.id for t in teachers]
+
+    submitted_dates: dict[uuid.UUID, set] = {}
+    for teacher_id, work_date in (
+        db.query(WorkUpdate.teacher_id, WorkUpdate.work_date)
+        .filter(
+            WorkUpdate.school_id == school_id,
+            WorkUpdate.teacher_id.in_(teacher_ids),
+            WorkUpdate.work_date >= window_start,
+            WorkUpdate.work_date <= target,
+        )
+        .distinct()
+        .all()
+    ):
+        submitted_dates.setdefault(teacher_id, set()).add(work_date)
+
+    today_rows = (
+        db.query(WorkUpdate)
+        .filter(
+            WorkUpdate.school_id == school_id,
+            WorkUpdate.teacher_id.in_(teacher_ids),
+            WorkUpdate.work_date == target,
+        )
+        .order_by(WorkUpdate.created_at.desc())
+        .all()
+    )
+    today_by_teacher: dict[uuid.UUID, list[WorkUpdateOut]] = {}
+    for out in _staff_out(db, today_rows):
+        today_by_teacher.setdefault(out.teacher_id, []).append(out)
+
+    window_days = [window_start + timedelta(days=i) for i in range(DAILY_STATUS_WINDOW_DAYS)]
+
+    result = []
+    submitted_count = 0
+    for t in teachers:
+        dates = submitted_dates.get(t.id, set())
+        submitted_today = target in dates
+        if submitted_today:
+            submitted_count += 1
+        result.append(
+            TeacherDailyStatus(
+                teacher_id=t.id,
+                teacher_name=t.full_name,
+                photo_url=t.photo_url,
+                submitted_today=submitted_today,
+                updates=today_by_teacher.get(t.id, []),
+                recent_days=[DailyStatusDay(date=d, submitted=d in dates) for d in window_days],
+            )
+        )
+
+    return DailyStatusOut(date=target, teachers=result, submitted_count=submitted_count, total_count=len(teachers))
 
 
 def give_feedback(db: Session, principal: Teacher, update_id: uuid.UUID, payload: PrincipalFeedbackIn) -> WorkUpdateOut:

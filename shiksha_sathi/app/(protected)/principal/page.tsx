@@ -29,7 +29,7 @@ import { PrincipalAnalyticsHub } from "@/components/principal/principal-analytic
 import { PrincipalSyllabusCoverage } from "@/components/principal/principal-syllabus-coverage";
 import { PrincipalNoticeBoard } from "@/components/principal/principal-notice-board";
 import { PrincipalShell } from "@/components/principal/principal-shell";
-import { PrincipalWorkUpdatesFeed } from "@/components/principal/principal-work-updates";
+import { PrincipalWorkUpdatesToday } from "@/components/principal/principal-work-updates-today";
 import { FeatureLockOverlay } from "@/components/app/feature-lock-overlay";
 
 function ClassesSummaryCard() {
@@ -308,9 +308,11 @@ function PrincipalDashboard() {
             </FeatureLockOverlay>
           </section>
 
-          {/* Feature 3 & 4: Teacher Work Updates Feed & 1-Click Appreciation -- live at launch */}
+          {/* Feature 3 & 4: Teacher Work Updates -- today's status board, live at
+              launch. Full history with a date picker lives at its own route
+              (see sidebar "Teacher Work Updates" -> /principal/work-updates). */}
           <section id="principal-work-updates" className="rounded-2xl border border-border bg-card p-6 shadow-xs">
-            <PrincipalWorkUpdatesFeed />
+            <PrincipalWorkUpdatesToday />
           </section>
 
 
