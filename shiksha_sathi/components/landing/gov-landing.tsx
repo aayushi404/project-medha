@@ -73,6 +73,7 @@ const GALLERY_IMAGES = [
   { src: "/gallery/school-visit-18.jpg", width: 1600, height: 1067 },
   { src: "/gallery/school-visit-19.jpg", width: 1600, height: 1067 },
   { src: "/gallery/school-visit-20.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-21.jpg", width: 1600, height: 1067 },
 ].map((img, i) => ({ ...img, alt: `MEDHA field visit photo ${i + 1}` }));
 
 const features = [
