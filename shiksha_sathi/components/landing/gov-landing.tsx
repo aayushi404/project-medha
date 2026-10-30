@@ -7,7 +7,9 @@ import {
   Brain,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
+  Camera,
   GraduationCap,
   Landmark,
   LayoutDashboard,
@@ -25,7 +27,7 @@ import {
   FlaskConical,
   Clock,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 
 type AboutMenuItem = {
@@ -46,6 +48,32 @@ const ABOUT_MENU_ITEMS: AboutMenuItem[] = [
     description: "The person and the idea behind Project Medha",
   },
 ];
+
+// Photos from our visits to schools across Bihar -- every file in
+// public/gallery, in order. Intrinsic sizes are recorded so the masonry grid
+// doesn't jump as each image loads.
+const GALLERY_IMAGES = [
+  { src: "/gallery/school-visit-01.jpg", width: 1280, height: 853 },
+  { src: "/gallery/school-visit-02.jpg", width: 1280, height: 853 },
+  { src: "/gallery/school-visit-03.jpg", width: 1280, height: 853 },
+  { src: "/gallery/school-visit-04.jpg", width: 1280, height: 853 },
+  { src: "/gallery/school-visit-05.jpg", width: 1280, height: 853 },
+  { src: "/gallery/school-visit-06.jpg", width: 1280, height: 853 },
+  { src: "/gallery/school-visit-07.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-08.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-09.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-10.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-11.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-12.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-13.jpg", width: 1067, height: 1600 },
+  { src: "/gallery/school-visit-14.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-15.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-16.jpg", width: 1067, height: 1600 },
+  { src: "/gallery/school-visit-17.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-18.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-19.jpg", width: 1600, height: 1067 },
+  { src: "/gallery/school-visit-20.jpg", width: 1600, height: 1067 },
+].map((img, i) => ({ ...img, alt: `MEDHA field visit photo ${i + 1}` }));
 
 const features = [
   {
@@ -138,6 +166,29 @@ export function GovLanding() {
   const [studentResourceFilter, setStudentResourceFilter] = useState("all");
   const [studentPracticeAnswer, setStudentPracticeAnswer] = useState<string | null>("b");
 
+  // Gallery lightbox: index into GALLERY_IMAGES, or null when closed.
+  const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  const closeGallery = useCallback(() => setGalleryIndex(null), []);
+  const showPrevImage = useCallback(
+    () => setGalleryIndex((i) => (i === null ? i : (i - 1 + GALLERY_IMAGES.length) % GALLERY_IMAGES.length)),
+    []
+  );
+  const showNextImage = useCallback(
+    () => setGalleryIndex((i) => (i === null ? i : (i + 1) % GALLERY_IMAGES.length)),
+    []
+  );
+
+  useEffect(() => {
+    if (galleryIndex === null) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeGallery();
+      if (e.key === "ArrowLeft") showPrevImage();
+      if (e.key === "ArrowRight") showNextImage();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [galleryIndex, closeGallery, showPrevImage, showNextImage]);
+
   return (
     <main className="medha-landing">
 
@@ -213,7 +264,7 @@ export function GovLanding() {
             <a href="#resources">Resources</a>
             <a href="#teachers">For Teachers</a>
             <a href="#students">For Students</a>
-            <a href="#content">e-Content</a>
+            <a href="#gallery">Gallery</a>
             <a href="#support">Help Desk</a>
           </div>
 
@@ -262,7 +313,7 @@ export function GovLanding() {
             <a href="#resources" onClick={() => setMobileOpen(false)}>Resources</a>
             <a href="#teachers" onClick={() => setMobileOpen(false)}>For Teachers</a>
             <a href="#students" onClick={() => setMobileOpen(false)}>For Students</a>
-            <a href="#content" onClick={() => setMobileOpen(false)}>e-Content</a>
+            <a href="#gallery" onClick={() => setMobileOpen(false)}>Gallery</a>
             <a href="#support" onClick={() => setMobileOpen(false)}>Help Desk</a>
           </div>
         )}
@@ -515,6 +566,110 @@ export function GovLanding() {
           </div>
 
         </div>
+      </section>
+
+      {/* =====================================================
+          GALLERY -- SCHOOL VISITS
+      ===================================================== */}
+      <section id="gallery" className="gallery-section section-space">
+
+        <div className="site-container">
+
+          <div className="center-heading">
+            <div className="section-kicker">FROM THE FIELD</div>
+
+            <h2>
+              Moments from
+              <br />
+              <span>Bihar&apos;s Classrooms</span>
+            </h2>
+
+            <p>
+              A look at our visits to schools across the state -- meeting
+              teachers and students, and seeing MEDHA&apos;s growth and
+              impact on the ground.
+            </p>
+          </div>
+
+          <div className="gallery-grid">
+            {GALLERY_IMAGES.map((image, index) => (
+              <button
+                key={image.src}
+                type="button"
+                className="gallery-item"
+                onClick={() => setGalleryIndex(index)}
+                aria-label={`Open photo ${index + 1} of ${GALLERY_IMAGES.length}`}
+              >
+                <img
+                  src={image.src}
+                  alt={image.alt}
+                  width={image.width}
+                  height={image.height}
+                  loading="lazy"
+                />
+                <span className="gallery-item-overlay">
+                  <Camera size={16} />
+                </span>
+              </button>
+            ))}
+          </div>
+
+        </div>
+
+        {galleryIndex !== null && (
+          <div
+            className="gallery-lightbox"
+            role="dialog"
+            aria-modal="true"
+            aria-label="School visit photo"
+            onClick={closeGallery}
+          >
+            <button
+              type="button"
+              className="gallery-lightbox-close"
+              onClick={closeGallery}
+              aria-label="Close"
+            >
+              <X size={20} />
+            </button>
+
+            <button
+              type="button"
+              className="gallery-lightbox-nav gallery-lightbox-prev"
+              onClick={(e) => {
+                e.stopPropagation();
+                showPrevImage();
+              }}
+              aria-label="Previous photo"
+            >
+              <ChevronLeft size={22} />
+            </button>
+
+            <img
+              src={GALLERY_IMAGES[galleryIndex].src}
+              alt={GALLERY_IMAGES[galleryIndex].alt}
+              className="gallery-lightbox-image"
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <button
+              type="button"
+              className="gallery-lightbox-nav gallery-lightbox-next"
+              onClick={(e) => {
+                e.stopPropagation();
+                showNextImage();
+              }}
+              aria-label="Next photo"
+            >
+              <ChevronRight size={22} />
+            </button>
+
+            <span className="gallery-lightbox-count">
+              {galleryIndex + 1} / {GALLERY_IMAGES.length}
+            </span>
+          </div>
+        )}
+
       </section>
 
       {/* =====================================================
@@ -1482,7 +1637,7 @@ export function GovLanding() {
             <h4>Platform</h4>
             <a href="#about">About MEDHA</a>
             <a href="#resources">Resources</a>
-            <a href="#content">e-Content</a>
+            <a href="#gallery">Gallery</a>
             <Link href="/team/founder">Founder</Link>
           </div>
 
