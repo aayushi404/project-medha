@@ -1192,6 +1192,157 @@
 }
 
 /* =========================================================
+   GALLERY -- SCHOOL VISITS
+   ========================================================= */
+
+.gallery-section {
+  background: oklch(0.985 0.008 85.0);
+  position: relative;
+}
+
+.gallery-grid {
+  columns: 4 220px;
+  column-gap: 14px;
+}
+
+.gallery-item {
+  display: block;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  break-inside: avoid;
+  cursor: pointer;
+  background: none;
+  box-shadow: 0 10px 26px oklch(0.319 0.056 40.0 / 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gallery-item:hover,
+.gallery-item:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px oklch(0.319 0.056 40.0 / 0.16);
+  outline: none;
+}
+
+.gallery-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: transform 0.35s ease;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.05);
+}
+
+.gallery-item-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: oklch(0.244 0.057 40.0 / 0);
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.gallery-item:hover .gallery-item-overlay,
+.gallery-item:focus-visible .gallery-item-overlay {
+  opacity: 1;
+  background: oklch(0.244 0.057 40.0 / 0.32);
+}
+
+.gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(0.145 0.025 40.0 / 0.92);
+  padding: 24px;
+}
+
+.gallery-lightbox-image {
+  max-width: min(90vw, 1000px);
+  max-height: 86vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 30px 70px oklch(0 0 0 / 0.5);
+}
+
+.gallery-lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.25);
+  background: oklch(1 0 0 / 0.08);
+  color: white;
+  cursor: pointer;
+}
+
+.gallery-lightbox-close:hover {
+  background: oklch(1 0 0 / 0.18);
+}
+
+.gallery-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid oklch(1 0 0 / 0.25);
+  background: oklch(1 0 0 / 0.08);
+  color: white;
+  cursor: pointer;
+}
+
+.gallery-lightbox-nav:hover {
+  background: oklch(1 0 0 / 0.18);
+}
+
+.gallery-lightbox-prev {
+  left: 20px;
+}
+
+.gallery-lightbox-next {
+  right: 20px;
+}
+
+.gallery-lightbox-count {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: oklch(0.829 0.030 82.0);
+  font-size: 10px;
+  letter-spacing: 0.6px;
+}
+
+@media (max-width: 860px) {
+  .gallery-grid {
+    columns: 2 160px;
+  }
+
+  .gallery-lightbox-nav {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* =========================================================
    FEATURE CARDS
    ========================================================= */
 
