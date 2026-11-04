@@ -36,6 +36,12 @@ class Subject(Base):
     # it only offers subjects that actually apply to that section's grade.
     min_grade_level: Mapped[int | None]
     max_grade_level: Mapped[int | None]
+    # A teacher can still be assigned this subject in the class roster (the
+    # principal's "who teaches what" picker) even when it's off here -- this
+    # only controls whether it's offered as content-generation context (Ask
+    # Medha, quiz/lesson-plan/notes/... creation). Subjects like Music or Urdu
+    # are assignable but have no real LLM content-generation value.
+    ask_medha_enabled: Mapped[bool] = mapped_column(server_default=text("true"))
 
 
 class TeacherSubject(Base):

@@ -206,6 +206,9 @@ export type ProfileSubject = {
   grade_label: string;
   numeric_level: number;
   is_primary: boolean;
+  // false for subjects that are assignable in the roster but not meant to be
+  // picked as Ask Medha content-generation context (Music, Urdu, ...).
+  ask_medha_enabled: boolean;
 };
 
 export type Profile = {

@@ -33,6 +33,7 @@ def _assigned_subjects(db: Session, teacher: Teacher) -> list[ProfileSubjectOut]
         db.query(
             TeachingAssignment.subject_id,
             Subject.name,
+            Subject.ask_medha_enabled,
             ClassSection.grade_id,
             Grade.label,
             Grade.numeric_level,
@@ -51,11 +52,12 @@ def _assigned_subjects(db: Session, teacher: Teacher) -> list[ProfileSubjectOut]
     )
 
     pairs: dict[tuple, dict] = {}
-    for subject_id, subject_name, grade_id, grade_label, numeric_level, class_teacher_id in rows:
+    for subject_id, subject_name, ask_medha_enabled, grade_id, grade_label, numeric_level, class_teacher_id in rows:
         entry = pairs.setdefault(
             (subject_id, grade_id),
             {
                 "subject_name": subject_name,
+                "ask_medha_enabled": ask_medha_enabled,
                 "grade_label": grade_label,
                 "numeric_level": numeric_level,
                 "primary": False,
@@ -79,6 +81,7 @@ def _assigned_subjects(db: Session, teacher: Teacher) -> list[ProfileSubjectOut]
             grade_label=entry["grade_label"],
             numeric_level=entry["numeric_level"],
             is_primary=(subject_id, grade_id) == primary_key,
+            ask_medha_enabled=entry["ask_medha_enabled"],
         )
         for (subject_id, grade_id), entry in ordered
     ]

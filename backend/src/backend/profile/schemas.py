@@ -23,6 +23,11 @@ class ProfileSubjectOut(BaseModel):
     grade_label: str
     numeric_level: int
     is_primary: bool
+    # False for subjects that are assignable in the roster but not meant to be
+    # picked as content-generation context (Music, Urdu, ...). The roster/
+    # profile display itself still shows every assigned subject regardless --
+    # only the Ask Medha-style grade+subject picker should filter on this.
+    ask_medha_enabled: bool
 
 
 class ProfileOut(BaseModel):

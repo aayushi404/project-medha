@@ -82,7 +82,13 @@ function persist(s: LessonState) {
 
 export function LessonProvider({ children }: { children: ReactNode }) {
   const { profile } = useProfile();
-  const pairs = useMemo(() => profile?.subjects ?? [], [profile]);
+  // A teacher can be assigned a subject in the roster (Music, Urdu, ...) that
+  // still shouldn't be offered as content-generation context here -- the
+  // roster/profile display itself shows every assigned subject regardless.
+  const pairs = useMemo(
+    () => (profile?.subjects ?? []).filter((s) => s.ask_medha_enabled),
+    [profile],
+  );
 
   const [state, setState] = useState<LessonState>(readInitial);
   const [chaptersFetched, setChaptersFetched] = useState<Chapter[]>([]);
