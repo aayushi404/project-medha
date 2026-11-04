@@ -84,7 +84,7 @@ function LessonPlanWizard() {
   const t = useCurriculumT();
   const router = useRouter();
   const { accessToken } = useAuth();
-  const { profile } = useProfile();
+  const { profile, loading: profileLoading } = useProfile();
   const { topicId, setTopic, options } = useLessonContext();
   const {
     gradeId,
@@ -184,9 +184,13 @@ function LessonPlanWizard() {
 
         {step === 1 ? (
           <div className="mt-8 flex flex-col gap-5">
-            {gradeOptions.length === 0 && (
+            {!profileLoading && gradeOptions.length === 0 && (
               // No `teaching_assignments` row yet -- the pickers below would
-              // otherwise just sit empty with nothing to pick.
+              // otherwise just sit empty with nothing to pick. Gated on
+              // profileLoading so this doesn't flash (or stick) while /profile
+              // is still in flight -- profile?.subjects defaults to [] during
+              // that window, which is indistinguishable from "really empty"
+              // unless we also check the loading flag.
               <div className="flex items-start gap-2.5 rounded-xl border border-violet/25 bg-violet-muted/40 p-3 text-sm text-foreground">
                 <Flag className="mt-0.5 size-4 shrink-0 text-violet" />
                 <p>{w.noAssignment}</p>
