@@ -208,7 +208,9 @@ export type ProfileSubject = {
   is_primary: boolean;
   // false for subjects that are assignable in the roster but not meant to be
   // picked as Ask Medha content-generation context (Music, Urdu, ...).
-  ask_medha_enabled: boolean;
+  // Optional: absent on a backend deploy that predates this field -- callers
+  // must treat a missing value as "included", not "excluded".
+  ask_medha_enabled?: boolean;
 };
 
 export type Profile = {

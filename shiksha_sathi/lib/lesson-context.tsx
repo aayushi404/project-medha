@@ -85,8 +85,12 @@ export function LessonProvider({ children }: { children: ReactNode }) {
   // A teacher can be assigned a subject in the roster (Music, Urdu, ...) that
   // still shouldn't be offered as content-generation context here -- the
   // roster/profile display itself shows every assigned subject regardless.
+  // Treat a missing field (an older backend deploy that predates this flag)
+  // as "included", not "excluded" -- an opt-out flag silently defaulting to
+  // excluding every subject on a backend/frontend version mismatch is far
+  // worse than briefly over-including a couple of non-content subjects.
   const pairs = useMemo(
-    () => (profile?.subjects ?? []).filter((s) => s.ask_medha_enabled),
+    () => (profile?.subjects ?? []).filter((s) => s.ask_medha_enabled !== false),
     [profile],
   );
 
