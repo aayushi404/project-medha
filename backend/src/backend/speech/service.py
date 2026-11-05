@@ -17,9 +17,11 @@ import re
 import time
 import uuid
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from backend.core.config import settings
 from backend.db.models import (
@@ -139,6 +141,78 @@ def list_recent_turns(
     return list(reversed(rows))
 
 
+@dataclass
+class _Turn:
+    """The saved stub and what the prompts need, as plain values: reading a database
+    object on the event loop could query, stalling everything in this worker."""
+
+    stub: VoiceTurn
+    history: list[Message]
+    session_id: uuid.UUID
+    session_title: str | None
+    topic_id: uuid.UUID | None
+    voice_summary: str | None
+    grade_label: str
+    subject_name: str
+    chapter_title: str | None
+    topic_title: str | None
+    topic_description: str | None
+    user_language: str
+    reply_style: str
+    reply_language: str
+
+
+def _begin_turn(
+    db: Session,
+    user: Teacher | Student,
+    session: ChatSession,
+    transcript: str,
+    language: str | None,
+    style: str | None,
+) -> _Turn:
+    # Persist the in-conversation control choices onto the session so they carry
+    # to the next turn.
+    if style in _VALID_STYLES:
+        session.voice_reply_style = style
+    if language:
+        session.voice_language = language
+    reply_style = (style if style in _VALID_STYLES else session.voice_reply_style) or "normal"
+    reply_language = language or session.voice_language or user.preferred_language
+
+    stub = VoiceTurn(
+        session_id=session.id,
+        user_transcript=transcript,
+        stt_language=reply_language,
+    )
+    db.add(stub)
+    db.commit()
+    db.refresh(stub)
+
+    history = _recent_history(db, session.id, exclude_id=stub.id)
+    grade = db.get(Grade, session.grade_id)
+    subject = db.get(Subject, session.subject_id)
+    topic = db.get(CurriculumTopic, session.topic_id) if session.topic_id else None
+    chapter = (
+        db.get(CurriculumChapter, session.chapter_id) if session.chapter_id else None
+    )
+    return _Turn(
+        stub=stub,
+        history=history,
+        session_id=session.id,
+        session_title=session.title,
+        topic_id=session.topic_id,
+        voice_summary=session.voice_summary,
+        grade_label=grade.label if grade else "your class",
+        subject_name=subject.name if subject else "your subject",
+        chapter_title=chapter.title if chapter else None,
+        topic_title=topic.title if topic else None,
+        topic_description=topic.description if topic else None,
+        user_language=user.preferred_language,
+        reply_style=reply_style,
+        reply_language=reply_language,
+    )
+
+
 async def stream_converse(
     db: Session,
     user: Teacher | Student,
@@ -160,52 +234,28 @@ async def stream_converse(
         yield _sse("error", {"message": "Voice is turned off right now.", "fallback": "type_instead"})
         return
 
-    grade = db.get(Grade, session.grade_id)
-    subject = db.get(Subject, session.subject_id)
-    topic = db.get(CurriculumTopic, session.topic_id) if session.topic_id else None
-    chapter = (
-        db.get(CurriculumChapter, session.chapter_id) if session.chapter_id else None
-    )
-
-    # Persist the in-conversation control choices onto the session so they carry
-    # to the next turn.
-    if style in _VALID_STYLES:
-        session.voice_reply_style = style
-    if language:
-        session.voice_language = language
-    reply_style = (style if style in _VALID_STYLES else session.voice_reply_style) or "normal"
-    reply_language = language or session.voice_language or user.preferred_language
-
-    stub = VoiceTurn(
-        session_id=session.id,
-        user_transcript=transcript,
-        stt_language=reply_language,
-    )
-    db.add(stub)
-    db.commit()
-    db.refresh(stub)
-
-    history = _recent_history(db, session.id, exclude_id=stub.id)
+    turn = await run_in_threadpool(_begin_turn, db, user, session, transcript, language, style)
+    stub = turn.stub
+    reply_style = turn.reply_style
+    reply_language = turn.reply_language
+    history = turn.history
 
     # Retrieval grounding -- [] until embeddings are configured; never fatal.
     chunks: list[str] = []
-    if session.topic_id is not None:
+    if turn.topic_id is not None:
         try:
-            retrieved = await Retriever().top_k(db, topic_id=session.topic_id, query=transcript)
+            retrieved = await Retriever().top_k(db, topic_id=turn.topic_id, query=transcript)
             chunks = [c.content_text for c in retrieved]
         except Exception as exc:  # noqa: BLE001 -- retrieval must never break a turn
             logger.warning("voice retrieval failed, proceeding ungrounded: %s", exc)
 
-    grade_label = grade.label if grade else "your class"
-    subject_name = subject.name if subject else "your subject"
-
     if kind == "doubt":
         system, messages = voice_doubt_prompt.build(
-            grade_label=grade_label,
-            subject_name=subject_name,
-            chapter_title=chapter.title if chapter else "this chapter",
-            topic_title=topic.title if topic else None,
-            topic_description=topic.description if topic else None,
+            grade_label=turn.grade_label,
+            subject_name=turn.subject_name,
+            chapter_title=turn.chapter_title or "this chapter",
+            topic_title=turn.topic_title,
+            topic_description=turn.topic_description,
             language=reply_language,
             chunks=chunks,
             history=history,
@@ -213,9 +263,9 @@ async def stream_converse(
         )
     elif kind == "english":
         system, messages = voice_english_prompt.build(
-            grade_label=grade_label,
-            lesson_topic=session.title,
-            language=user.preferred_language,
+            grade_label=turn.grade_label,
+            lesson_topic=turn.session_title,
+            language=turn.user_language,
             chunks=chunks,
             history=history,
             student_query=transcript,
@@ -224,18 +274,17 @@ async def stream_converse(
         # governs the odd aside, so synthesise the whole reply as English.
         reply_language = "en"
     else:
-        topic_title = topic.title if topic else (chapter.title if chapter else "this topic")
         system, messages = voice_prompt.build(
-            grade_label=grade_label,
-            subject_name=subject_name,
-            topic_title=topic_title,
-            topic_description=topic.description if topic else None,
+            grade_label=turn.grade_label,
+            subject_name=turn.subject_name,
+            topic_title=turn.topic_title or turn.chapter_title or "this topic",
+            topic_description=turn.topic_description,
             language=reply_language,
             chunks=chunks,
             history=history,
             teacher_query=transcript,
             reply_style=reply_style,
-            summary=session.voice_summary,
+            summary=turn.voice_summary,
         )
 
     max_tokens = (
@@ -303,7 +352,7 @@ async def stream_converse(
         async for out in _handle_clean(safety_buf):
             yield out
     if caught_words:
-        logger.warning("voice reply sanitized session=%s words=%s", session.id, caught_words)
+        logger.warning("voice reply sanitized session=%s words=%s", turn.session_id, caught_words)
     llm_ms = int((time.monotonic() - llm_started) * 1000)
 
     reply = "".join(parts).strip()
@@ -321,19 +370,22 @@ async def stream_converse(
     # back to browser speech for the whole reply.
     tts_failed = seq == 0
 
-    stub.assistant_text = reply
-    stub.llm_ms = llm_ms
-    stub.tts_ms = tts_ms_total or None
-    stub.tokens_out = tokens_out
-    stub.tts_chars = len(reply)
-    session.updated_at = func.now()
-    db.commit()
-    db.refresh(stub)
+    def _save_reply() -> None:
+        stub.assistant_text = reply
+        stub.llm_ms = llm_ms
+        stub.tts_ms = tts_ms_total or None
+        stub.tokens_out = tokens_out
+        stub.tts_chars = len(reply)
+        session.updated_at = func.now()
+        db.commit()
+        db.refresh(stub)
+
+    await run_in_threadpool(_save_reply)
 
     logger.info(
         "voice_turn session=%s turn=%s style=%s lang=%s chunks=%s llm_ms=%s "
         "first_audio_ms=%s tts_ms=%s tokens_out=%s tts_failed=%s",
-        session.id,
+        turn.session_id,
         stub.id,
         reply_style,
         reply_language,

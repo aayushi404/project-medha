@@ -16,6 +16,7 @@ from collections.abc import AsyncIterator
 from pydantic import ValidationError
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from backend.core.config import settings
 from backend.db.models import Generation, Teacher
@@ -75,6 +76,18 @@ def _title_for(gen_type: str, scope: ResolvedScope, content: dict) -> str:
     return f"{base} — {label}"[:160] if base else label
 
 
+def _copy_from_cache(
+    db: Session, teacher: Teacher, key: str, session_id: uuid.UUID | None
+) -> str | None:
+    hit = cache.probe(db, key)
+    if hit is None:
+        return None
+    copy = cache.copy_for(db, teacher.id, hit, session_id=session_id)
+    db.commit()
+    db.refresh(copy)
+    return str(copy.id)
+
+
 async def run(
     db: Session,
     teacher: Teacher,
@@ -115,38 +128,39 @@ async def run(
         prompt_version=version,
     )
     if settings.generation_cache_enabled and parent_generation_id is None:
-        hit = cache.probe(db, key)
-        if hit is not None:
-            copy = cache.copy_for(db, teacher.id, hit, session_id=session_id)
-            db.commit()
-            db.refresh(copy)
-            logger.info("generation cache hit type=%s key=%s -> %s", gen_type, key[:12], copy.id)
-            yield _sse("done", {"generation_id": str(copy.id), "type": gen_type, "cached": True})
+        copy_id = await run_in_threadpool(_copy_from_cache, db, teacher, key, session_id)
+        if copy_id is not None:
+            logger.info("generation cache hit type=%s key=%s -> %s", gen_type, key[:12], copy_id)
+            yield _sse("done", {"generation_id": copy_id, "type": gen_type, "cached": True})
             return
 
     # 3. stub row -- a dropped connection still records the attempt
-    row = Generation(
-        teacher_id=teacher.id,
-        visibility="private",
-        type=gen_type,
-        title=_title_for(gen_type, scope, {}),
-        language=language,
-        grade_id=scope.grade_id,
-        subject_id=scope.subject_id,
-        chapter_id=scope.chapter_id,
-        topic_id=scope.topic_id,
-        source=source,
-        session_id=session_id,
-        parent_generation_id=parent_generation_id,
-        input_params=params.model_dump(),
-        status="running",
-        prompt_version=version,
-        cache_key=key,
-        model=settings.gemini_model if settings.llm_provider == "gemini" else settings.llm_model,
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
+    def _create_stub() -> Generation:
+        row = Generation(
+            teacher_id=teacher.id,
+            visibility="private",
+            type=gen_type,
+            title=_title_for(gen_type, scope, {}),
+            language=language,
+            grade_id=scope.grade_id,
+            subject_id=scope.subject_id,
+            chapter_id=scope.chapter_id,
+            topic_id=scope.topic_id,
+            source=source,
+            session_id=session_id,
+            parent_generation_id=parent_generation_id,
+            input_params=params.model_dump(),
+            status="running",
+            prompt_version=version,
+            cache_key=key,
+            model=settings.gemini_model if settings.llm_provider == "gemini" else settings.llm_model,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+
+    row = await run_in_threadpool(_create_stub)
 
     # 4. retrieval grounding -- [] until embeddings are configured; never fatal
     chunks: list[str] = []
@@ -194,42 +208,45 @@ async def run(
                 tokens_out = event.usage.output_tokens
     except LLMError as exc:
         logger.warning("generation failed type=%s: %s", gen_type, exc)
-        _fail(db, row, str(exc))
+        await run_in_threadpool(_fail, db, row, str(exc))
         yield _sse("error", {"message": _ERR_GENERATION, "fallback": "retry"})
         return
     gen_ms = int((time.monotonic() - started) * 1000)
 
     raw = "".join(parts)
     if not raw.strip():
-        _fail(db, row, "empty model output")
+        await run_in_threadpool(_fail, db, row, "empty model output")
         yield _sse("error", {"message": _ERR_EMPTY, "fallback": "retry"})
         return
 
     # 7. parse + validate against the type's content shape
     blob = _extract_json(raw)
     if blob is None:
-        _fail(db, row, "model output was not JSON")
+        await run_in_threadpool(_fail, db, row, "model output was not JSON")
         yield _sse("error", {"message": _ERR_PARSE, "fallback": "retry"})
         return
     try:
         content = content_model.model_validate(blob)
     except ValidationError as exc:
-        _fail(db, row, f"content validation: {exc.errors()[0]}")
+        await run_in_threadpool(_fail, db, row, f"content validation: {exc.errors()[0]}")
         logger.warning("generation content invalid type=%s: %s", gen_type, exc.errors()[0])
         yield _sse("error", {"message": _ERR_PARSE, "fallback": "retry"})
         return
 
     # 8. persist
-    row.content_json = content.model_dump(mode="json")
-    row.title = _title_for(gen_type, scope, row.content_json)
-    row.status = "completed"
-    row.completed_at = func.now()
-    row.generation_ms = gen_ms
-    row.tokens_out = tokens_out
-    row.retrieved_chunk_ids = chunk_ids or None
-    row.updated_at = func.now()
-    db.commit()
-    db.refresh(row)
+    def _save_result() -> None:
+        row.content_json = content.model_dump(mode="json")
+        row.title = _title_for(gen_type, scope, row.content_json)
+        row.status = "completed"
+        row.completed_at = func.now()
+        row.generation_ms = gen_ms
+        row.tokens_out = tokens_out
+        row.retrieved_chunk_ids = chunk_ids or None
+        row.updated_at = func.now()
+        db.commit()
+        db.refresh(row)
+
+    await run_in_threadpool(_save_result)
 
     logger.info(
         "generation type=%s id=%s status=completed gen_ms=%s tokens_out=%s chunks=%s pv=%s",

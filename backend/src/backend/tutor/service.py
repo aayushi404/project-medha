@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from backend.core.ownership import assert_owned
 from backend.core.section_access import current_enrollment
@@ -145,9 +146,15 @@ def _sse(event: str, payload: dict) -> dict:
     return {"event": event, "data": json.dumps(payload, ensure_ascii=False)}
 
 
-async def stream_message(
-    db: Session, student: Student, session: ChatSession, content: str
-) -> AsyncIterator[dict]:
+def _begin_message(db: Session, student: Student, session: ChatSession, content: str) -> dict:
+    """Saves the question and returns what the prompt needs, as plain values: reading a
+    database object on the event loop could query, stalling everything in this worker."""
+    student_msg = ChatMessage(session_id=session.id, role="student", content=content)
+    db.add(student_msg)
+    db.commit()
+    db.refresh(student_msg)
+
+    history = _history(db, session.id, exclude_id=student_msg.id)
     grade = db.get(Grade, session.grade_id)
     subject = db.get(Subject, session.subject_id)
     chapter = (
@@ -156,20 +163,54 @@ async def stream_message(
     topic = (
         db.get(CurriculumTopic, session.topic_id) if session.topic_id else None
     )
+    return {
+        "history": history,
+        "topic_id": session.topic_id,
+        "session_id": session.id,
+        "grade_label": grade.label,
+        "subject_name": subject.name,
+        "chapter_title": chapter.title if chapter else "this chapter",
+        "topic_title": topic.title if topic else None,
+        "topic_description": topic.description if topic else None,
+        "language": student.preferred_language,
+    }
 
-    student_msg = ChatMessage(session_id=session.id, role="student", content=content)
-    db.add(student_msg)
+
+def _save_reply(
+    db: Session,
+    session: ChatSession,
+    full_text: str,
+    output_tokens: int | None,
+    chunk_ids: list[uuid.UUID],
+    title: str,
+) -> str:
+    assistant_msg = ChatMessage(
+        session_id=session.id,
+        role="assistant",
+        content=full_text,
+        token_count=output_tokens,
+        retrieved_chunk_ids=chunk_ids or None,
+    )
+    db.add(assistant_msg)
+    session.updated_at = func.now()
+    if session.title is None:
+        session.title = title
     db.commit()
-    db.refresh(student_msg)
+    db.refresh(assistant_msg)
+    return str(assistant_msg.id)
 
-    history = _history(db, session.id, exclude_id=student_msg.id)
+
+async def stream_message(
+    db: Session, student: Student, session: ChatSession, content: str
+) -> AsyncIterator[dict]:
+    turn = await run_in_threadpool(_begin_message, db, student, session, content)
 
     chunks: list[str] = []
     chunk_ids: list[uuid.UUID] = []
-    if session.topic_id is not None:
+    if turn["topic_id"] is not None:
         try:
             retrieved = await Retriever().top_k(
-                db, topic_id=session.topic_id, query=content
+                db, topic_id=turn["topic_id"], query=content
             )
             chunks = [c.content_text for c in retrieved]
             chunk_ids = [c.id for c in retrieved]
@@ -177,14 +218,14 @@ async def stream_message(
             logger.warning("retrieval failed, proceeding ungrounded: %s", exc)
 
     system, messages = doubt_prompt.build(
-        grade_label=grade.label,
-        subject_name=subject.name,
-        chapter_title=chapter.title if chapter else "this chapter",
-        topic_title=topic.title if topic else None,
-        topic_description=topic.description if topic else None,
-        language=student.preferred_language,
+        grade_label=turn["grade_label"],
+        subject_name=turn["subject_name"],
+        chapter_title=turn["chapter_title"],
+        topic_title=turn["topic_title"],
+        topic_description=turn["topic_description"],
+        language=turn["language"],
         chunks=chunks,
-        history=history,
+        history=turn["history"],
         student_query=content,
     )
 
@@ -223,25 +264,14 @@ async def stream_message(
         parts.append(clean)
         yield _sse("token", {"text": clean})
     if caught_words:
-        logger.warning("tutor reply sanitized session=%s words=%s", session.id, caught_words)
+        logger.warning("tutor reply sanitized session=%s words=%s", turn["session_id"], caught_words)
 
     full_text = "".join(parts).strip()
     if not full_text:
         yield _sse("error", {"message": _ERR_EMPTY})
         return
 
-    assistant_msg = ChatMessage(
-        session_id=session.id,
-        role="assistant",
-        content=full_text,
-        token_count=output_tokens,
-        retrieved_chunk_ids=chunk_ids or None,
-    )
-    db.add(assistant_msg)
-    session.updated_at = func.now()
-    if session.title is None:
-        session.title = await _derive_title(client, content)
-    db.commit()
-    db.refresh(assistant_msg)
+    title = await _derive_title(client, content)
+    message_id = await run_in_threadpool(_save_reply, db, session, full_text, output_tokens, chunk_ids, title)
 
-    yield _sse("done", {"message_id": str(assistant_msg.id)})
+    yield _sse("done", {"message_id": message_id})

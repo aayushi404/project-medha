@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
+from starlette.concurrency import run_in_threadpool
 
 from backend.ask import service
 from backend.ask.rate_limit import chat_rate_limit
@@ -73,7 +74,7 @@ async def post_message(
 ) -> EventSourceResponse:
     # Ownership is checked synchronously here so a 404 is a clean JSON response,
     # not an error mid-stream.
-    session = service.load_owned_session(db, current_teacher, session_id)
+    session = await run_in_threadpool(service.load_owned_session, db, current_teacher, session_id)
     generator = service.stream_message(db, current_teacher, session, payload.content)
     return EventSourceResponse(generator, headers=_SSE_HEADERS)
 
@@ -85,6 +86,6 @@ async def generate_artifact(
     current_teacher: Teacher = Depends(get_current_teacher),
     db: Session = Depends(get_db),
 ) -> EventSourceResponse:
-    session = service.load_owned_session(db, current_teacher, session_id)
+    session = await run_in_threadpool(service.load_owned_session, db, current_teacher, session_id)
     generator = service.run_generator(db, current_teacher, session, payload.artifact_type)
     return EventSourceResponse(generator, headers=_SSE_HEADERS)

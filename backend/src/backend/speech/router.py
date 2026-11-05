@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
+from starlette.concurrency import run_in_threadpool
 
 from backend.core.rate_limits import by_actor, by_ip
 from backend.core.uploads import read_limited, require_kind
@@ -92,7 +93,7 @@ async def converse(
     """One spoken turn with Medha. SSE: `token`* → `audio` (base64 WAV) → `done`,
     or a single `error`. Ownership is checked here so a bad session is a clean
     JSON 404, not an error mid-stream."""
-    session = load_owned_session(db, teacher, payload.session_id)
+    session = await run_in_threadpool(load_owned_session, db, teacher, payload.session_id)
     generator = service.stream_converse(
         db, teacher, session, payload.transcript, payload.language, payload.style
     )
