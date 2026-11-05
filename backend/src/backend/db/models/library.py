@@ -62,6 +62,7 @@ class LibraryItem(Base):
     state-wide resource); set = only that school's catalog."""
 
     __tablename__ = "library_items"
+    __table_args__ = (Index("idx_library_items_school", "school_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")
