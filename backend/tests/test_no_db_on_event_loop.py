@@ -285,6 +285,11 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
         response = self.client.post("/generate/quiz", json=body, headers=self.teacher_headers)
         self.assertEqual(_events(response)[-1][0], "error", response.text)
         self.assertEqual(self.on_loop, [])
+        db = SessionLocal()
+        rows = db.query(Generation).filter(Generation.teacher_id == self.ids["teacher"],
+                                           Generation.error_message == "model output was not JSON").all()
+        self.assertEqual([row.status for row in rows], ["failed"])
+        db.close()
 
     def _quiz_reply(self) -> str:
         return json.dumps({"questions": [{
@@ -316,10 +321,31 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
         db.close()
 
     def test_regenerating_someone_elses_generation_is_refused(self):
-        response = self.client.post(f"/generations/{uuid.uuid4()}/regenerate", json={"params": {}},
+        db = SessionLocal()
+        other = Teacher(school_id=self.ids["school"], full_name="Other Teacher", role="teacher", approval_status="approved",
+                        phone_number=f"+916{uuid.uuid4().int % 10**9:09d}")
+        db.add(other)
+        db.flush()
+        theirs = Generation(teacher_id=other.id, visibility="private", type="quiz", title="Theirs", language="en",
+                            grade_id=self.ids["grade"], subject_id=self.ids["subject"], source="quick_action",
+                            status="completed", prompt_version="test", model="test", content_json={"questions": []},
+                            cache_key=uuid.uuid4().hex)
+        db.add(theirs)
+        db.commit()
+        other_id, theirs_id = other.id, theirs.id
+        db.close()
+        self.addCleanup(self._delete_teacher, other_id, theirs_id)
+        response = self.client.post(f"/generations/{theirs_id}/regenerate", json={"params": {}},
                                     headers=self.teacher_headers)
         self.assertEqual(response.status_code, 404, response.text)
         self.assertEqual(self.on_loop, [])
+
+    def _delete_teacher(self, teacher_id, generation_id):
+        db = SessionLocal()
+        db.query(Generation).filter(Generation.id == generation_id).delete()
+        db.query(Teacher).filter(Teacher.id == teacher_id).delete()
+        db.commit()
+        db.close()
 
     def test_answer_key_checks_the_paper_then_builds_it(self):
         db = SessionLocal()
@@ -421,6 +447,9 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
         result = self._run_absence(Provider())
         self.assertEqual(result, ("dialing", "CA123", None, False))
         self.assertEqual(seen["connections"], before, "no connection should sit idle during the call")
+        # Known limit: the slot stays held, so that the call id is saved the moment the provider
+        # answers. The voicebot checks that id, so a delay there could drop a live call.
+        self.assertEqual(seen["slots"], 1)
         self.assertEqual(seen["number"], "+919000000001")
         uuid.UUID(seen["correlation_id"])
         self.assertEqual(SlotStats.in_use, 0)

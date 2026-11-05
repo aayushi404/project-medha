@@ -60,6 +60,7 @@ def _render_pdf(file_bytes: bytes) -> list[np.ndarray]:
             images.append(bgr)
         return images
     finally:
+        page = pix = None  # an exception's traceback would otherwise keep these past the lock
         doc.close()
 
 

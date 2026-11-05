@@ -453,5 +453,245 @@ class OutsideCallFailureTests(_DeadlockTestCase):
         self.assertEqual(ran, [], "must not touch the database without a slot")
 
 
+class RealClientsGiveBackTheSlotTests(_DeadlockTestCase):
+    """Each real client must release the slot around its outside call, with only the
+    provider's SDK or HTTP call replaced. A fake client would prove nothing here."""
+
+    def _slots_during(self, call) -> list[int]:
+        seen: list[int] = []
+
+        async def scenario():
+            dependency = get_db()
+            await dependency.__anext__()
+            self.assertEqual(SlotStats.in_use, 1)
+            await call(seen)
+            await dependency.aclose()
+            self.assertEqual(SlotStats.in_use, 0)
+
+        asyncio.run(scenario())
+        self.assertTrue(seen, "the provider was never called")
+        return seen
+
+    def test_gemini_complete(self):
+        from backend.llm.gemini import GeminiClient
+
+        async def call(seen):
+            async def generate_content(**_):
+                seen.append(SlotStats.in_use)
+                return mock.Mock(usage_metadata=None, text="hi")
+
+            client = GeminiClient(api_key="x", model="m")
+            client._client = mock.Mock()
+            client._client.aio.models.generate_content = generate_content
+            self.assertEqual((await client.complete(system="s", messages=[])).text, "hi")
+
+        self.assertEqual(self._slots_during(call), [0])
+
+    def test_gemini_stream(self):
+        from backend.llm.gemini import GeminiClient
+
+        async def call(seen):
+            async def chunks():
+                seen.append(SlotStats.in_use)
+                yield mock.Mock(text="hi", usage_metadata=None)
+
+            async def generate_content_stream(**_):
+                seen.append(SlotStats.in_use)
+                return chunks()
+
+            client = GeminiClient(api_key="x", model="m")
+            client._client = mock.Mock()
+            client._client.aio.models.generate_content_stream = generate_content_stream
+            events = [event async for event in client.stream(system="s", messages=[])]
+            self.assertEqual(events[0].text, "hi")
+
+        self.assertEqual(self._slots_during(call), [0, 0])
+
+    def test_claude_complete(self):
+        from backend.llm.claude import ClaudeClient
+
+        async def call(seen):
+            async def create(**_):
+                seen.append(SlotStats.in_use)
+                return mock.Mock(content=[], usage=mock.Mock(input_tokens=1, output_tokens=1))
+
+            client = ClaudeClient(api_key="x", model="m")
+            client._client = mock.Mock()
+            client._client.messages.create = create
+            await client.complete(system="s", messages=[])
+
+        self.assertEqual(self._slots_during(call), [0])
+
+    def test_claude_stream(self):
+        from backend.llm.claude import ClaudeClient
+
+        async def call(seen):
+            class Stream:
+                async def __aenter__(self):
+                    seen.append(SlotStats.in_use)
+                    return self
+
+                async def __aexit__(self, *_):
+                    return False
+
+                async def __aiter__(self):
+                    yield mock.Mock(type="text", text="hi")
+
+                async def get_final_message(self):
+                    return mock.Mock(usage=mock.Mock(input_tokens=1, output_tokens=1))
+
+            client = ClaudeClient(api_key="x", model="m")
+            client._client = mock.Mock()
+            client._client.messages.stream = lambda **_: Stream()
+            events = [event async for event in client.stream(system="s", messages=[])]
+            self.assertEqual(events[0].text, "hi")
+
+        self.assertEqual(self._slots_during(call), [0])
+
+    def test_voyage_embeddings(self):
+        from backend.retrieval.embedder import VoyageEmbedder
+
+        async def call(seen):
+            async def embed(*_a, **_k):
+                seen.append(SlotStats.in_use)
+                return mock.Mock(embeddings=[[0.1]])
+
+            client = VoyageEmbedder(api_key="x", model="m", dim=1)
+            client._client = mock.Mock(embed=embed)
+            self.assertEqual(await client.embed(["q"], input_type="query"), [[0.1]])
+
+        self.assertEqual(self._slots_during(call), [0])
+
+    def _sarvam(self, seen, payload):
+        class Http:
+            def __init__(self, **_):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *_):
+                return False
+
+            async def post(self, *_a, **_k):
+                seen.append(SlotStats.in_use)
+                return mock.Mock(status_code=200, json=lambda: payload, text="")
+
+        return mock.patch("backend.speech.client.httpx.AsyncClient", Http)
+
+    def test_sarvam_speech_to_text(self):
+        from backend.speech import client as speech
+
+        async def call(seen):
+            with self._sarvam(seen, {"transcript": "namaste", "language_code": "hi-IN"}), \
+                    mock.patch.object(speech.settings, "sarvam_api_key", "x"):
+                await speech.transcribe(b"x" * 600, filename="a.wav", content_type="audio/wav")
+
+        self.assertEqual(self._slots_during(call), [0])
+
+    def test_sarvam_text_to_speech(self):
+        from backend.speech import client as speech
+
+        async def call(seen):
+            with self._sarvam(seen, {"audios": ["AAAA"]}), mock.patch.object(speech.settings, "sarvam_api_key", "x"):
+                await speech.synthesize("namaste", language="hi")
+
+        self.assertEqual(self._slots_during(call), [0])
+
+
+class CancellationTests(_DeadlockTestCase):
+    def test_cancelled_while_holding_a_slot_returns_it(self):
+        async def scenario():
+            started = asyncio.Event()
+
+            async def request():
+                dependency = get_db()
+                await dependency.__anext__()
+                try:
+                    started.set()
+                    await asyncio.sleep(60)
+                finally:
+                    await dependency.aclose()
+
+            task = asyncio.create_task(request())
+            await started.wait()
+            self.assertEqual(SlotStats.in_use, 1)
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+            self.assertEqual(SlotStats.in_use, 0)
+            self.assertEqual(SlotStats.waiting, 0)
+
+        asyncio.run(scenario())
+
+    def test_cancelled_while_waiting_to_retake_a_slot_leaves_nothing_taken(self):
+        async def scenario():
+            waiting = asyncio.Event()
+
+            async def request():
+                dependency = get_db()
+                await dependency.__anext__()
+                try:
+                    async with outside_call():
+                        for _ in range(POOL_SIZE):
+                            await db_session._take_slot(None)
+                    waiting.set()
+                    await in_db_thread(lambda: None)
+                finally:
+                    await dependency.aclose()
+
+            task = asyncio.create_task(request())
+            await waiting.wait()
+            await asyncio.sleep(0.01)
+            self.assertEqual(SlotStats.waiting, 1)
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+            self.assertEqual(SlotStats.waiting, 0)
+            self.assertEqual(SlotStats.in_use, POOL_SIZE, "only the slots this test took itself")
+            for _ in range(POOL_SIZE):
+                db_session._return_slot()
+
+        asyncio.run(scenario())
+
+    def test_client_disconnecting_from_a_real_stream_returns_the_slot(self):
+        app = FastAPI()
+        streaming = asyncio.Event()
+
+        @app.get("/stream")
+        async def stream(db: Session = Depends(get_db)):
+            async def events():
+                await in_db_thread(lambda: db.execute(text("SELECT 1")).scalar_one())
+                yield {"event": "token", "data": "1"}
+                streaming.set()
+                await asyncio.sleep(60)
+                yield {"event": "done", "data": "{}"}
+
+            return EventSourceResponse(events())
+
+        scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "GET", "path": "/stream",
+                 "raw_path": b"/stream", "query_string": b"", "headers": [], "scheme": "http",
+                 "server": ("test", 80), "client": ("test", 1), "root_path": ""}
+
+        async def scenario():
+            asked = False
+
+            async def receive():
+                nonlocal asked
+                if not asked:
+                    asked = True
+                    return {"type": "http.request", "body": b"", "more_body": False}
+                await streaming.wait()
+                return {"type": "http.disconnect"}
+
+            async def send(_message):
+                pass
+
+            await asyncio.wait_for(ReleaseDatabaseBeforeSending(app)(scope, receive, send), 5)
+            self.assertEqual(SlotStats.in_use, 0)
+
+        asyncio.run(scenario())
+
+
 if __name__ == "__main__":
     unittest.main()
