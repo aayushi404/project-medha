@@ -18,7 +18,7 @@ from backend.absence_calls.telephony import (
 )
 from backend.core.config import settings
 from backend.db.models import AbsenceCall, AttendanceRecord, Student, Teacher
-from backend.db.session import SessionLocal
+from backend.db.session import SessionLocal, outside_call, own_slot
 
 logger = logging.getLogger("backend.absence_calls")
 
@@ -44,8 +44,16 @@ _PROVIDER_STATUS_MAP = {
 
 async def queue_call_for_absence(record_id: uuid.UUID) -> None:
     """The BackgroundTasks entrypoint -- see attendance/service.py::mark_day.
-    Runs after the HTTP response has already gone back to the teacher, on its
-    own DB session (the request's session is closed by then).
+    Runs on the event loop with its own session, so it gives back the request's
+    database slot, then takes its own: one slot per session, so it can never block
+    the loop on a full pool.
+    """
+    async with outside_call(), own_slot():
+        await _queue_call(record_id)
+
+
+async def _queue_call(record_id: uuid.UUID) -> None:
+    """Runs after the HTTP response has already gone back to the teacher.
 
     Every outcome is recorded truthfully: a student with no guardian number
     gets `no_guardian_phone`, calling switched off/unconfigured gets
@@ -81,16 +89,18 @@ async def queue_call_for_absence(record_id: uuid.UUID) -> None:
             db.commit()
             return
 
+        call_id = str(call.id)
+        db.commit()  # ends the read that loading the id began: no connection sits idle during the call
         try:
             provider = get_telephony_provider()
-            placed = await provider.place_call(to_number=guardian_phone, correlation_id=str(call.id))
+            placed = await provider.place_call(to_number=guardian_phone, correlation_id=call_id)
         except TelephonyNotConfigured:
             call.status = "not_configured"
             call.failure_reason = "Telephony provider is not configured."
             db.commit()
             return
         except TelephonyError as exc:
-            logger.info("absence_call_failed call_id=%s error=%s", call.id, exc)
+            logger.info("absence_call_failed call_id=%s error=%s", call_id, exc)
             call.status = "failed"
             call.failure_reason = "The call could not be placed."
             call.completed_at = datetime.now(timezone.utc)

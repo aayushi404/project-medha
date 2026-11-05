@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, text
+from sqlalchemy import ForeignKey, Index, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,6 +17,7 @@ class PracticeQuestion(Base):
     the chapter's grade, so the two need different visibility rules."""
 
     __tablename__ = "practice_questions"
+    __table_args__ = (Index("idx_practice_chapter", "chapter_id", "created_at"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")

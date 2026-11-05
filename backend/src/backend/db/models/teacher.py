@@ -132,6 +132,9 @@ class AuthSession(Base):
     __table_args__ = (
         Index("idx_sessions_teacher", "teacher_id"),
         Index("idx_sessions_student", "student_id"),
+        # For the housekeeping delete in core/throttle.py, which runs during requests.
+        Index("idx_sessions_expires", "expires_at"),
+        Index("idx_sessions_revoked", "revoked_at"),
         CheckConstraint(
             "num_nonnulls(teacher_id, student_id) = 1", name="chk_auth_sessions_actor"
         ),

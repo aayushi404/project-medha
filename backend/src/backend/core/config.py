@@ -26,6 +26,19 @@ class Settings(BaseSettings):
         "postgresql+psycopg2://shiksha:shiksha_dev_password@localhost:5431/shiksha_sathi"
     )
 
+    # Connection pool, per worker process. Total connections to Postgres can reach
+    # workers x (pool_size + max_overflow), so keep that under the database's limit.
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_timeout: int = 30
+    # Requests allowed to hold a database session at once, per process (see db/session.py).
+    # 0 means "just under the pool's capacity", which is what you normally want.
+    db_slots: int = 0
+    # How long a request queues for a slot before getting a 503.
+    db_slot_wait_seconds: float = 30.0
+    # The same, for saving a reply the AI has already finished and the user has already seen.
+    db_save_wait_seconds: float = 120.0
+
     # JWT (access tokens)
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"

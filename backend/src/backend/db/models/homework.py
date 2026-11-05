@@ -18,6 +18,9 @@ class Homework(Base):
     __tablename__ = "homework"
     __table_args__ = (
         Index("idx_homework_section", "school_id", "class_section_id", text("created_at DESC")),
+        # Student and teacher lists filter on these alone, so the index above cannot serve them.
+        Index("idx_homework_section_recent", "class_section_id", text("created_at DESC")),
+        Index("idx_homework_teacher_recent", "teacher_id", text("created_at DESC")),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

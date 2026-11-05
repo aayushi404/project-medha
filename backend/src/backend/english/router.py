@@ -12,6 +12,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
+from starlette.concurrency import run_in_threadpool
 
 from backend.core.rate_limits import by_actor, by_ip
 from backend.core.uploads import read_limited, require_kind
@@ -93,7 +94,7 @@ async def post_message(
     student: Student = Depends(require_student),
     db: Session = Depends(get_db),
 ) -> EventSourceResponse:
-    session = service.load_owned_session(db, student, session_id)
+    session = await run_in_threadpool(service.load_owned_session, db, student, session_id)
     generator = service.stream_message(db, student, session, payload.content)
     return EventSourceResponse(generator, headers=_SSE_HEADERS)
 
@@ -111,7 +112,7 @@ async def converse(
     """One spoken English-tutor turn. SSE: `token`* -> `audio` (base64 WAV) ->
     `done`, or a single `error`. Same pipeline as /speech/converse, with the
     spoken English-tutor prompt; the reply is always synthesised as English."""
-    session = service.load_owned_session(db, student, session_id)
+    session = await run_in_threadpool(service.load_owned_session, db, student, session_id)
     generator = speech_service.stream_converse(
         db, student, session, payload.transcript, payload.language, None, kind="english"
     )

@@ -3,10 +3,12 @@ import logging
 import re
 import uuid
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from backend.ask.schemas import SessionCreateIn
 from backend.core.config import settings
@@ -22,6 +24,7 @@ from backend.db.models import (
     Subject,
     Teacher,
 )
+from backend.db.session import DatabaseBusy, save_in_db_thread
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.prompts import activity as activity_prompt
 from backend.llm.prompts import explanation
@@ -235,41 +238,118 @@ def _sse(event: str, payload: dict) -> dict:
     return {"event": event, "data": json.dumps(payload, ensure_ascii=False)}
 
 
+@dataclass
+class _PromptContext:
+    """What a prompt needs from the database, as plain values. The generators below run
+    on the event loop, where reading a database object could trigger a query that stalls
+    every other request in this worker, so these are read in a thread beforehand."""
+
+    grade_label: str
+    subject_name: str
+    topic_id: uuid.UUID | None
+    topic_title: str | None
+    topic_description: str | None
+    chapter_title: str | None
+    language: str
+    has_title: bool
+
+
+def _prompt_context(db: Session, teacher: Teacher, session: ChatSession) -> _PromptContext:
+    grade = db.get(Grade, session.grade_id)
+    subject = db.get(Subject, session.subject_id)
+    topic = db.get(CurriculumTopic, session.topic_id) if session.topic_id else None
+    chapter = db.get(CurriculumChapter, session.chapter_id) if session.chapter_id else None
+    return _PromptContext(
+        grade_label=grade.label,
+        subject_name=subject.name,
+        topic_id=session.topic_id,
+        topic_title=topic.title if topic else None,
+        topic_description=topic.description if topic else None,
+        chapter_title=chapter.title if chapter else None,
+        language=teacher.preferred_language,
+        has_title=session.title is not None,
+    )
+
+
+def _begin_message(
+    db: Session, teacher: Teacher, session: ChatSession, content: str
+) -> tuple[_PromptContext, list[Message]]:
+    teacher_msg = ChatMessage(session_id=session.id, role="teacher", content=content)
+    db.add(teacher_msg)
+    db.commit()
+    db.refresh(teacher_msg)
+    history = _history(db, session.id, exclude_id=teacher_msg.id)
+    return _prompt_context(db, teacher, session), history
+
+
+def _save_reply(
+    db: Session,
+    teacher: Teacher,
+    session: ChatSession,
+    full_text: str,
+    output_tokens: int | None,
+    chunk_ids: list[uuid.UUID],
+    title: str | None,
+) -> dict[str, str]:
+    assistant_msg = ChatMessage(
+        session_id=session.id,
+        role="assistant",
+        content=full_text,
+        token_count=output_tokens,
+        retrieved_chunk_ids=chunk_ids or None,
+    )
+    db.add(assistant_msg)
+    session.updated_at = func.now()
+    if title is not None and session.title is None:
+        session.title = title
+
+    # Legacy: a plain chat turn also derives a Module + explanation artifact.
+    # In v2 Ask Medha is conversation only -- generation lives in
+    # `backend.generation`. Gated so this can be turned off once the frontend
+    # has moved (see docs/medha-v2-backend.md §5).
+    done: dict[str, str] = {"message_id": str(assistant_msg.id)}
+    if settings.ask_writes_modules:
+        module = _upsert_module(db, teacher, session)
+        if module.title in (None, "Untitled") and session.title:
+            module.title = session.title
+        artifact = _replace_explanation_artifact(db, module, full_text)
+        db.commit()
+        db.refresh(assistant_msg)
+        db.refresh(module)
+        db.refresh(artifact)
+        done["module_id"] = str(module.id)
+        done["artifact_id"] = str(artifact.id)
+    else:
+        db.commit()
+        db.refresh(assistant_msg)
+    return done
+
+
 async def stream_message(
     db: Session, teacher: Teacher, session: ChatSession, content: str
 ) -> AsyncIterator[dict]:
     """SSE generator: emits `token` events, then one `done` (or `error`).
     The teacher message is persisted before generation so a dropped
     connection still records the ask."""
-    grade = db.get(Grade, session.grade_id)
-    subject = db.get(Subject, session.subject_id)
-    topic = db.get(CurriculumTopic, session.topic_id) if session.topic_id else None
-    chapter = db.get(CurriculumChapter, session.chapter_id) if session.chapter_id else None
-
-    teacher_msg = ChatMessage(session_id=session.id, role="teacher", content=content)
-    db.add(teacher_msg)
-    db.commit()
-    db.refresh(teacher_msg)
-
-    history = _history(db, session.id, exclude_id=teacher_msg.id)
+    context, history = await run_in_threadpool(_begin_message, db, teacher, session, content)
 
     # Retrieval grounding -- returns [] while embeddings aren't configured yet.
     chunks: list[str] = []
     chunk_ids: list[uuid.UUID] = []
-    if session.topic_id is not None:
+    if context.topic_id is not None:
         try:
-            retrieved = await Retriever().top_k(db, topic_id=session.topic_id, query=content)
+            retrieved = await Retriever().top_k(db, topic_id=context.topic_id, query=content)
             chunks = [c.content_text for c in retrieved]
             chunk_ids = [c.id for c in retrieved]
         except Exception as exc:  # never let retrieval break generation
             logger.warning("retrieval failed, proceeding ungrounded: %s", exc)
 
     system, messages = explanation.build(
-        grade_label=grade.label,
-        subject_name=subject.name,
-        topic_title=topic.title if topic else (chapter.title if chapter else "this topic"),
-        topic_description=topic.description if topic else None,
-        language=teacher.preferred_language,
+        grade_label=context.grade_label,
+        subject_name=context.subject_name,
+        topic_title=context.topic_title or context.chapter_title or "this topic",
+        topic_description=context.topic_description,
+        language=context.language,
         chunks=chunks,
         history=history,
         teacher_query=content,
@@ -299,39 +379,67 @@ async def stream_message(
         yield _sse("error", {"message": _ERR_EMPTY})
         return
 
-    assistant_msg = ChatMessage(
-        session_id=session.id,
-        role="assistant",
-        content=full_text,
-        token_count=output_tokens,
-        retrieved_chunk_ids=chunk_ids or None,
-    )
-    db.add(assistant_msg)
-    session.updated_at = func.now()
-    if session.title is None:
-        session.title = await _derive_title(client, teacher.preferred_language, content)
-
-    # Legacy: a plain chat turn also derives a Module + explanation artifact.
-    # In v2 Ask Medha is conversation only -- generation lives in
-    # `backend.generation`. Gated so this can be turned off once the frontend
-    # has moved (see docs/medha-v2-backend.md §5).
-    done: dict[str, str] = {"message_id": str(assistant_msg.id)}
-    if settings.ask_writes_modules:
-        module = _upsert_module(db, teacher, session)
-        if module.title in (None, "Untitled") and session.title:
-            module.title = session.title
-        artifact = _replace_explanation_artifact(db, module, full_text)
-        db.commit()
-        db.refresh(assistant_msg)
-        db.refresh(module)
-        db.refresh(artifact)
-        done["module_id"] = str(module.id)
-        done["artifact_id"] = str(artifact.id)
-    else:
-        db.commit()
-        db.refresh(assistant_msg)
+    # Before the reply is added: with unsaved changes this AI call would have to keep the
+    # database slot throughout (see `outside_call`).
+    title = None if context.has_title else await _derive_title(client, context.language, content)
+    try:
+        done = await save_in_db_thread(_save_reply, db, teacher, session, full_text, output_tokens, chunk_ids, title)
+    except DatabaseBusy:
+        yield _sse("error", {"message": _ERR_GENERATION})
+        return
 
     yield _sse("done", done)
+
+
+def _begin_generator(
+    db: Session, teacher: Teacher, session: ChatSession
+) -> tuple[_PromptContext, str, str]:
+    context = _prompt_context(db, teacher, session)
+    # what the deck / quiz / activity is *about*: the topic if one is picked,
+    # otherwise the chapter, otherwise just the subject.
+    subject_label = (
+        context.topic_title
+        or context.chapter_title
+        or f"{context.grade_label} {context.subject_name}"
+    )
+    return context, subject_label, _last_teacher_message(db, session.id) or subject_label
+
+
+def _save_artifact(
+    db: Session,
+    teacher: Teacher,
+    session: ChatSession,
+    artifact_type: str,
+    content_json: dict,
+    output_tokens: int | None,
+    chunk_ids: list[uuid.UUID],
+    subject_label: str,
+) -> dict[str, str]:
+    if session.title is None:
+        session.title = subject_label
+    module = _upsert_module(db, teacher, session)
+    if module.title in (None, "Untitled") and session.title:
+        module.title = session.title
+    artifact = _upsert_artifact(db, module, artifact_type, content_json)
+
+    db.add(
+        ChatMessage(
+            session_id=session.id,
+            role="assistant",
+            content=_ack_line(artifact_type, content_json),
+            token_count=output_tokens,
+            retrieved_chunk_ids=chunk_ids or None,
+        )
+    )
+    session.updated_at = func.now()
+    db.commit()
+    db.refresh(module)
+    db.refresh(artifact)
+    return {
+        "module_id": str(module.id),
+        "artifact_id": str(artifact.id),
+        "artifact_type": artifact_type,
+    }
 
 
 async def run_generator(
@@ -345,40 +453,24 @@ async def run_generator(
     removed wholesale in Phase E along with the /chat alias. Not gated by
     `ask_writes_modules` -- that flag governs only the plain-chat path above."""
     builder = _GEN_BUILDERS[artifact_type]
-    grade = db.get(Grade, session.grade_id)
-    subject = db.get(Subject, session.subject_id)
-    topic = db.get(CurriculumTopic, session.topic_id) if session.topic_id else None
-    chapter = (
-        db.get(CurriculumChapter, session.chapter_id) if session.chapter_id else None
-    )
-
-    # what the deck / quiz / activity is *about*: the topic if one is picked,
-    # otherwise the chapter, otherwise just the subject.
-    subject_label = (
-        topic.title
-        if topic
-        else chapter.title
-        if chapter
-        else f"{grade.label} {subject.name}"
-    )
-    query = _last_teacher_message(db, session.id) or subject_label
+    context, subject_label, query = await run_in_threadpool(_begin_generator, db, teacher, session)
 
     chunk_ids: list[uuid.UUID] = []
     chunks: list[str] = []
-    if session.topic_id is not None:
+    if context.topic_id is not None:
         try:
-            retrieved = await Retriever().top_k(db, topic_id=session.topic_id, query=query)
+            retrieved = await Retriever().top_k(db, topic_id=context.topic_id, query=query)
             chunks = [c.content_text for c in retrieved]
             chunk_ids = [c.id for c in retrieved]
         except Exception as exc:
             logger.warning("retrieval failed, proceeding ungrounded: %s", exc)
 
     system, messages = builder.build(
-        grade_label=grade.label,
-        subject_name=subject.name,
-        topic_title=topic.title if topic else (chapter.title if chapter else "this topic"),
-        topic_description=topic.description if topic else None,
-        language=teacher.preferred_language,
+        grade_label=context.grade_label,
+        subject_name=context.subject_name,
+        topic_title=context.topic_title or context.chapter_title or "this topic",
+        topic_description=context.topic_description,
+        language=context.language,
         chunks=chunks,
         teacher_query=query,
     )
@@ -418,32 +510,11 @@ async def run_generator(
             yield _sse("error", {"message": _ERR_PARSE})
             return
 
-    if session.title is None:
-        session.title = subject_label
-    module = _upsert_module(db, teacher, session)
-    if module.title in (None, "Untitled") and session.title:
-        module.title = session.title
-    artifact = _upsert_artifact(db, module, artifact_type, content_json)
-
-    db.add(
-        ChatMessage(
-            session_id=session.id,
-            role="assistant",
-            content=_ack_line(artifact_type, content_json),
-            token_count=output_tokens,
-            retrieved_chunk_ids=chunk_ids or None,
+    try:
+        done = await save_in_db_thread(
+            _save_artifact, db, teacher, session, artifact_type, content_json, output_tokens, chunk_ids, subject_label
         )
-    )
-    session.updated_at = func.now()
-    db.commit()
-    db.refresh(module)
-    db.refresh(artifact)
-
-    yield _sse(
-        "done",
-        {
-            "module_id": str(module.id),
-            "artifact_id": str(artifact.id),
-            "artifact_type": artifact_type,
-        },
-    )
+    except DatabaseBusy:
+        yield _sse("error", {"message": _ERR_GENERATION})
+        return
+    yield _sse("done", done)

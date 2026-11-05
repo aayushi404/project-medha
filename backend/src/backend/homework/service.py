@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.core.section_access import assert_can_act_on_section_and_subject, current_enrollment
@@ -109,14 +110,31 @@ def list_for_teacher(db: Session, teacher: Teacher) -> list[HomeworkListItem]:
         .order_by(Homework.created_at.desc())
         .all()
     )
+    roster_sizes: dict[uuid.UUID, int] = {}
+    done_counts: dict[uuid.UUID, int] = {}
+    if rows:
+        section_ids = {hw.class_section_id for hw, *_ in rows}
+        roster_sizes = dict(
+            db.query(StudentEnrollment.class_section_id, func.count(Student.id))
+            .join(Student, StudentEnrollment.student_id == Student.id)
+            .filter(
+                StudentEnrollment.class_section_id.in_(section_ids),
+                StudentEnrollment.left_on.is_(None),
+                Student.approval_status == "approved",
+            )
+            .group_by(StudentEnrollment.class_section_id)
+            .all()
+        )
+        done_counts = dict(
+            db.query(HomeworkStatus.homework_id, func.count(HomeworkStatus.id))
+            .filter(HomeworkStatus.homework_id.in_([hw.id for hw, *_ in rows]), HomeworkStatus.done.is_(True))
+            .group_by(HomeworkStatus.homework_id)
+            .all()
+        )
     items = []
     for hw, grade_label, section, subject_name in rows:
-        total = len(_roster_student_ids(db, hw.class_section_id))
-        done = (
-            db.query(HomeworkStatus)
-            .filter(HomeworkStatus.homework_id == hw.id, HomeworkStatus.done.is_(True))
-            .count()
-        )
+        total = roster_sizes.get(hw.class_section_id, 0)
+        done = done_counts.get(hw.id, 0)
         items.append(
             HomeworkListItem(
                 id=hw.id,
@@ -144,13 +162,18 @@ def list_for_student(db: Session, student: Student) -> list[HomeworkStudentOut]:
         .order_by(Homework.created_at.desc())
         .all()
     )
+    done_homework_ids: set[uuid.UUID] = set()
+    if rows:
+        done_homework_ids = {
+            homework_id
+            for (homework_id,) in db.query(HomeworkStatus.homework_id).filter(
+                HomeworkStatus.student_id == student.id,
+                HomeworkStatus.homework_id.in_([hw.id for hw, _ in rows]),
+                HomeworkStatus.done.is_(True),
+            )
+        }
     out = []
     for hw, subject_name in rows:
-        st = (
-            db.query(HomeworkStatus)
-            .filter(HomeworkStatus.homework_id == hw.id, HomeworkStatus.student_id == student.id)
-            .first()
-        )
         out.append(
             HomeworkStudentOut(
                 id=hw.id,
@@ -158,7 +181,7 @@ def list_for_student(db: Session, student: Student) -> list[HomeworkStudentOut]:
                 description=hw.description,
                 subject_name=subject_name,
                 due_date=hw.due_date,
-                done=bool(st and st.done),
+                done=hw.id in done_homework_ids,
                 created_at=hw.created_at,
             )
         )

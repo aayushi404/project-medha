@@ -8,11 +8,13 @@ from collections.abc import AsyncIterator
 from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from backend.core.ownership import assert_owned
 from backend.core.section_access import current_enrollment
 from backend.db.models import ChatMessage, ChatSession, ClassSection, Grade, Student, Subject
 from backend.english.schemas import EnglishSessionCreateIn
+from backend.db.session import DatabaseBusy, save_in_db_thread
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm import safety
 from backend.llm.prompts import english as english_prompt
@@ -97,25 +99,54 @@ def _sse(event: str, payload: dict) -> dict:
     return {"event": event, "data": json.dumps(payload, ensure_ascii=False)}
 
 
-async def stream_message(
-    db: Session, student: Student, session: ChatSession, content: str
-) -> AsyncIterator[dict]:
-    grade = db.get(Grade, session.grade_id)
-    lesson_topic = session.title
-
+def _begin_message(db: Session, student: Student, session: ChatSession, content: str) -> dict:
+    """Saves the question and returns what the prompt needs, as plain values: reading a
+    database object on the event loop could query, stalling everything in this worker."""
     student_msg = ChatMessage(session_id=session.id, role="student", content=content)
     db.add(student_msg)
     db.commit()
     db.refresh(student_msg)
 
     history = _history(db, session.id, exclude_id=student_msg.id)
+    grade = db.get(Grade, session.grade_id)
+    return {
+        "history": history,
+        "session_id": session.id,
+        "grade_label": grade.label if grade else "your class",
+        "lesson_topic": session.title,
+        "language": student.preferred_language,
+    }
+
+
+def _save_reply(
+    db: Session, session: ChatSession, full_text: str, output_tokens: int | None, content: str
+) -> str:
+    assistant_msg = ChatMessage(
+        session_id=session.id,
+        role="assistant",
+        content=full_text,
+        token_count=output_tokens,
+    )
+    db.add(assistant_msg)
+    session.updated_at = func.now()
+    if session.title is None:
+        session.title = content[:60].rstrip() + ("…" if len(content) > 60 else "")
+    db.commit()
+    db.refresh(assistant_msg)
+    return str(assistant_msg.id)
+
+
+async def stream_message(
+    db: Session, student: Student, session: ChatSession, content: str
+) -> AsyncIterator[dict]:
+    turn = await run_in_threadpool(_begin_message, db, student, session, content)
 
     system, messages = english_prompt.build(
-        grade_label=grade.label if grade else "your class",
-        lesson_topic=lesson_topic,
-        language=student.preferred_language,
+        grade_label=turn["grade_label"],
+        lesson_topic=turn["lesson_topic"],
+        language=turn["language"],
         chunks=[],
-        history=history,
+        history=turn["history"],
         student_query=content,
     )
 
@@ -153,24 +184,17 @@ async def stream_message(
         parts.append(clean)
         yield _sse("token", {"text": clean})
     if caught_words:
-        logger.warning("english reply sanitized session=%s words=%s", session.id, caught_words)
+        logger.warning("english reply sanitized session=%s words=%s", turn["session_id"], caught_words)
 
     full_text = "".join(parts).strip()
     if not full_text:
         yield _sse("error", {"message": _ERR_EMPTY})
         return
 
-    assistant_msg = ChatMessage(
-        session_id=session.id,
-        role="assistant",
-        content=full_text,
-        token_count=output_tokens,
-    )
-    db.add(assistant_msg)
-    session.updated_at = func.now()
-    if session.title is None:
-        session.title = content[:60].rstrip() + ("…" if len(content) > 60 else "")
-    db.commit()
-    db.refresh(assistant_msg)
+    try:
+        message_id = await save_in_db_thread(_save_reply, db, session, full_text, output_tokens, content)
+    except DatabaseBusy:
+        yield _sse("error", {"message": _ERR_GENERATION})
+        return
 
-    yield _sse("done", {"message_id": str(assistant_msg.id)})
+    yield _sse("done", {"message_id": message_id})

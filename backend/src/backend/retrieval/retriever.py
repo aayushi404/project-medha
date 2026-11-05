@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.core.config import settings
+from backend.db.session import in_db_thread
 from backend.retrieval.embedder import QUERY, Embedder, get_embedder
 
 logger = logging.getLogger("backend.retrieval")
@@ -53,10 +54,13 @@ class Retriever:
             logger.info("retrieval disabled (no EMBEDDING_API_KEY); proceeding ungrounded")
             return []
         (qvec,) = await self._embedder.embed([query], input_type=QUERY)
-        rows = db.execute(
-            _SEARCH_SQL,
-            {"qvec": _to_vector_literal(qvec), "topic_id": str(topic_id), "k": k},
-        ).all()
+        # In a thread: callers run on the event loop, which must not wait on the database.
+        rows = await in_db_thread(
+            lambda: db.execute(
+                _SEARCH_SQL,
+                {"qvec": _to_vector_literal(qvec), "topic_id": str(topic_id), "k": k},
+            ).all()
+        )
         if not rows:
             logger.warning("retrieval: no embedded chunks for topic %s", topic_id)
             return []

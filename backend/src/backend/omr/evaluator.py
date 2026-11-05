@@ -1,3 +1,5 @@
+import threading
+
 import cv2
 import numpy as np
 import pymupdf
@@ -33,6 +35,33 @@ EMPTY_THRESHOLD = 0.15   # Fill ratio < 15% considered empty
 
 _MAX_PDF_PAGES = 3
 _MAX_RENDER_PIXELS = 40_000_000  # ~ A4 at 400 DPI
+# PyMuPDF does not support multithreading, and sheets are marked in threads (see service.py).
+_PDF_LOCK = threading.Lock()
+
+
+def _render_pdf(file_bytes: bytes) -> list[np.ndarray]:
+    """Call with `_PDF_LOCK` held. Everything from PyMuPDF is closed or freed before this
+    returns, so none of it is cleaned up after the lock has been released."""
+    doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+    try:
+        if doc.page_count > _MAX_PDF_PAGES:
+            raise ValueError("The PDF has too many pages.")
+        images = []
+        for page in doc:
+            # 300 DPI, but never render a page beyond the pixel budget (a
+            # page with a huge MediaBox would otherwise exhaust memory)
+            zoom = 300 / 72
+            if page.rect.width * zoom * page.rect.height * zoom > _MAX_RENDER_PIXELS:
+                raise ValueError("The PDF page is too large.")
+            mat = pymupdf.Matrix(zoom, zoom)
+            pix = page.get_pixmap(matrix=mat)
+            img_data = np.frombuffer(pix.tobytes("png"), dtype=np.uint8)
+            bgr = cv2.imdecode(img_data, cv2.IMREAD_COLOR)
+            images.append(bgr)
+        return images
+    finally:
+        page = pix = None  # an exception's traceback would otherwise keep these past the lock
+        doc.close()
 
 
 class OMREvaluator:
@@ -46,22 +75,8 @@ class OMREvaluator:
         """Loads PDF pages or image files into list of BGR numpy arrays."""
         filename_lower = filename.lower()
         if filename_lower.endswith(".pdf"):
-            doc = pymupdf.open(stream=file_bytes, filetype="pdf")
-            if doc.page_count > _MAX_PDF_PAGES:
-                raise ValueError("The PDF has too many pages.")
-            images = []
-            for page in doc:
-                # 300 DPI, but never render a page beyond the pixel budget (a
-                # page with a huge MediaBox would otherwise exhaust memory)
-                zoom = 300 / 72
-                if page.rect.width * zoom * page.rect.height * zoom > _MAX_RENDER_PIXELS:
-                    raise ValueError("The PDF page is too large.")
-                mat = pymupdf.Matrix(zoom, zoom)
-                pix = page.get_pixmap(matrix=mat)
-                img_data = np.frombuffer(pix.tobytes("png"), dtype=np.uint8)
-                bgr = cv2.imdecode(img_data, cv2.IMREAD_COLOR)
-                images.append(bgr)
-            return images
+            with _PDF_LOCK:
+                return _render_pdf(file_bytes)
         else:
             nparr = np.frombuffer(file_bytes, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)

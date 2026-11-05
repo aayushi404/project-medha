@@ -5,6 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
+from starlette.concurrency import run_in_threadpool
 
 from pydantic import ValidationError
 
@@ -53,8 +54,10 @@ async def generate(
     _check_type(gen_type)
     # Resolve scope synchronously so a bad grade/subject/chapter is a clean 400,
     # not an error mid-stream.
-    scope = service.resolve_scope(db, payload.scope)
-    language = payload.language or current_teacher.preferred_language
+    def prepare():  # off the event loop, because these can query
+        return service.resolve_scope(db, payload.scope), payload.language or current_teacher.preferred_language
+
+    scope, language = await run_in_threadpool(prepare)
     generator = pipeline.run(
         db, current_teacher, gen_type, scope, payload.params, language, source="quick_action"
     )
@@ -71,32 +74,29 @@ async def regenerate(
     current_teacher: Teacher = Depends(get_current_teacher),
     db: Session = Depends(get_db),
 ) -> EventSourceResponse:
-    parent = db.get(Generation, generation_id)
-    assert_owned(current_teacher.id, parent)
-    _check_type(parent.type)
+    def prepare() -> dict:  # off the event loop, because these can query
+        parent = db.get(Generation, generation_id)
+        assert_owned(current_teacher.id, parent)
+        _check_type(parent.type)
+        scope = service.resolve_scope(
+            db,
+            ScopeIn(
+                grade_id=parent.grade_id,
+                subject_id=parent.subject_id,
+                chapter_id=parent.chapter_id,
+                topic_id=parent.topic_id,
+            ),
+        )
+        return {
+            "gen_type": parent.type,
+            "scope": scope,
+            "raw_params": {**(parent.input_params or {}), **(payload.params or {})},
+            "language": payload.language or parent.language,
+            "session_id": parent.session_id,
+            "parent_generation_id": parent.id,
+        }
 
-    scope = service.resolve_scope(
-        db,
-        ScopeIn(
-            grade_id=parent.grade_id,
-            subject_id=parent.subject_id,
-            chapter_id=parent.chapter_id,
-            topic_id=parent.topic_id,
-        ),
-    )
-    merged = {**(parent.input_params or {}), **(payload.params or {})}
-    language = payload.language or parent.language
-    generator = pipeline.run(
-        db,
-        current_teacher,
-        parent.type,
-        scope,
-        merged,
-        language,
-        source="regenerate",
-        session_id=parent.session_id,
-        parent_generation_id=parent.id,
-    )
+    generator = pipeline.run(db, current_teacher, source="regenerate", **await run_in_threadpool(prepare))
     return EventSourceResponse(generator, headers=_SSE_HEADERS)
 
 
@@ -113,18 +113,20 @@ async def answer_key(
     """Generate (never persist) an answer key for a question paper. Pass the
     current `content_json` in the body so an unsaved/edited paper still gets a
     matching key; omit it to key the stored row."""
-    g = db.get(Generation, generation_id)
-    assert_owned(current_teacher.id, g)
-    if g.type != "question_paper":
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "Answer keys are only available for question papers."
-        )
-    if g.status != "completed":
-        raise HTTPException(status.HTTP_409_CONFLICT, "This question paper isn't ready yet.")
+    def load_paper() -> tuple[dict, str]:  # off the event loop, because these can query
+        g = db.get(Generation, generation_id)
+        assert_owned(current_teacher.id, g)
+        if g.type != "question_paper":
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "Answer keys are only available for question papers."
+            )
+        if g.status != "completed":
+            raise HTTPException(status.HTTP_409_CONFLICT, "This question paper isn't ready yet.")
+        return payload.content_json or g.content_json or {}, g.language
 
-    paper = payload.content_json or g.content_json or {}
+    paper, language = await run_in_threadpool(load_paper)
     try:
-        return await answer_key_svc.build(paper, g.language)
+        return await answer_key_svc.build(paper, language)
     except LLMError as exc:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,

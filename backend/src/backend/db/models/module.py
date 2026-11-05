@@ -13,7 +13,10 @@ class Module(Base):
     holds one or more artifacts (explanation / quiz / activity)."""
 
     __tablename__ = "modules"
-    __table_args__ = (Index("idx_modules_teacher", "teacher_id", text("updated_at DESC")),)
+    __table_args__ = (
+        Index("idx_modules_teacher", "teacher_id", text("updated_at DESC")),
+        Index("idx_modules_session", "session_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("uuid_generate_v4()")

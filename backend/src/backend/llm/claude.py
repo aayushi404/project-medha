@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 import anthropic
 
 from backend.core.config import settings
+from backend.db.session import outside_call
 from backend.llm.client import (
     Completion,
     LLMClient,
@@ -41,16 +42,17 @@ class ClaudeClient(LLMClient):
     ) -> AsyncIterator:
         started = time.monotonic()
         try:
-            async with self._sdk().messages.stream(
-                model=self._model,
-                system=system,
-                messages=_to_anthropic(messages),
-                max_tokens=max_tokens,
-            ) as stream:
-                async for event in stream:
-                    if event.type == "text":
-                        yield TokenDelta(text=event.text)
-                final = await stream.get_final_message()
+            async with outside_call():
+                async with self._sdk().messages.stream(
+                    model=self._model,
+                    system=system,
+                    messages=_to_anthropic(messages),
+                    max_tokens=max_tokens,
+                ) as stream:
+                    async for event in stream:
+                        if event.type == "text":
+                            yield TokenDelta(text=event.text)
+                    final = await stream.get_final_message()
         except anthropic.RateLimitError as exc:
             logger.warning("llm_stream_rate_limited model=%s err=%s", self._model, exc)
             raise LLMRateLimitError(str(exc)) from exc
@@ -73,12 +75,13 @@ class ClaudeClient(LLMClient):
     ) -> Completion:
         started = time.monotonic()
         try:
-            resp = await self._sdk().messages.create(
-                model=self._model,
-                system=system,
-                messages=_to_anthropic(messages),
-                max_tokens=max_tokens,
-            )
+            async with outside_call():
+                resp = await self._sdk().messages.create(
+                    model=self._model,
+                    system=system,
+                    messages=_to_anthropic(messages),
+                    max_tokens=max_tokens,
+                )
         except anthropic.RateLimitError as exc:
             logger.warning("llm_complete_rate_limited model=%s err=%s", self._model, exc)
             raise LLMRateLimitError(str(exc)) from exc

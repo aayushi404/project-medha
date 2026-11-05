@@ -103,17 +103,18 @@ def mark_day(
     newly_absent: list[AttendanceRecord] = []
     is_today = payload.date == date_.today()
 
+    already_marked = {
+        row.student_id: row
+        for row in db.query(AttendanceRecord).filter(
+            AttendanceRecord.student_id.in_(valid_ids),
+            AttendanceRecord.attendance_date == payload.date,
+        )
+    }
+
     for record in payload.records:
         if record.student_id not in valid_ids:
             continue
-        existing = (
-            db.query(AttendanceRecord)
-            .filter(
-                AttendanceRecord.student_id == record.student_id,
-                AttendanceRecord.attendance_date == payload.date,
-            )
-            .first()
-        )
+        existing = already_marked.get(record.student_id)
         if existing is not None:
             was_absent = existing.status == "absent"
             existing.status = record.status
@@ -144,9 +145,9 @@ def mark_day(
 
 def list_for_student(db: Session, student: Student) -> list[AttendanceMineItem]:
     rows = (
-        db.query(AttendanceRecord)
+        db.query(AttendanceRecord.attendance_date, AttendanceRecord.status)
         .filter(AttendanceRecord.student_id == student.id)
         .order_by(AttendanceRecord.attendance_date.desc())
         .all()
     )
-    return [AttendanceMineItem(date=r.attendance_date, status=r.status) for r in rows]
+    return [AttendanceMineItem(date=attendance_date, status=status) for attendance_date, status in rows]

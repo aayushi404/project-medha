@@ -1,8 +1,9 @@
 import re
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.datastructures import Headers, MutableHeaders
 
 from backend.absence_calls.router import router as absence_calls_router
 from backend.admin.router import router as admin_router
@@ -14,6 +15,7 @@ from backend.core.config import settings
 from backend.core.context import request_id_ctx
 from backend.core.errors import install_error_handlers
 from backend.core.logging import configure_logging
+from backend.db.session import ReleaseDatabaseBeforeSending
 from backend.curriculum.router import router as curriculum_router
 from backend.english.router import router as english_router
 from backend.fees.router import router as fees_router
@@ -57,22 +59,40 @@ app = FastAPI(
 _SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{8,64}")
 
 
-@app.middleware("http")
-async def request_id_middleware(request: Request, call_next):
+class _RequestIdMiddleware:
     """Give every request an id: honour an inbound X-Request-ID (from a proxy)
     or mint one, expose it on the ContextVar for logging/error bodies, and
-    echo it back on the response."""
-    inbound = request.headers.get("x-request-id", "")
-    # only trust a short, log-safe id from a proxy; anything else (newlines,
-    # huge values) could forge log lines or poison caches keyed on the header
-    rid = inbound if _SAFE_REQUEST_ID.fullmatch(inbound) else uuid4().hex
-    token = request_id_ctx.set(rid)
-    try:
-        response = await call_next(request)
-    finally:
-        request_id_ctx.reset(token)
-    response.headers["X-Request-ID"] = rid
-    return response
+    echo it back on the response.
+
+    Pure ASGI, like the other middleware here: `@app.middleware("http")` starts an
+    extra task and memory stream per request, which adds up at high request rates."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        inbound = Headers(scope=scope).get("x-request-id", "")
+        # only trust a short, log-safe id from a proxy; anything else (newlines,
+        # huge values) could forge log lines or poison caches keyed on the header
+        rid = inbound if _SAFE_REQUEST_ID.fullmatch(inbound) else uuid4().hex
+
+        async def send_with_id(message) -> None:
+            if message["type"] == "http.response.start":
+                MutableHeaders(scope=message)["X-Request-ID"] = rid
+            await send(message)
+
+        token = request_id_ctx.set(rid)
+        try:
+            await self.app(scope, receive, send_with_id)
+        finally:
+            request_id_ctx.reset(token)
+
+
+# Innermost, so the session goes back before anything starts sending the response.
+app.add_middleware(ReleaseDatabaseBeforeSending)
+app.add_middleware(_RequestIdMiddleware)
 
 
 class _BodyLimitMiddleware:
@@ -117,19 +137,33 @@ async def _too_large(send) -> None:
     await send({"type": "http.response.body", "body": body})
 
 
-@app.middleware("http")
-async def security_headers_middleware(request: Request, call_next):
+class _SecurityHeadersMiddleware:
     """Defensive headers on every API response. (The frontend sets its own
     CSP; these cover the API origin, e.g. if a response is ever opened directly.)"""
-    response = await call_next(request)
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "no-referrer")
-    response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
-    response.headers.setdefault("Cache-Control", "no-store")
-    if not _IS_DEV:
-        response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-    return response
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        async def send_with_headers(message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers.setdefault("X-Content-Type-Options", "nosniff")
+                headers.setdefault("X-Frame-Options", "DENY")
+                headers.setdefault("Referrer-Policy", "no-referrer")
+                headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+                headers.setdefault("Cache-Control", "no-store")
+                if not _IS_DEV:
+                    headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+app.add_middleware(_SecurityHeadersMiddleware)
 
 
 # allow_credentials=True requires an exact origin (not "*") -- the browser
