@@ -7,6 +7,7 @@ from google.genai import errors as genai_errors
 from google.genai import types
 
 from backend.core.config import settings
+from backend.db.session import outside_call
 from backend.llm.client import (
     Completion,
     LLMClient,
@@ -70,14 +71,15 @@ class GeminiClient(LLMClient):
         )
         last_usage: Usage = Usage(0, 0)
         try:
-            iterator = await self._sdk().aio.models.generate_content_stream(
-                model=self._model, contents=_to_contents(messages), config=config
-            )
-            async for chunk in iterator:
-                if chunk.text:
-                    yield TokenDelta(text=chunk.text)
-                if chunk.usage_metadata is not None:
-                    last_usage = _usage(chunk.usage_metadata)
+            async with outside_call():
+                iterator = await self._sdk().aio.models.generate_content_stream(
+                    model=self._model, contents=_to_contents(messages), config=config
+                )
+                async for chunk in iterator:
+                    if chunk.text:
+                        yield TokenDelta(text=chunk.text)
+                    if chunk.usage_metadata is not None:
+                        last_usage = _usage(chunk.usage_metadata)
         except genai_errors.APIError as exc:
             logger.warning("llm_stream_error model=%s err=%s", self._model, exc)
             _raise_for(exc)
@@ -99,9 +101,10 @@ class GeminiClient(LLMClient):
             system_instruction=system, max_output_tokens=max_tokens
         )
         try:
-            resp = await self._sdk().aio.models.generate_content(
-                model=self._model, contents=_to_contents(messages), config=config
-            )
+            async with outside_call():
+                resp = await self._sdk().aio.models.generate_content(
+                    model=self._model, contents=_to_contents(messages), config=config
+                )
         except genai_errors.APIError as exc:
             logger.warning("llm_complete_error model=%s err=%s", self._model, exc)
             _raise_for(exc)

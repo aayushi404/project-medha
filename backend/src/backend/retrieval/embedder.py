@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 import voyageai
 
 from backend.core.config import settings
+from backend.db.session import outside_call
 
 logger = logging.getLogger("backend.retrieval")
 
@@ -55,7 +56,8 @@ class VoyageEmbedder(Embedder):
         if not texts:
             return []
         try:
-            result = await self._sdk().embed(texts, model=self._model, input_type=input_type)
+            async with outside_call():
+                result = await self._sdk().embed(texts, model=self._model, input_type=input_type)
         except EmbeddingError:
             raise
         except Exception as exc:  # voyageai raises plain exceptions

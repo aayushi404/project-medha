@@ -18,7 +18,7 @@ from backend.absence_calls.telephony import (
 )
 from backend.core.config import settings
 from backend.db.models import AbsenceCall, AttendanceRecord, Student, Teacher
-from backend.db.session import SessionLocal
+from backend.db.session import SessionLocal, outside_call, own_slot
 
 logger = logging.getLogger("backend.absence_calls")
 
@@ -44,8 +44,16 @@ _PROVIDER_STATUS_MAP = {
 
 async def queue_call_for_absence(record_id: uuid.UUID) -> None:
     """The BackgroundTasks entrypoint -- see attendance/service.py::mark_day.
-    Runs after the HTTP response has already gone back to the teacher, on its
-    own DB session (the request's session is closed by then).
+    Runs on the event loop with its own session, so it gives back the request's
+    database slot, then takes its own: one slot per session, so it can never block
+    the loop on a full pool.
+    """
+    async with outside_call(), own_slot():
+        await _queue_call(record_id)
+
+
+async def _queue_call(record_id: uuid.UUID) -> None:
+    """Runs after the HTTP response has already gone back to the teacher.
 
     Every outcome is recorded truthfully: a student with no guardian number
     gets `no_guardian_phone`, calling switched off/unconfigured gets

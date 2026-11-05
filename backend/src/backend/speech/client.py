@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import httpx
 
 from backend.core.config import settings
+from backend.db.session import outside_call
 
 logger = logging.getLogger("backend.speech")
 
@@ -108,7 +109,7 @@ async def transcribe(
     if codec:
         data["input_audio_codec"] = codec
 
-    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+    async with outside_call(), httpx.AsyncClient(timeout=_TIMEOUT) as client:
         try:
             resp = await client.post(
                 f"{_BASE}/speech-to-text",
@@ -179,7 +180,7 @@ async def synthesize(
     }
     if pace is not None:
         body["pace"] = pace
-    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+    async with outside_call(), httpx.AsyncClient(timeout=_TIMEOUT) as client:
         try:
             resp = await client.post(
                 f"{_BASE}/text-to-speech",
