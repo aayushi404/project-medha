@@ -7,7 +7,7 @@ from google.genai import errors as genai_errors
 from google.genai import types
 
 from backend.core.config import settings
-from backend.db.session import DatabaseBusy, outside_call
+from backend.db.session import outside_call
 from backend.llm.client import (
     Completion,
     LLMClient,
@@ -83,8 +83,6 @@ class GeminiClient(LLMClient):
         except genai_errors.APIError as exc:
             logger.warning("llm_stream_error model=%s err=%s", self._model, exc)
             _raise_for(exc)
-        except DatabaseBusy as exc:  # so callers report it the way they report any AI failure
-            raise LLMError(str(exc.detail)) from exc
 
         logger.info(
             "llm_call kind=stream provider=gemini model=%s latency_ms=%d input_tokens=%d output_tokens=%d cache_hit=false",
@@ -110,8 +108,6 @@ class GeminiClient(LLMClient):
         except genai_errors.APIError as exc:
             logger.warning("llm_complete_error model=%s err=%s", self._model, exc)
             _raise_for(exc)
-        except DatabaseBusy as exc:
-            raise LLMError(str(exc.detail)) from exc
 
         usage = _usage(resp.usage_metadata)
         logger.info(

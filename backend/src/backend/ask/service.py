@@ -24,6 +24,7 @@ from backend.db.models import (
     Subject,
     Teacher,
 )
+from backend.db.session import DatabaseBusy, in_db_thread
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.prompts import activity as activity_prompt
 from backend.llm.prompts import explanation
@@ -381,7 +382,11 @@ async def stream_message(
     # Before the reply is added: with unsaved changes this AI call would have to keep the
     # database slot throughout (see `outside_call`).
     title = None if context.has_title else await _derive_title(client, context.language, content)
-    done = await run_in_threadpool(_save_reply, db, teacher, session, full_text, output_tokens, chunk_ids, title)
+    try:
+        done = await in_db_thread(_save_reply, db, teacher, session, full_text, output_tokens, chunk_ids, title)
+    except DatabaseBusy:
+        yield _sse("error", {"message": _ERR_GENERATION})
+        return
 
     yield _sse("done", done)
 
@@ -505,7 +510,11 @@ async def run_generator(
             yield _sse("error", {"message": _ERR_PARSE})
             return
 
-    done = await run_in_threadpool(
-        _save_artifact, db, teacher, session, artifact_type, content_json, output_tokens, chunk_ids, subject_label
-    )
+    try:
+        done = await in_db_thread(
+            _save_artifact, db, teacher, session, artifact_type, content_json, output_tokens, chunk_ids, subject_label
+        )
+    except DatabaseBusy:
+        yield _sse("error", {"message": _ERR_GENERATION})
+        return
     yield _sse("done", done)

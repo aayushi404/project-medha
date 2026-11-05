@@ -108,6 +108,9 @@ class OmrSafetyTests(unittest.TestCase):
                     active -= 1
                 return iter(())
 
+            def close(self):
+                pass
+
         def opening(**_kwargs):
             nonlocal active, most
             with lock:
@@ -123,6 +126,49 @@ class OmrSafetyTests(unittest.TestCase):
             for thread in threads:
                 thread.join()
         self.assertEqual(most, 1)
+
+    def test_a_pdf_is_closed_inside_the_lock_even_when_rejected(self):
+        from backend.omr import evaluator
+
+        closed_locked = []
+
+        class TooLong:
+            page_count = 99
+
+            def close(self):
+                closed_locked.append(evaluator._PDF_LOCK.locked())
+
+        with mock.patch.object(evaluator.pymupdf, "open", lambda **_: TooLong()):
+            with self.assertRaises(ValueError):
+                evaluator.OMREvaluator().load_image_from_bytes(b"x", "a.pdf")
+        self.assertEqual(closed_locked, [True])
+
+    def test_real_pdfs_render_correctly_from_many_threads(self):
+        import pymupdf
+
+        from backend.omr import evaluator
+
+        made = pymupdf.open()
+        made.new_page(width=200, height=300)
+        pdf = made.tobytes()
+        made.close()
+        shapes, errors = [], []
+
+        def render():
+            try:
+                for _ in range(5):
+                    shapes.append(evaluator.OMREvaluator().load_image_from_bytes(pdf, "a.pdf")[0].shape[:2])
+            except Exception as exc:
+                errors.append(exc)
+
+        threads = [threading.Thread(target=render) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(errors, [])
+        self.assertEqual(set(shapes), {(1250, 834)})
+        self.assertEqual(len(shapes), 40)
 
     def _evaluate(self):
         return service.evaluate_omr_upload(mock.Mock(), mock.Mock(), _upload(), uuid.uuid4(), 50.0)

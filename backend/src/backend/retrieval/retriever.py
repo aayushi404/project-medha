@@ -4,9 +4,9 @@ from dataclasses import dataclass
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from starlette.concurrency import run_in_threadpool
 
 from backend.core.config import settings
+from backend.db.session import in_db_thread
 from backend.retrieval.embedder import QUERY, Embedder, get_embedder
 
 logger = logging.getLogger("backend.retrieval")
@@ -55,7 +55,7 @@ class Retriever:
             return []
         (qvec,) = await self._embedder.embed([query], input_type=QUERY)
         # In a thread: callers run on the event loop, which must not wait on the database.
-        rows = await run_in_threadpool(
+        rows = await in_db_thread(
             lambda: db.execute(
                 _SEARCH_SQL,
                 {"qvec": _to_vector_literal(qvec), "topic_id": str(topic_id), "k": k},

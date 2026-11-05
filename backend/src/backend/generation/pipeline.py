@@ -20,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from backend.core.config import settings
 from backend.db.models import Generation, Teacher
+from backend.db.session import DatabaseBusy, in_db_thread
 from backend.generation import cache
 from backend.generation.content import CONTENT_MODELS, PARAM_MODELS
 from backend.generation.prompts import GEN_PROMPTS
@@ -208,27 +209,27 @@ async def run(
                 tokens_out = event.usage.output_tokens
     except LLMError as exc:
         logger.warning("generation failed type=%s: %s", gen_type, exc)
-        await run_in_threadpool(_fail, db, row, str(exc))
+        await _record_failure(db, row, str(exc))
         yield _sse("error", {"message": _ERR_GENERATION, "fallback": "retry"})
         return
     gen_ms = int((time.monotonic() - started) * 1000)
 
     raw = "".join(parts)
     if not raw.strip():
-        await run_in_threadpool(_fail, db, row, "empty model output")
+        await _record_failure(db, row, "empty model output")
         yield _sse("error", {"message": _ERR_EMPTY, "fallback": "retry"})
         return
 
     # 7. parse + validate against the type's content shape
     blob = _extract_json(raw)
     if blob is None:
-        await run_in_threadpool(_fail, db, row, "model output was not JSON")
+        await _record_failure(db, row, "model output was not JSON")
         yield _sse("error", {"message": _ERR_PARSE, "fallback": "retry"})
         return
     try:
         content = content_model.model_validate(blob)
     except ValidationError as exc:
-        await run_in_threadpool(_fail, db, row, f"content validation: {exc.errors()[0]}")
+        await _record_failure(db, row, f"content validation: {exc.errors()[0]}")
         logger.warning("generation content invalid type=%s: %s", gen_type, exc.errors()[0])
         yield _sse("error", {"message": _ERR_PARSE, "fallback": "retry"})
         return
@@ -246,7 +247,11 @@ async def run(
         db.commit()
         db.refresh(row)
 
-    await run_in_threadpool(_save_result)
+    try:
+        await in_db_thread(_save_result)
+    except DatabaseBusy:
+        yield _sse("error", {"message": _ERR_GENERATION, "fallback": "retry"})
+        return
 
     logger.info(
         "generation type=%s id=%s status=completed gen_ms=%s tokens_out=%s chunks=%s pv=%s",
@@ -255,6 +260,13 @@ async def run(
     if as_progress:
         yield _sse("progress", {"stage": "done", "done": 1, "total": 1})
     yield _sse("done", {"generation_id": str(row.id), "type": gen_type, "cached": False})
+
+
+async def _record_failure(db: Session, row: Generation, message: str) -> None:
+    try:
+        await in_db_thread(_fail, db, row, message)
+    except DatabaseBusy:
+        logger.warning("no database slot free to record a failed generation: %s", message[:200])
 
 
 def _fail(db: Session, row: Generation, message: str) -> None:

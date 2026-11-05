@@ -29,6 +29,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import create_engine, event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers
 
 from backend.core.config import DATABASE_URL, settings
@@ -99,11 +100,12 @@ def _return_slot() -> None:
 class _RequestSlot:
     """Whether this request's slot is currently taken, and the session it protects."""
 
-    __slots__ = ("db", "held")
+    __slots__ = ("db", "held", "closed")
 
     def __init__(self, db: Session) -> None:
         self.db = db
         self.held = True
+        self.closed = False
 
 
 _current_slot: contextvars.ContextVar[_RequestSlot | None] = contextvars.ContextVar(
@@ -135,6 +137,9 @@ async def _finish_with(slot: _RequestSlot) -> None:
     """Close the session and return the slot. Closing talks to the database, so it stays
     off the event loop. Shielded so a client hanging up cannot leave them unreturned. The
     slot goes back even if closing fails: a database blip must not use up slots for good."""
+    if slot.closed:  # a normal response already did this before it was sent
+        return
+    slot.closed = True
     with anyio.CancelScope(shield=True):
         try:
             await anyio.to_thread.run_sync(slot.db.close)
@@ -210,15 +215,20 @@ def _end_read_transaction(db: Session) -> None:
         # Nothing was unsaved, so nothing is lost. The call can go ahead, and the next
         # query gets a fresh connection.
         logger.warning("ending a read transaction failed: %s", exc)
-        db.invalidate()
+        try:
+            db.rollback()  # not invalidate(), which would detach everything the caller holds
+        except SQLAlchemyError as rollback_exc:
+            logger.warning("rolling back after that failed too: %s", rollback_exc)
     finally:
         db.expire_on_commit = expire_on_commit
 
 
 @asynccontextmanager
 async def outside_call() -> AsyncIterator[None]:
-    """Wrap a slow call to another service. The connection and slot go back for its
-    duration, so a request waiting on an LLM does not stop others using the database.
+    """Wrap a slow call to another service. The connection and slot go back first, so a
+    request waiting on an LLM does not stop others using the database. They are not retaken
+    afterwards: a finished result must not fail, or wait, because of a slot it may never
+    need. A request that uses the database again does that through `in_db_thread`.
 
     Does nothing where it cannot help safely: outside a request, inside another
     `outside_call`, or with unsaved changes, because saving them early here could
@@ -232,22 +242,17 @@ async def outside_call() -> AsyncIterator[None]:
     await anyio.to_thread.run_sync(_end_read_transaction, slot.db)
     slot.held = False
     _return_slot()
-    try:
-        yield
-    except Exception:
-        # The caller may still record the failure in the database.
-        try:
-            await _take_slot(settings.db_slot_wait_seconds)
-            slot.held = True
-        except TimeoutError:
-            logger.warning("no slot free to record a failed outside call")
-        raise
-    except BaseException:
-        # Cancelled or closed: nothing will use the session again except `get_db`
-        # closing it, and waiting for a slot here could hold up the cancellation.
-        raise
-    await _take_slot_or_busy()
-    slot.held = True
+    yield
+
+
+async def in_db_thread(fn, /, *args, **kwargs):
+    """Run database work in a thread, first taking a slot back if `outside_call` gave it up.
+    Raises `DatabaseBusy` if none comes free in time."""
+    slot = _current_slot.get()
+    if slot is not None and not slot.held:
+        await _take_slot_or_busy()
+        slot.held = True
+    return await run_in_threadpool(fn, *args, **kwargs)
 
 
 @asynccontextmanager

@@ -11,8 +11,6 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from starlette.concurrency import run_in_threadpool
-
 from backend.absence_calls.telephony import (
     TelephonyError,
     TelephonyNotConfigured,
@@ -50,50 +48,8 @@ async def queue_call_for_absence(record_id: uuid.UUID) -> None:
     database slot, then takes its own: one slot per session, so it can never block
     the loop on a full pool.
     """
-    async with outside_call():
+    async with outside_call(), own_slot():
         await _queue_call(record_id)
-
-
-def _prepare_call(db, record_id: uuid.UUID) -> tuple[AbsenceCall, str, str] | None:
-    """Records the call. Returns it with its id and number if one should be placed. Commits,
-    so no connection stays open while the provider answers."""
-    record = db.get(AttendanceRecord, record_id)
-    if record is None or record.status != "absent":
-        return None  # marked back to present before we got to it
-
-    student = db.get(Student, record.student_id)
-    # ABSENCE_CALL_FORCE_PHONE is a demo-only override (config refuses it in production)
-    guardian_phone = settings.absence_call_force_phone or (student.guardian_phone if student else None)
-    call = AbsenceCall(
-        attendance_record_id=record.id,
-        student_id=record.student_id,
-        guardian_phone=guardian_phone,
-    )
-    db.add(call)
-    db.commit()
-    db.refresh(call)
-
-    if not guardian_phone:
-        call.status = "no_guardian_phone"
-        call.failure_reason = "No guardian phone number on file."
-        db.commit()
-        return None
-
-    if not settings.absence_calling_enabled:
-        call.status = "not_configured"
-        call.failure_reason = "Automated guardian calling is switched off."
-        db.commit()
-        return None
-
-    call_id = str(call.id)
-    db.commit()  # ends the read that loading the id began, which returns the connection
-    return call, call_id, guardian_phone
-
-
-def _record_outcome(db, call: AbsenceCall, **fields) -> None:
-    for name, value in fields.items():
-        setattr(call, name, value)
-    db.commit()
 
 
 async def _queue_call(record_id: uuid.UUID) -> None:
@@ -102,42 +58,63 @@ async def _queue_call(record_id: uuid.UUID) -> None:
     Every outcome is recorded truthfully: a student with no guardian number
     gets `no_guardian_phone`, calling switched off/unconfigured gets
     `not_configured`, a provider failure gets `failed` with a reason. Nothing
-    here ever invents a guardian statement.
-
-    Database work runs in threads, holding a slot only for that work, and neither
-    a slot nor a connection is held while the provider answers."""
+    here ever invents a guardian statement."""
     db = SessionLocal()
-
-    async def record(call: AbsenceCall, **fields) -> None:
-        async with own_slot():
-            await run_in_threadpool(_record_outcome, db, call, **fields)
-
     try:
-        async with own_slot():
-            prepared = await run_in_threadpool(_prepare_call, db, record_id)
-        if prepared is None:
-            return
-        call, call_id, guardian_phone = prepared
+        record = db.get(AttendanceRecord, record_id)
+        if record is None or record.status != "absent":
+            return  # marked back to present before we got to it
 
+        student = db.get(Student, record.student_id)
+        # ABSENCE_CALL_FORCE_PHONE is a demo-only override (config refuses it in production)
+        guardian_phone = settings.absence_call_force_phone or (student.guardian_phone if student else None)
+        call = AbsenceCall(
+            attendance_record_id=record.id,
+            student_id=record.student_id,
+            guardian_phone=guardian_phone,
+        )
+        db.add(call)
+        db.commit()
+        db.refresh(call)
+
+        if not guardian_phone:
+            call.status = "no_guardian_phone"
+            call.failure_reason = "No guardian phone number on file."
+            db.commit()
+            return
+
+        if not settings.absence_calling_enabled:
+            call.status = "not_configured"
+            call.failure_reason = "Automated guardian calling is switched off."
+            db.commit()
+            return
+
+        call_id = str(call.id)
+        db.commit()  # ends the read that loading the id began: no connection sits idle during the call
         try:
             provider = get_telephony_provider()
             placed = await provider.place_call(to_number=guardian_phone, correlation_id=call_id)
         except TelephonyNotConfigured:
-            await record(call, status="not_configured", failure_reason="Telephony provider is not configured.")
+            call.status = "not_configured"
+            call.failure_reason = "Telephony provider is not configured."
+            db.commit()
             return
         except TelephonyError as exc:
             logger.info("absence_call_failed call_id=%s error=%s", call_id, exc)
-            await record(call, status="failed", failure_reason="The call could not be placed.",
-                         completed_at=datetime.now(timezone.utc))
+            call.status = "failed"
+            call.failure_reason = "The call could not be placed."
+            call.completed_at = datetime.now(timezone.utc)
+            db.commit()
             return
 
-        await record(call, status="dialing", provider_call_sid=placed.provider_call_sid)
+        call.status = "dialing"
+        call.provider_call_sid = placed.provider_call_sid
+        db.commit()
     except Exception:
         logger.exception("absence_call_workflow_error record_id=%s", record_id)
-        async with own_slot():
-            await run_in_threadpool(db.rollback)
+        db.rollback()
     finally:
-        await run_in_threadpool(db.close)
+        db.close()
 
 
 def get_call(db, call_id: uuid.UUID) -> AbsenceCall | None:

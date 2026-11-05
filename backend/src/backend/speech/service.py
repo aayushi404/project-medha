@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from backend.core.config import settings
-from backend.db.session import DatabaseBusy, outside_call
+from backend.db.session import DatabaseBusy, in_db_thread
 from backend.db.models import (
     ChatSession,
     CurriculumChapter,
@@ -349,16 +349,9 @@ async def stream_converse(
         logger.warning("voice generation failed: %s", exc)
         yield _sse("error", {"message": _ERR_GENERATION, "fallback": "type_instead"})
         return
-    try:
-        # Audio frames are large, so a slow connection must not hold a database slot
-        # while they are sent.
-        if safety_buf:
-            async with outside_call():
-                async for out in _handle_clean(safety_buf):
-                    yield out
-    except DatabaseBusy:
-        yield _sse("error", {"message": _ERR_GENERATION, "fallback": "type_instead"})
-        return
+    if safety_buf:
+        async for out in _handle_clean(safety_buf):
+            yield out
     if caught_words:
         logger.warning("voice reply sanitized session=%s words=%s", turn.session_id, caught_words)
     llm_ms = int((time.monotonic() - llm_started) * 1000)
@@ -370,13 +363,8 @@ async def stream_converse(
 
     # Speak whatever is left after the last sentence break.
     if pending.strip():
-        try:
-            async with outside_call():
-                async for frame in _emit(pending):
-                    yield frame
-        except DatabaseBusy:
-            yield _sse("error", {"message": _ERR_GENERATION, "fallback": "type_instead"})
-            return
+        async for frame in _emit(pending):
+            yield frame
 
     # Non-fatal: a partial failure just drops that sentence's audio (the caption
     # still has the text). Only when nothing was spoken does the client fall
@@ -393,7 +381,11 @@ async def stream_converse(
         db.commit()
         db.refresh(stub)
 
-    await run_in_threadpool(_save_reply)
+    try:
+        await in_db_thread(_save_reply)
+    except DatabaseBusy:
+        yield _sse("error", {"message": _ERR_GENERATION, "fallback": "retry"})
+        return
 
     logger.info(
         "voice_turn session=%s turn=%s style=%s lang=%s chunks=%s llm_ms=%s "
