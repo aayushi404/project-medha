@@ -90,5 +90,77 @@ class OmrOffLoopTests(unittest.TestCase):
         self.assertIn("too many pages", caught.exception.detail)
 
 
+class OmrSafetyTests(unittest.TestCase):
+    def test_pdf_rendering_never_overlaps(self):
+        """PyMuPDF does not support multithreading."""
+        from backend.omr import evaluator
+
+        active, most = 0, 0
+        lock = threading.Lock()
+
+        class Document:
+            page_count = 0
+
+            def __iter__(self):
+                nonlocal active
+                time.sleep(0.05)
+                with lock:
+                    active -= 1
+                return iter(())
+
+        def opening(**_kwargs):
+            nonlocal active, most
+            with lock:
+                active += 1
+                most = max(most, active)
+            return Document()
+
+        with mock.patch.object(evaluator.pymupdf, "open", opening):
+            sheet = evaluator.OMREvaluator()
+            threads = [threading.Thread(target=sheet.load_image_from_bytes, args=(b"x", "a.pdf")) for _ in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+        self.assertEqual(most, 1)
+
+    def _evaluate(self):
+        return service.evaluate_omr_upload(mock.Mock(), mock.Mock(), _upload(), uuid.uuid4(), 50.0)
+
+    def _patched(self):
+        patches = [mock.patch.object(service, "OMREvaluator", _SlowEvaluator),
+                   mock.patch.object(service, "_teacher_student_roster", lambda *a: []),
+                   mock.patch.object(service, "_MARKING_AT_ONCE", asyncio.Semaphore(1))]
+        for patcher in patches:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_a_full_queue_answers_busy(self):
+        self._patched()
+
+        async def scenario():
+            with mock.patch.object(service, "_MARKING_MAX_WAITING", 1):
+                return await asyncio.gather(*(self._evaluate() for _ in range(4)), return_exceptions=True)
+
+        results = asyncio.run(scenario())
+        busy = [r for r in results if isinstance(r, HTTPException) and r.status_code == 503]
+        self.assertTrue(busy, results)
+        self.assertEqual(busy[0].headers["Retry-After"], "10")
+        self.assertTrue([r for r in results if isinstance(r, dict)], "some sheets should still be marked")
+        self.assertEqual(service._marking_waiting, 0)
+
+    def test_waiting_too_long_answers_busy_and_gives_nothing_up(self):
+        self._patched()
+
+        async def scenario():
+            with mock.patch.object(service, "_MARKING_WAIT_SECONDS", 0.01):
+                results = await asyncio.gather(self._evaluate(), self._evaluate(), return_exceptions=True)
+            self.assertEqual(service._MARKING_AT_ONCE._value, 1)
+            return results
+
+        results = asyncio.run(scenario())
+        self.assertEqual(sorted(type(r).__name__ for r in results), ["HTTPException", "dict"])
+
+
 if __name__ == "__main__":
     unittest.main()

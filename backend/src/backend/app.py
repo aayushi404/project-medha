@@ -15,6 +15,7 @@ from backend.core.config import settings
 from backend.core.context import request_id_ctx
 from backend.core.errors import install_error_handlers
 from backend.core.logging import configure_logging
+from backend.db.session import ReleaseDatabaseBeforeSending
 from backend.curriculum.router import router as curriculum_router
 from backend.english.router import router as english_router
 from backend.fees.router import router as fees_router
@@ -89,6 +90,8 @@ class _RequestIdMiddleware:
             request_id_ctx.reset(token)
 
 
+# Innermost, so the session goes back before anything starts sending the response.
+app.add_middleware(ReleaseDatabaseBeforeSending)
 app.add_middleware(_RequestIdMiddleware)
 
 

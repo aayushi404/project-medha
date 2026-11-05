@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 import anthropic
 
 from backend.core.config import settings
-from backend.db.session import outside_call
+from backend.db.session import DatabaseBusy, outside_call
 from backend.llm.client import (
     Completion,
     LLMClient,
@@ -59,6 +59,8 @@ class ClaudeClient(LLMClient):
         except anthropic.AnthropicError as exc:
             logger.warning("llm_stream_error model=%s err=%s", self._model, exc)
             raise LLMError(str(exc)) from exc
+        except DatabaseBusy as exc:  # so callers report it the way they report any AI failure
+            raise LLMError(str(exc.detail)) from exc
 
         usage = Usage(final.usage.input_tokens, final.usage.output_tokens)
         logger.info(
@@ -88,6 +90,8 @@ class ClaudeClient(LLMClient):
         except anthropic.AnthropicError as exc:
             logger.warning("llm_complete_error model=%s err=%s", self._model, exc)
             raise LLMError(str(exc)) from exc
+        except DatabaseBusy as exc:
+            raise LLMError(str(exc.detail)) from exc
 
         text = "".join(b.text for b in resp.content if b.type == "text")
         usage = Usage(resp.usage.input_tokens, resp.usage.output_tokens)

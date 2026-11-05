@@ -1,6 +1,8 @@
 import asyncio
 import os
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
@@ -21,6 +23,36 @@ from backend.omr.schemas import OMREvaluationResponse
 # Marking is CPU work, so running more at once only slows them all down, and would take
 # the threads that other requests need. Per process, like the database slots.
 _MARKING_AT_ONCE = asyncio.Semaphore(2)
+# Each waiting upload holds up to 10 MB in memory, so the queue has limits too.
+_MARKING_MAX_WAITING = 10
+_MARKING_WAIT_SECONDS = 60.0
+_marking_waiting = 0
+
+
+def _marking_busy() -> HTTPException:
+    return HTTPException(
+        status.HTTP_503_SERVICE_UNAVAILABLE,
+        "Too many sheets are being marked right now. Please try again shortly.",
+        headers={"Retry-After": "10"},
+    )
+
+
+@asynccontextmanager
+async def _marking_turn() -> AsyncIterator[None]:
+    global _marking_waiting
+    if _marking_waiting >= _MARKING_MAX_WAITING:
+        raise _marking_busy()
+    _marking_waiting += 1
+    try:
+        await asyncio.wait_for(_MARKING_AT_ONCE.acquire(), _MARKING_WAIT_SECONDS)
+    except TimeoutError:
+        raise _marking_busy() from None
+    finally:
+        _marking_waiting -= 1
+    try:
+        yield
+    finally:
+        _MARKING_AT_ONCE.release()
 
 
 def _teacher_student_roster(db: Session, teacher: Teacher, class_section_id: uuid.UUID) -> list[dict[str, Any]]:
@@ -89,5 +121,5 @@ async def evaluate_omr_upload(
 
     # Off the event loop, or one sheet stalls every other request in this process. Marking
     # needs no database, so the connection goes back while it waits and works.
-    async with outside_call(), _MARKING_AT_ONCE:
+    async with outside_call(), _marking_turn():
         return await run_in_threadpool(_mark_sheet, content, filename, max_marks, roster)

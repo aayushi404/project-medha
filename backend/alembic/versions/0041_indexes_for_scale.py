@@ -30,10 +30,21 @@ _INDEXES = (
 )
 
 
+_INVALID = sa.text(
+    "SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid "
+    "WHERE c.relname = :name AND NOT i.indisvalid"
+)
+
+
 def upgrade() -> None:
     # CONCURRENTLY cannot run inside a transaction.
     with op.get_context().autocommit_block():
+        bind = op.get_bind()
         for name, table, columns in _INDEXES:
+            # A concurrent build that failed leaves an unusable index under this name, which
+            # IF NOT EXISTS would accept, so a retry would report success with no real index.
+            if bind.execute(_INVALID, {"name": name}).first():
+                op.drop_index(name, table_name=table, postgresql_concurrently=True)
             op.create_index(name, table, columns, postgresql_concurrently=True, if_not_exists=True)
 
 

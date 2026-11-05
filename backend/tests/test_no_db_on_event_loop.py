@@ -17,11 +17,15 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import event  # noqa: E402
 
+from backend.absence_calls.service import queue_call_for_absence  # noqa: E402
+from backend.absence_calls.telephony import TelephonyError  # noqa: E402
 from backend.app import app  # noqa: E402
 from backend.auth.jwt import create_access_token  # noqa: E402
 from backend.core.config import settings  # noqa: E402
 from backend.db.models import (  # noqa: E402
+    AbsenceCall,
     AcademicYear,
+    AttendanceRecord,
     ChatMessage,
     ChatSession,
     ClassSection,
@@ -124,6 +128,8 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
         db.query(ModuleArtifact).filter(ModuleArtifact.module_id.in_(modules)).delete()
         db.query(Module).filter(Module.id.in_(modules)).delete()
         db.query(Generation).filter(Generation.teacher_id == ids["teacher"]).delete()
+        db.query(AbsenceCall).filter(AbsenceCall.student_id == ids["student"]).delete()
+        db.query(AttendanceRecord).filter(AttendanceRecord.student_id == ids["student"]).delete()
         db.query(VoiceTurn).filter(VoiceTurn.session_id.in_(sessions)).delete()
         db.query(ChatMessage).filter(ChatMessage.session_id.in_(sessions)).delete()
         db.query(ChatSession).filter(ChatSession.id.in_(sessions)).delete()
@@ -359,6 +365,64 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
         turn = db.query(VoiceTurn).filter(VoiceTurn.session_id == session_id).one()
         self.assertEqual(turn.assistant_text, REPLY)
         db.close()
+
+    def _absence(self):
+        db = SessionLocal()
+        student = db.get(Student, self.ids["student"])
+        student.guardian_phone = "+919000000001"
+        record = AttendanceRecord(student_id=self.ids["student"], marked_by_teacher_id=self.ids["teacher"], status="absent",
+                                  attendance_date=date.today() - timedelta(days=uuid.uuid4().int % 3000 + 1))
+        db.add(record)
+        db.commit()
+        record_id = record.id
+        db.close()
+        return record_id
+
+    def _absence_call(self, record_id):
+        db = SessionLocal()
+        call = db.query(AbsenceCall).filter(AbsenceCall.attendance_record_id == record_id).one()
+        values = (call.status, call.provider_call_sid, call.failure_reason, call.completed_at is not None)
+        db.close()
+        return values
+
+    def _run_absence(self, provider, enabled=True):
+        record_id = self._absence()
+        with mock.patch("backend.absence_calls.service.get_telephony_provider", lambda: provider), \
+                mock.patch.object(settings, "absence_calling_enabled", enabled):
+            asyncio.run(queue_call_for_absence(record_id))
+        return self._absence_call(record_id)
+
+    def test_absence_call_holds_nothing_while_the_provider_answers(self):
+        seen = {}
+        before = engine.pool.checkedout()  # other test files may have sessions open
+
+        class Provider:
+            async def place_call(self, *, to_number, correlation_id):
+                seen.update(slots=SlotStats.in_use, connections=engine.pool.checkedout(), number=to_number,
+                            correlation_id=correlation_id)
+                return mock.Mock(provider_call_sid="CA123")
+
+        result = self._run_absence(Provider())
+        self.assertEqual(result, ("dialing", "CA123", None, False))
+        self.assertEqual((seen["slots"], seen["connections"]), (0, before))
+        self.assertEqual(seen["number"], "+919000000001")
+        uuid.UUID(seen["correlation_id"])
+        self.assertEqual(self.on_loop, [])
+        self.assertEqual(SlotStats.in_use, 0)
+
+    def test_absence_call_records_a_provider_failure(self):
+        class Provider:
+            async def place_call(self, **_kwargs):
+                raise TelephonyError("no route")
+
+        self.assertEqual(self._run_absence(Provider()), ("failed", None, "The call could not be placed.", True))
+        self.assertEqual(self.on_loop, [])
+
+    def test_absence_call_switched_off_places_nothing(self):
+        provider = mock.AsyncMock()
+        result = self._run_absence(provider, enabled=False)
+        self.assertEqual(result[0], "not_configured")
+        provider.place_call.assert_not_called()
 
     def test_spoken_turn(self):
         session_id = self._session("student")

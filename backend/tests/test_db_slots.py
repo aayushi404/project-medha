@@ -21,7 +21,17 @@ from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 from sqlalchemy.pool import QueuePool  # noqa: E402
 
 from backend.db import session as db_session  # noqa: E402
-from backend.db.session import SlotStats, get_db, outside_call, own_slot  # noqa: E402
+from backend.db.session import (  # noqa: E402
+    DatabaseBusy,
+    ReleaseDatabaseBeforeSending,
+    SlotStats,
+    get_db,
+    outside_call,
+    own_slot,
+)
+from sse_starlette.sse import EventSourceResponse  # noqa: E402
+
+_REAL_SLOT_LIMIT = db_session.slot_limit
 
 POOL_SIZE = 3
 POOL_TIMEOUT = 2
@@ -248,6 +258,140 @@ class OutsideCallTests(_DeadlockTestCase):
         import contextvars
 
         contextvars.Context().run(asyncio.run, scenario())
+
+
+class SlotSafetyTests(_DeadlockTestCase):
+    def test_a_failed_close_still_returns_the_slot(self):
+        class BreaksOnClose:
+            info: dict = {}
+
+            def close(self):
+                raise RuntimeError("the connection died")
+
+        async def scenario():
+            with mock.patch.object(db_session, "SessionLocal", BreaksOnClose):
+                for _ in range(POOL_SIZE + 2):  # more than the slots there are
+                    dependency = get_db()
+                    await asyncio.wait_for(dependency.__anext__(), 2)
+                    await dependency.aclose()
+            self.assertEqual(SlotStats.in_use, 0)
+
+        asyncio.run(scenario())
+
+    def test_db_slots_can_never_exceed_the_pool(self):
+        with mock.patch.object(db_session, "slot_limit", _REAL_SLOT_LIMIT), \
+                mock.patch.object(db_session.settings, "db_pool_size", 5), \
+                mock.patch.object(db_session.settings, "db_max_overflow", 10):
+            with mock.patch.object(db_session.settings, "db_slots", 20):
+                self.assertEqual(db_session.slot_limit(), 13)
+            with mock.patch.object(db_session.settings, "db_slots", 4):
+                self.assertEqual(db_session.slot_limit(), 4)
+            with mock.patch.object(db_session.settings, "db_slots", 0):
+                self.assertEqual(db_session.slot_limit(), 13)
+
+
+class ReleaseBeforeSendingTests(_DeadlockTestCase):
+    def _slots_when_sending(self, path: str, *, release: bool = True) -> list[int]:
+        app = _build_app(self.factory, get_db)
+
+        @app.get("/stream")
+        async def stream(db: Session = Depends(get_db)):
+            async def events():
+                db.execute(text("SELECT 1"))
+                yield {"event": "done", "data": "{}"}
+
+            return EventSourceResponse(events())
+
+        inner = ReleaseDatabaseBeforeSending(app) if release else app
+        seen: list[int] = []
+
+        async def recording(scope, receive, send):
+            async def recording_send(message):
+                if message["type"] == "http.response.start":
+                    seen.append(SlotStats.in_use)
+                await send(message)
+
+            await inner(scope, receive, recording_send)
+
+        async def scenario():
+            transport = httpx.ASGITransport(app=recording)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get(path)
+            self.assertEqual(response.status_code, 200)
+
+        asyncio.run(scenario())
+        self.assertEqual(SlotStats.in_use, 0)
+        return seen
+
+    def test_control_without_it_the_slot_is_held_while_sending(self):
+        self.assertEqual(self._slots_when_sending("/me", release=False), [1])
+
+    def test_a_normal_response_gives_the_slot_back_before_sending(self):
+        self.assertEqual(self._slots_when_sending("/me"), [0])
+
+    def test_a_stream_keeps_its_slot_because_it_still_uses_the_session(self):
+        self.assertEqual(self._slots_when_sending("/stream"), [1])
+
+
+class OutsideCallFailureTests(_DeadlockTestCase):
+    def test_flushed_writes_are_not_committed_early(self):
+        from sqlalchemy import Column, Integer
+        from sqlalchemy.orm import declarative_base
+
+        model = type("F", (declarative_base(),), {"__tablename__": "flushed", "a": Column(Integer, primary_key=True)})
+
+        async def scenario():
+            dependency = get_db()
+            db = await dependency.__anext__()
+            db.execute(text("CREATE TABLE IF NOT EXISTS flushed (a INTEGER PRIMARY KEY)"))
+            db.commit()
+            db.add(model(a=1))
+            db.flush()
+            self.assertFalse(db.new)
+            async with outside_call():
+                self.assertEqual(SlotStats.in_use, 1, "must keep the slot, not commit half the work")
+            db.rollback()
+            self.assertEqual(db.execute(text("SELECT count(*) FROM flushed")).scalar_one(), 0)
+            db.commit()
+            async with outside_call():
+                self.assertEqual(SlotStats.in_use, 0, "a commit clears it")
+            await dependency.aclose()
+
+        asyncio.run(scenario())
+
+    def test_a_dead_connection_before_the_call_does_not_stop_the_call(self):
+        from sqlalchemy.exc import OperationalError
+
+        async def scenario():
+            dependency = get_db()
+            db = await dependency.__anext__()
+            ran = False
+            with mock.patch.object(db, "commit", side_effect=OperationalError("x", {}, Exception("gone"))):
+                async with outside_call():
+                    ran = True
+                    self.assertEqual(SlotStats.in_use, 0)
+            self.assertTrue(ran)
+            self.assertEqual(db.execute(text("SELECT 1")).scalar_one(), 1, "the next query reconnects")
+            await dependency.aclose()
+
+        asyncio.run(scenario())
+
+    def test_no_slot_after_the_call_answers_busy_instead_of_hanging(self):
+        async def scenario():
+            dependency = get_db()
+            await dependency.__anext__()
+            with mock.patch.object(db_session.settings, "db_slot_wait_seconds", 0.05):
+                with self.assertRaises(DatabaseBusy) as caught:
+                    async with outside_call():
+                        taken = [asyncio.create_task(db_session._take_slot(None)) for _ in range(POOL_SIZE)]
+                        await asyncio.gather(*taken)
+            self.assertEqual(caught.exception.status_code, 503)
+            for _ in range(POOL_SIZE):
+                db_session._return_slot()
+            await dependency.aclose()
+            self.assertEqual(SlotStats.in_use, 0)
+
+        asyncio.run(scenario())
 
 
 if __name__ == "__main__":

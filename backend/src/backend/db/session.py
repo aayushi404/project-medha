@@ -26,8 +26,10 @@ from contextlib import asynccontextmanager
 
 import anyio
 from fastapi import HTTPException, status
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.datastructures import Headers
 
 from backend.core.config import DATABASE_URL, settings
 
@@ -49,10 +51,10 @@ _RESERVED_CONNECTIONS = 2
 
 
 def slot_limit() -> int:
-    if settings.db_slots > 0:
-        return settings.db_slots
     capacity = settings.db_pool_size + settings.db_max_overflow
-    return max(capacity - _RESERVED_CONNECTIONS, 1)
+    most = max(capacity - _RESERVED_CONNECTIONS, 1)
+    # Never above the pool: more slots than connections would bring the deadlock back.
+    return min(settings.db_slots, most) if settings.db_slots > 0 else most
 
 
 class SlotStats:
@@ -109,17 +111,43 @@ _current_slot: contextvars.ContextVar[_RequestSlot | None] = contextvars.Context
 )
 
 
-async def get_db() -> AsyncGenerator[Session, None]:
+class DatabaseBusy(HTTPException):
+    """No slot came free in time. Answers 503 if it reaches the client."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "The server is busy. Please try again shortly.",
+            headers={"Retry-After": "5"},
+        )
+
+
+async def _take_slot_or_busy() -> None:
     try:
         await _take_slot(settings.db_slot_wait_seconds)
     except TimeoutError:
         SlotStats.rejected += 1
         logger.warning("no database slot free after %ss", settings.db_slot_wait_seconds)
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            "The server is busy. Please try again shortly.",
-            headers={"Retry-After": "5"},
-        ) from None
+        raise DatabaseBusy() from None
+
+
+async def _finish_with(slot: _RequestSlot) -> None:
+    """Close the session and return the slot. Closing talks to the database, so it stays
+    off the event loop. Shielded so a client hanging up cannot leave them unreturned. The
+    slot goes back even if closing fails: a database blip must not use up slots for good."""
+    with anyio.CancelScope(shield=True):
+        try:
+            await anyio.to_thread.run_sync(slot.db.close)
+        except Exception as exc:
+            logger.warning("closing a database session failed: %s", exc)
+        finally:
+            if slot.held:
+                slot.held = False
+                _return_slot()
+
+
+async def get_db() -> AsyncGenerator[Session, None]:
+    await _take_slot_or_busy()
 
     db = SessionLocal()
     slot = _RequestSlot(db)
@@ -127,13 +155,48 @@ async def get_db() -> AsyncGenerator[Session, None]:
     try:
         yield db
     finally:
-        # Closing talks to the database, so it stays off the event loop. Shielded so
-        # a client hanging up cannot leave the connection and slot unreturned.
-        with anyio.CancelScope(shield=True):
-            await anyio.to_thread.run_sync(db.close)
-            if slot.held:
-                slot.held = False
-                _return_slot()
+        await _finish_with(slot)
+
+
+class ReleaseDatabaseBeforeSending:
+    """Gives back the session and slot once a response is ready, before sending it. Otherwise
+    a few people downloading a large file over slow connections would hold every slot while
+    the database sat idle. Server-sent events keep theirs: those routes still use the session
+    while streaming, and give it back around their slow calls with `outside_call`."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        async def send_after_release(message) -> None:
+            if message["type"] == "http.response.start":
+                content_type = Headers(raw=message.get("headers", [])).get("content-type", "")
+                slot = _current_slot.get()
+                if slot is not None and not content_type.startswith("text/event-stream"):
+                    await _finish_with(slot)
+            await send(message)
+
+        await self.app(scope, receive, send_after_release)
+
+
+# Writes sent to the database but not yet committed. `Session.new` and friends are empty
+# by then, so this is how `outside_call` knows not to commit half of something.
+@event.listens_for(Session, "after_flush")
+def _note_flush(session: Session, _flush_context) -> None:
+    session.info["unsaved_flush"] = True
+
+
+@event.listens_for(Session, "after_commit")
+@event.listens_for(Session, "after_rollback")
+def _clear_flush(session: Session) -> None:
+    session.info.pop("unsaved_flush", None)
+
+
+def _has_unsaved_changes(db: Session) -> bool:
+    return bool(db.new or db.dirty or db.deleted or db.info.get("unsaved_flush"))
 
 
 def _end_read_transaction(db: Session) -> None:
@@ -143,6 +206,11 @@ def _end_read_transaction(db: Session) -> None:
     db.expire_on_commit = False
     try:
         db.commit()
+    except SQLAlchemyError as exc:
+        # Nothing was unsaved, so nothing is lost. The call can go ahead, and the next
+        # query gets a fresh connection.
+        logger.warning("ending a read transaction failed: %s", exc)
+        db.invalidate()
     finally:
         db.expire_on_commit = expire_on_commit
 
@@ -157,7 +225,7 @@ async def outside_call() -> AsyncIterator[None]:
     store half of something the caller means to save as one unit.
     """
     slot = _current_slot.get()
-    if slot is None or not slot.held or slot.db.new or slot.db.dirty or slot.db.deleted:
+    if slot is None or not slot.held or _has_unsaved_changes(slot.db):
         yield
         return
 
@@ -168,14 +236,17 @@ async def outside_call() -> AsyncIterator[None]:
         yield
     except Exception:
         # The caller may still record the failure in the database.
-        await _take_slot(None)
-        slot.held = True
+        try:
+            await _take_slot(settings.db_slot_wait_seconds)
+            slot.held = True
+        except TimeoutError:
+            logger.warning("no slot free to record a failed outside call")
         raise
     except BaseException:
         # Cancelled or closed: nothing will use the session again except `get_db`
         # closing it, and waiting for a slot here could hold up the cancellation.
         raise
-    await _take_slot(None)
+    await _take_slot_or_busy()
     slot.held = True
 
 
