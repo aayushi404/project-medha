@@ -29,6 +29,7 @@ from backend.db.session import (  # noqa: E402
     in_db_thread,
     outside_call,
     own_slot,
+    save_in_db_thread,
 )
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
 
@@ -294,6 +295,55 @@ class SlotSafetyTests(_DeadlockTestCase):
                 self.assertEqual(db_session.slot_limit(), 4)
             with mock.patch.object(db_session.settings, "db_slots", 0):
                 self.assertEqual(db_session.slot_limit(), 13)
+
+    def test_a_finished_reply_waits_longer_for_a_slot_than_other_work(self):
+        async def scenario():
+            dependency = get_db()
+            db = await dependency.__anext__()
+            with mock.patch.object(db_session.settings, "db_slot_wait_seconds", 0.01), \
+                    mock.patch.object(db_session.settings, "db_save_wait_seconds", 5):
+                async with outside_call():
+                    for _ in range(POOL_SIZE):
+                        await db_session._take_slot(None)
+                with self.assertRaises(DatabaseBusy):
+                    await in_db_thread(lambda: None)
+
+                async def free_one_soon():
+                    await asyncio.sleep(0.1)
+                    db_session._return_slot()
+
+                freeing = asyncio.create_task(free_one_soon())
+                value = await save_in_db_thread(lambda: db.execute(text("SELECT 1")).scalar_one())
+                await freeing
+            self.assertEqual(value, 1)
+            for _ in range(POOL_SIZE - 1):
+                db_session._return_slot()
+            await dependency.aclose()
+            self.assertEqual(SlotStats.in_use, 0)
+
+        asyncio.run(scenario())
+
+    def test_using_the_database_after_the_session_closed_fails_and_loses_no_slot(self):
+        async def scenario():
+            async def inner(scope, receive, send):
+                dependency = get_db()
+                await dependency.__anext__()
+                await send({"type": "http.response.start", "status": 200, "headers": []})
+                self.assertEqual(SlotStats.in_use, 0)
+                with self.assertRaises(RuntimeError):
+                    await in_db_thread(lambda: None)
+                with self.assertRaises(RuntimeError):
+                    await save_in_db_thread(lambda: None)
+                self.assertEqual(SlotStats.in_use, 0)
+                await dependency.aclose()
+
+            async def send(_message):
+                pass
+
+            await ReleaseDatabaseBeforeSending(inner)({"type": "http"}, None, send)
+            self.assertEqual(SlotStats.in_use, 0)
+
+        asyncio.run(scenario())
 
     def test_each_request_closes_its_session_once(self):
         closes = []

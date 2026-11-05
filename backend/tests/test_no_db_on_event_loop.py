@@ -282,7 +282,8 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
         self.llm.text = "this is not json"
         body = {"scope": {"grade_id": str(self.ids["grade"]), "subject_id": str(self.ids["subject"])},
                 "params": {"count": 1, "seed": uuid.uuid4().hex}, "language": "en"}
-        response = self.client.post("/generate/quiz", json=body, headers=self.teacher_headers)
+        with mock.patch.object(settings, "generation_cache_enabled", False):
+            response = self.client.post("/generate/quiz", json=body, headers=self.teacher_headers)
         self.assertEqual(_events(response)[-1][0], "error", response.text)
         self.assertEqual(self.on_loop, [])
         db = SessionLocal()
@@ -301,7 +302,8 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
         self.llm.text = self._quiz_reply()
         body = {"scope": {"grade_id": str(self.ids["grade"]), "subject_id": str(self.ids["subject"])},
                 "params": {"count": 1, "seed": uuid.uuid4().hex}, "language": "en"}
-        response = self.client.post("/generate/quiz", json=body, headers=self.teacher_headers)
+        with mock.patch.object(settings, "generation_cache_enabled", False):
+            response = self.client.post("/generate/quiz", json=body, headers=self.teacher_headers)
         done = _events(response)[-1]
         self.assertEqual(done[0], "done", response.text)
         return done[1]["generation_id"]
@@ -506,6 +508,9 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
     def test_generation_survives_connections_killed_before_the_ai_call(self):
         self.llm.text = self._quiz_reply()
         real = outside_call
+        cache_off = mock.patch.object(settings, "generation_cache_enabled", False)
+        cache_off.start()
+        self.addCleanup(cache_off.stop)
 
         class KillFirst:
             def __init__(self):
@@ -537,13 +542,45 @@ class NoDatabaseOnEventLoopTests(unittest.TestCase):
                 await _take_slot(None)
 
         self.llm.during_stream = take_all
-        with mock.patch.object(settings, "db_slot_wait_seconds", 0.1):
+        with mock.patch.object(settings, "db_save_wait_seconds", 0.1):
             response = self._ask(session_id)
         SlotStats.in_use -= taken  # taken on the request's own event loop, which has gone
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(_events(response)[-1][0], "error", response.text)
         self.assertEqual(SlotStats.in_use, 0)
         self.assertEqual(self._saved(session_id)[0], [("teacher", "What is it?")], "the question is still kept")
+
+    def test_generation_with_no_slot_free_to_save_is_marked_failed_not_left_running(self):
+        self.llm.text = self._quiz_reply()
+        taken = 0
+
+        async def take_all():
+            nonlocal taken
+            for _ in range(slot_limit()):
+                await _take_slot(None)
+                taken += 1
+
+        self.llm.during_stream = take_all
+        body = {"scope": {"grade_id": str(self.ids["grade"]), "subject_id": str(self.ids["subject"])},
+                "params": {"count": 1, "seed": uuid.uuid4().hex}, "language": "en"}
+        before = self._generation_ids()
+        with mock.patch.object(settings, "db_save_wait_seconds", 0.1), \
+                mock.patch.object(settings, "generation_cache_enabled", False):
+            response = self.client.post("/generate/quiz", json=body, headers=self.teacher_headers)
+        SlotStats.in_use -= taken  # taken on the request's own event loop, which has gone
+        self.assertEqual(taken, slot_limit(), "the AI step must have run")
+        self.assertEqual(_events(response)[-1][0], "error", response.text)
+        db = SessionLocal()
+        rows = db.query(Generation).filter(Generation.id.in_(self._generation_ids() - before)).all()
+        self.assertEqual([(row.status, row.content_json) for row in rows], [("failed", None)])
+        self.assertIn("no database slot", rows[0].error_message)
+        db.close()
+
+    def _generation_ids(self) -> set:
+        db = SessionLocal()
+        ids = {row.id for row in db.query(Generation.id).filter(Generation.teacher_id == self.ids["teacher"])}
+        db.close()
+        return ids
 
     def test_spoken_turn(self):
         session_id = self._session("student")

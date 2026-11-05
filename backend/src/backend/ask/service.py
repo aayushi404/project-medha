@@ -24,7 +24,7 @@ from backend.db.models import (
     Subject,
     Teacher,
 )
-from backend.db.session import DatabaseBusy, in_db_thread
+from backend.db.session import DatabaseBusy, save_in_db_thread
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm.prompts import activity as activity_prompt
 from backend.llm.prompts import explanation
@@ -383,7 +383,7 @@ async def stream_message(
     # database slot throughout (see `outside_call`).
     title = None if context.has_title else await _derive_title(client, context.language, content)
     try:
-        done = await in_db_thread(_save_reply, db, teacher, session, full_text, output_tokens, chunk_ids, title)
+        done = await save_in_db_thread(_save_reply, db, teacher, session, full_text, output_tokens, chunk_ids, title)
     except DatabaseBusy:
         yield _sse("error", {"message": _ERR_GENERATION})
         return
@@ -511,7 +511,7 @@ async def run_generator(
             return
 
     try:
-        done = await in_db_thread(
+        done = await save_in_db_thread(
             _save_artifact, db, teacher, session, artifact_type, content_json, output_tokens, chunk_ids, subject_label
         )
     except DatabaseBusy:

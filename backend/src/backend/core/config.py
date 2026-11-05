@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     db_slots: int = 0
     # How long a request queues for a slot before getting a 503.
     db_slot_wait_seconds: float = 30.0
+    # The same, for saving a reply the AI has already finished and the user has already seen.
+    db_save_wait_seconds: float = 120.0
 
     # JWT (access tokens)
     jwt_secret_key: str

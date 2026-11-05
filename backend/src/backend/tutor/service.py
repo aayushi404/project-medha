@@ -26,7 +26,7 @@ from backend.db.models import (
     Student,
     Subject,
 )
-from backend.db.session import DatabaseBusy, in_db_thread
+from backend.db.session import DatabaseBusy, save_in_db_thread
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm import safety
 from backend.llm.prompts import doubt as doubt_prompt
@@ -274,7 +274,7 @@ async def stream_message(
 
     title = await _derive_title(client, content)
     try:
-        message_id = await in_db_thread(_save_reply, db, session, full_text, output_tokens, chunk_ids, title)
+        message_id = await save_in_db_thread(_save_reply, db, session, full_text, output_tokens, chunk_ids, title)
     except DatabaseBusy:
         yield _sse("error", {"message": _ERR_GENERATION})
         return

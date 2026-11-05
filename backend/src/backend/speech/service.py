@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from backend.core.config import settings
-from backend.db.session import DatabaseBusy, in_db_thread
+from backend.db.session import DatabaseBusy, save_in_db_thread
 from backend.db.models import (
     ChatSession,
     CurriculumChapter,
@@ -382,7 +382,7 @@ async def stream_converse(
         db.refresh(stub)
 
     try:
-        await in_db_thread(_save_reply)
+        await save_in_db_thread(_save_reply)
     except DatabaseBusy:
         yield _sse("error", {"message": _ERR_GENERATION, "fallback": "retry"})
         return

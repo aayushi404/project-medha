@@ -124,12 +124,13 @@ class DatabaseBusy(HTTPException):
         )
 
 
-async def _take_slot_or_busy() -> None:
+async def _take_slot_or_busy(wait_seconds: float | None = None) -> None:
+    wait_seconds = settings.db_slot_wait_seconds if wait_seconds is None else wait_seconds
     try:
-        await _take_slot(settings.db_slot_wait_seconds)
+        await _take_slot(wait_seconds)
     except TimeoutError:
         SlotStats.rejected += 1
-        logger.warning("no database slot free after %ss", settings.db_slot_wait_seconds)
+        logger.warning("no database slot free after %ss", wait_seconds)
         raise DatabaseBusy() from None
 
 
@@ -245,13 +246,29 @@ async def outside_call() -> AsyncIterator[None]:
     yield
 
 
+async def _retake_slot(wait_seconds: float) -> None:
+    slot = _current_slot.get()
+    if slot is None:
+        return
+    if slot.closed:
+        # Taking a slot here would lose it for good, because nothing is left to return it.
+        raise RuntimeError("this request's database session was closed before its response was sent")
+    if not slot.held:
+        await _take_slot_or_busy(wait_seconds)
+        slot.held = True
+
+
 async def in_db_thread(fn, /, *args, **kwargs):
     """Run database work in a thread, first taking a slot back if `outside_call` gave it up.
     Raises `DatabaseBusy` if none comes free in time."""
-    slot = _current_slot.get()
-    if slot is not None and not slot.held:
-        await _take_slot_or_busy()
-        slot.held = True
+    await _retake_slot(settings.db_slot_wait_seconds)
+    return await run_in_threadpool(fn, *args, **kwargs)
+
+
+async def save_in_db_thread(fn, /, *args, **kwargs):
+    """`in_db_thread` with a longer wait, for saving a finished AI reply. Losing that wastes a
+    paid call, and the user has already seen the text, so it is worth waiting for."""
+    await _retake_slot(settings.db_save_wait_seconds)
     return await run_in_threadpool(fn, *args, **kwargs)
 
 

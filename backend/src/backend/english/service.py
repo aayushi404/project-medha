@@ -14,7 +14,7 @@ from backend.core.ownership import assert_owned
 from backend.core.section_access import current_enrollment
 from backend.db.models import ChatMessage, ChatSession, ClassSection, Grade, Student, Subject
 from backend.english.schemas import EnglishSessionCreateIn
-from backend.db.session import DatabaseBusy, in_db_thread
+from backend.db.session import DatabaseBusy, save_in_db_thread
 from backend.llm import LLMError, LLMRateLimitError, Message, StreamEnd, TokenDelta, get_llm_client
 from backend.llm import safety
 from backend.llm.prompts import english as english_prompt
@@ -192,7 +192,7 @@ async def stream_message(
         return
 
     try:
-        message_id = await in_db_thread(_save_reply, db, session, full_text, output_tokens, content)
+        message_id = await save_in_db_thread(_save_reply, db, session, full_text, output_tokens, content)
     except DatabaseBusy:
         yield _sse("error", {"message": _ERR_GENERATION})
         return

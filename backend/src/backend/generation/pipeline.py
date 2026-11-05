@@ -20,7 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from backend.core.config import settings
 from backend.db.models import Generation, Teacher
-from backend.db.session import DatabaseBusy, in_db_thread
+from backend.db.session import DatabaseBusy, save_in_db_thread
 from backend.generation import cache
 from backend.generation.content import CONTENT_MODELS, PARAM_MODELS
 from backend.generation.prompts import GEN_PROMPTS
@@ -248,8 +248,9 @@ async def run(
         db.refresh(row)
 
     try:
-        await in_db_thread(_save_result)
+        await save_in_db_thread(_save_result)
     except DatabaseBusy:
+        await _mark_failed_without_slot(db, row, "no database slot free to save the result")
         yield _sse("error", {"message": _ERR_GENERATION, "fallback": "retry"})
         return
 
@@ -264,9 +265,19 @@ async def run(
 
 async def _record_failure(db: Session, row: Generation, message: str) -> None:
     try:
-        await in_db_thread(_fail, db, row, message)
+        await save_in_db_thread(_fail, db, row, message)
     except DatabaseBusy:
-        logger.warning("no database slot free to record a failed generation: %s", message[:200])
+        await _mark_failed_without_slot(db, row, message)
+
+
+async def _mark_failed_without_slot(db: Session, row: Generation, message: str) -> None:
+    """A last resort, so a row is not left `running` for good. In a thread, so if the pool is
+    full this waits off the event loop, and nothing queues behind it."""
+    logger.warning("no database slot free for generation %s: %s", row.id, message[:200])
+    try:
+        await run_in_threadpool(_fail, db, row, message)
+    except Exception as exc:
+        logger.warning("could not record the failed generation: %s", exc)
 
 
 def _fail(db: Session, row: Generation, message: str) -> None:
