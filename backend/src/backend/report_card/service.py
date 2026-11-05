@@ -143,6 +143,12 @@ def bulk_upsert_marks(db: Session, teacher: Teacher, payload: "BulkReportCardMar
     if subject is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Subject not found.")
 
+    marks_query = db.query(ReportCardMark).filter(
+        ReportCardMark.student_id.in_([item.student_id for item in payload.marks]),
+        ReportCardMark.subject_id == payload.subject_id,
+        ReportCardMark.term == payload.term,
+    )
+    existing = {row.student_id: row for row in marks_query}
     updated_rows = []
     for mark_item in payload.marks:
         if mark_item.student_id not in valid_student_ids:
@@ -156,15 +162,7 @@ def bulk_upsert_marks(db: Session, teacher: Teacher, payload: "BulkReportCardMar
                 f"Marks obtained ({mark_item.marks_obtained}) cannot exceed maximum marks ({payload.max_marks}).",
             )
 
-        row = (
-            db.query(ReportCardMark)
-            .filter(
-                ReportCardMark.student_id == mark_item.student_id,
-                ReportCardMark.subject_id == payload.subject_id,
-                ReportCardMark.term == payload.term,
-            )
-            .first()
-        )
+        row = existing.get(mark_item.student_id)
         if row is None:
             row = ReportCardMark(
                 student_id=mark_item.student_id,
@@ -182,9 +180,12 @@ def bulk_upsert_marks(db: Session, teacher: Teacher, payload: "BulkReportCardMar
 
     db.commit()
 
+    # Reloads them all in one query, rather than each row loading itself when read. By
+    # student rather than by `row.id`, because reading that would itself load each row.
+    marks_query.all()
+
     out_marks = []
     for row in updated_rows:
-        db.refresh(row)
         out_marks.append(
             ReportCardMarkOut(
                 subject_id=row.subject_id,
