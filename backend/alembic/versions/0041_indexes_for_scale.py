@@ -38,12 +38,14 @@ _INVALID = sa.text(
 
 def upgrade() -> None:
     # CONCURRENTLY cannot run inside a transaction.
-    with op.get_context().autocommit_block():
+    context = op.get_context()
+    with context.autocommit_block():
         bind = op.get_bind()
         for name, table, columns in _INDEXES:
             # A concurrent build that failed leaves an unusable index under this name, which
             # IF NOT EXISTS would accept, so a retry would report success with no real index.
-            if bind.execute(_INVALID, {"name": name}).first():
+            # When generating a SQL script there is no database to ask.
+            if not context.as_sql and bind.execute(_INVALID, {"name": name}).first():
                 op.drop_index(name, table_name=table, postgresql_concurrently=True)
             op.create_index(name, table, columns, postgresql_concurrently=True, if_not_exists=True)
 
